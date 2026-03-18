@@ -1,0 +1,5 @@
+body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+.card { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+input { width: 100%; padding: 15px; margin: 20px 0; font-size: 1.5rem; letter-spacing: 5px; text-align: center; border: 1px solid #ccc; border-radius: 8px; }
+button { width: 100%; padding: 12px; background: #00a884; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+.error { color: red; margin-bottom: 15px; }

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="gradEsfera" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" style="stop-color:white;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#888888;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <circle cx="32" cy="32" r="30" fill="url(#gradEsfera)" stroke="#444" stroke-width="1"/>
+  
+  <text x="50%" y="55%" 
+        font-family="Arial, sans-serif" 
+        font-weight="bold" 
+        font-size="24" 
+        fill="black" 
+        text-anchor="middle" 
+        dominant-baseline="middle">
+    O'T
+  </text>
+</svg>

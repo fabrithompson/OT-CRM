@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build: . 
+    container_name: crm_backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_BOT_URL=http://Bot-Whatsapp:3000 
+      - BOT_SECRET_KEY=${BOT_SECRET_KEY}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      # ────────────────────────────────────
+      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
+      - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
+    depends_on:
+      - Bot-Whatsapp
+
+  Bot-Whatsapp:
+    build: ./Bot-Whatsapp
+    container_name: crm_bot
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000 
+      - JAVA_BACKEND_URL=http://backend:8080/api/webhook/whatsapp
+      - BOT_SECRET_KEY=${BOT_SECRET_KEY}
+    volumes:
+      - whatsapp_sessions:/app/auth_info_v2
+
+volumes:
+  whatsapp_sessions:

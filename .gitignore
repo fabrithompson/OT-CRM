@@ -1,0 +1,100 @@
+# ============================================================
+#   O'T CRM - .gitignore
+# ============================================================
+
+# ------------------------------------------------------------
+# CREDENCIALES Y ENTORNO
+# ------------------------------------------------------------
+.env
+.env.local
+.env.production
+
+# ------------------------------------------------------------
+# JAVA / MAVEN (Spring Boot)
+# ------------------------------------------------------------
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ------------------------------------------------------------
+# IDEs
+# ------------------------------------------------------------
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# VS Code
+.vscode/
+
+# ------------------------------------------------------------
+# NODE.JS / WHATSAPP BOT
+# ------------------------------------------------------------
+**/node_modules/
+Bot-Whatsapp/.wwebjs_auth/
+Bot-Whatsapp/.wwebjs_cache/
+auth_info_v2/
+# Sesiones de Baileys
+**/baileys_store.json
+**/creds.json
+
+# ------------------------------------------------------------
+# PYTHON / TELEGRAM BOT
+# ------------------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.session
+*.session-journal
+
+# ------------------------------------------------------------
+# LOGS Y ARCHIVOS TEMPORALES
+# ------------------------------------------------------------
+*.log
+*.log.*
+logs/
+uploads/
+Bot-Whatsapp/public/uploads/
+Bot-Telegram/static/media/
+Bot-Telegram/static/photos/
+
+# ------------------------------------------------------------
+# SISTEMA OPERATIVO
+# ------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# ------------------------------------------------------------
+# FRONTEND (React/Vite)
+# ------------------------------------------------------------
+Frontend/dist/
+
+# ------------------------------------------------------------
+# HERRAMIENTAS / IA
+# ------------------------------------------------------------
+.claude/

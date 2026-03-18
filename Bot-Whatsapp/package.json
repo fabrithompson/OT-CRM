@@ -1,0 +1,22 @@
+{
+  "name": "Bot-Whatsapp-enterprise",
+  "version": "2.2.0",
+  "description": "Bot de WhatsApp Enterprise para CRM + Realtime Presence + Stability Patch",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "axios": "^1.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-cache": "^5.1.2", 
+    "pino": "^8.16.0",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
