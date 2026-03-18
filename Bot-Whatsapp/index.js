@@ -115,6 +115,89 @@ io.on('connection', (socket) => {
 const sessions = new Map();
 const qrStore = new Map();
 
+// ── Reconexión automática con backoff exponencial ──────────────────────────
+// Cada sesión trackea sus reintentos independientemente.
+// Después de MAX_RETRIES fallos consecutivos, se marca como "requiere intervención manual".
+const MAX_RETRIES = 5;
+const BACKOFF_DELAYS = [5000, 10000, 20000, 40000, 60000]; // ms por intento
+const reconnectState = new Map(); // sessionId → { retries, timer, healthTimer }
+
+const getReconnectState = (sessionId) => {
+    if (!reconnectState.has(sessionId)) {
+        reconnectState.set(sessionId, { retries: 0, timer: null, healthTimer: null });
+    }
+    return reconnectState.get(sessionId);
+};
+
+const resetReconnectState = (sessionId) => {
+    const state = reconnectState.get(sessionId);
+    if (state) {
+        if (state.timer) clearTimeout(state.timer);
+        state.retries = 0;
+        state.timer = null;
+    }
+};
+
+// Health check activo: ping cada 2 minutos a cada sesión conectada
+const startHealthCheck = (sessionId) => {
+    const state = getReconnectState(sessionId);
+    // Limpiar health check anterior si existe
+    if (state.healthTimer) clearInterval(state.healthTimer);
+
+    state.healthTimer = setInterval(async () => {
+        const sock = sessions.get(sessionId);
+        if (!sock || !sock.user) {
+            logger.warn({ sessionId }, '💔 Health check: sesión no conectada, iniciando reconexión');
+            clearInterval(state.healthTimer);
+            state.healthTimer = null;
+            scheduleReconnect(sessionId);
+            return;
+        }
+        try {
+            // Verificar que el socket sigue respondiendo
+            await sock.sendPresenceUpdate('available');
+            logger.debug({ sessionId }, '💚 Health check OK');
+        } catch (err) {
+            logger.warn({ sessionId, error: err.message }, '💔 Health check falló, sesión no responde');
+            clearInterval(state.healthTimer);
+            state.healthTimer = null;
+            scheduleReconnect(sessionId);
+        }
+    }, 120000); // Cada 2 minutos
+};
+
+const stopHealthCheck = (sessionId) => {
+    const state = reconnectState.get(sessionId);
+    if (state?.healthTimer) {
+        clearInterval(state.healthTimer);
+        state.healthTimer = null;
+    }
+};
+
+const scheduleReconnect = (sessionId) => {
+    const state = getReconnectState(sessionId);
+
+    if (state.retries >= MAX_RETRIES) {
+        logger.error({ sessionId, retries: state.retries },
+            '🚨 INTERVENCIÓN MANUAL REQUERIDA: se agotaron los reintentos de reconexión');
+        updateJavaStatus(sessionId, 'ERROR');
+        io.emit('bot_status', { sessionId, status: 'ERROR', message: 'Requiere intervención manual' });
+        return;
+    }
+
+    const delayMs = BACKOFF_DELAYS[state.retries] || BACKOFF_DELAYS[BACKOFF_DELAYS.length - 1];
+    state.retries++;
+
+    logger.info({ sessionId, attempt: state.retries, maxRetries: MAX_RETRIES, delayMs },
+        `🔄 Reconexión programada: intento ${state.retries}/${MAX_RETRIES} en ${delayMs}ms`);
+
+    state.timer = setTimeout(() => {
+        logger.info({ sessionId, attempt: state.retries }, '🔄 Ejecutando reconexión...');
+        sessions.delete(sessionId);
+        startSession(sessionId);
+    }, delayMs);
+};
+
 const axiosWithRetry = async (config, retries = 3, baseDelay = 1000) => {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
@@ -435,6 +518,9 @@ const startSession = async (sessionId, phoneNumber = null) => {
             if (connection === 'open') {
                 logger.info({ sessionId }, '🚀 CONEXIÓN EXITOSA');
                 qrStore.delete(sessionId);
+                // Conexión exitosa: resetear contador de reintentos e iniciar health check
+                resetReconnectState(sessionId);
+                startHealthCheck(sessionId);
                 const userPhone = sock.user ? sock.user.id.split(':')[0] : undefined;
                 await updateJavaStatus(sessionId, 'CONNECTED', userPhone);
                 io.emit('bot_status', { sessionId, status: 'CONNECTED' });
@@ -444,16 +530,25 @@ const startSession = async (sessionId, phoneNumber = null) => {
                 const statusCode = (lastDisconnect?.error)?.output?.statusCode;
                 const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
+                // Detener health check al desconectarse
+                stopHealthCheck(sessionId);
+
                 if (!shouldReconnect) {
+                    // Logout intencional: limpiar todo, no reintentar
+                    logger.info({ sessionId, statusCode }, '👋 Logout intencional, sin reconexión');
                     sessions.delete(sessionId);
                     qrStore.delete(sessionId);
                     safeRemoveSession(sessionId);
+                    reconnectState.delete(sessionId);
                     await updateJavaStatus(sessionId, 'DISCONNECTED');
                     io.emit('bot_status', { sessionId, status: 'DISCONNECTED' });
                 } else {
-                    logger.warn({ sessionId, statusCode }, '🔄 Caída temporal, reconectando en 5s...');
+                    // Caída inesperada: reconectar con backoff exponencial
+                    logger.warn({ sessionId, statusCode }, '⚠️ Desconexión inesperada, programando reconexión...');
                     sessions.delete(sessionId);
-                    setTimeout(() => startSession(sessionId), 5000);
+                    await updateJavaStatus(sessionId, 'RECONNECTING');
+                    io.emit('bot_status', { sessionId, status: 'RECONNECTING' });
+                    scheduleReconnect(sessionId);
                 }
             }
         });
@@ -528,7 +623,19 @@ const restoreExistingSessions = () => {
 
 // ─── ENDPOINTS ────────────────────────────────────────────────
 
-app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/health', (req, res) => {
+    const sessionList = Array.from(sessions.entries()).map(([id, sock]) => ({
+        sessionId: id,
+        connected: !!sock?.user,
+        reconnectRetries: reconnectState.get(id)?.retries || 0
+    }));
+    res.json({
+        status: 'OK',
+        uptime: process.uptime(),
+        sessions: sessionList.length,
+        details: sessionList
+    });
+});
 
 app.get('/sessions', (req, res) => {
     const list = Array.from(sessions.entries()).map(([id, sock]) => ({
@@ -580,6 +687,8 @@ app.get('/session/status/:sessionId', (req, res) => {
 
 app.post('/session/start', (req, res) => {
     const { sessionId } = req.body;
+    // Resetear estado de reconexión al iniciar manualmente
+    reconnectState.delete(sessionId);
     startSession(sessionId);
     res.json({ status: 'STARTING' });
 });

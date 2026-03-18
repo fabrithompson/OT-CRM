@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -17,7 +18,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "dispositivos")
+@Table(name = "dispositivos", indexes = {
+    // Buscar dispositivos conectados por agencia (para envío de mensajes)
+    @Index(name = "idx_dispositivo_agencia_estado", columnList = "agencia_id, estado")
+})
 @Getter
 @Setter
 public class Dispositivo {

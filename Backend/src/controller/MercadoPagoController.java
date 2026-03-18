@@ -28,8 +28,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import model.Plan;
+import model.ProcessedWebhook;
 import model.Usuario;
 import repository.PlanRepository;
+import repository.ProcessedWebhookRepository;
 import repository.UsuarioRepository;
 import service.PlanService;
 
@@ -47,12 +49,15 @@ public class MercadoPagoController {
     private final PlanService planService;
     private final PlanRepository planRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ProcessedWebhookRepository processedWebhookRepository;
     private final RestTemplate restTemplate = crearRestTemplate();
 
-    public MercadoPagoController(PlanService planService, PlanRepository planRepository, UsuarioRepository usuarioRepository) {
+    public MercadoPagoController(PlanService planService, PlanRepository planRepository,
+                                 UsuarioRepository usuarioRepository, ProcessedWebhookRepository processedWebhookRepository) {
         this.planService = planService;
         this.planRepository = planRepository;
         this.usuarioRepository = usuarioRepository;
+        this.processedWebhookRepository = processedWebhookRepository;
     }
 
     private RestTemplate crearRestTemplate() {
@@ -129,13 +134,23 @@ public class MercadoPagoController {
         try {
             log.info("WEBHOOK MP - type: {} - id: {}", type, dataId);
             if (dataId == null || type == null) return ResponseEntity.ok("OK");
-            
+
+            // Idempotencia: si ya procesamos este evento, responder OK sin reprocesar
+            String eventKey = "MP_" + type + "_" + dataId;
+            if (processedWebhookRepository.existsById(eventKey)) {
+                log.info("Webhook MP duplicado ignorado: {}", eventKey);
+                return ResponseEntity.ok("ALREADY_PROCESSED");
+            }
+
             switch (type) {
                 case "payment" -> procesarPago(dataId);
                 case "subscription_authorized_payment" -> procesarPagoSuscripcionRecurrente(dataId);
                 case "subscription_preapproval" -> procesarCambioSuscripcion(dataId);
                 default -> log.info("Evento MP no rastreado: {}", type);
             }
+
+            // Marcar como procesado después del éxito
+            processedWebhookRepository.save(new ProcessedWebhook(eventKey, "MERCADOPAGO"));
             return ResponseEntity.status(HttpStatus.OK).body("OK");
 
         } catch (JsonProcessingException | RestClientException e) {

@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import exception.RegistroException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import security.JwtUtil;
 import service.CustomUserDetailsService;
 import service.UsuarioService;
@@ -35,15 +39,29 @@ public class AuthController {
         this.jwtUtil = jwtUtil;
     }
 
-    public record LoginRequest(String username, String password) {}
-    public record RegisterRequest(String username, String password, String email, String codigoInvitacion) {}
-    public record VerifyRequest(String username, String code) {}
-    public record ResendCodeRequest(String emailOrUsername) {}
-    public record ForgotPasswordRequest(String email) {}
-    public record ResetPasswordRequest(String email, String code, String newPassword, String confirmPassword) {}
+    public record LoginRequest(
+            @NotBlank String username,
+            @NotBlank String password) {}
+    public record RegisterRequest(
+            @NotBlank @Size(min = 3, max = 50) String username,
+            @NotBlank @Size(min = 8, max = 100) String password,
+            @NotBlank @Email String email,
+            String codigoInvitacion) {}
+    public record VerifyRequest(
+            @NotBlank String username,
+            @NotBlank String code) {}
+    public record ResendCodeRequest(
+            @NotBlank String emailOrUsername) {}
+    public record ForgotPasswordRequest(
+            @NotBlank @Email String email) {}
+    public record ResetPasswordRequest(
+            @NotBlank @Email String email,
+            @NotBlank String code,
+            @NotBlank @Size(min = 8) String newPassword,
+            @NotBlank String confirmPassword) {}
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.username(), request.password())
@@ -59,7 +77,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> procesarRegistro(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> procesarRegistro(@Valid @RequestBody RegisterRequest request) {
         try {
             usuarioService.registrarUsuario(request.username(), request.password(), request.email(), request.codigoInvitacion());
             return ResponseEntity.ok(Map.of("message", "Usuario registrado. Por favor verifica tu cuenta."));
@@ -71,7 +89,7 @@ public class AuthController {
     }
 
     @PostMapping("/verify")
-    public ResponseEntity<?> procesarVerificacion(@RequestBody VerifyRequest request) {
+    public ResponseEntity<?> procesarVerificacion(@Valid @RequestBody VerifyRequest request) {
         boolean ok = usuarioService.verificarCodigo(request.username(), request.code());
         if (ok) {
             return ResponseEntity.ok(Map.of("message", "Cuenta verificada exitosamente."));
@@ -81,7 +99,7 @@ public class AuthController {
     }
 
     @PostMapping("/resend-code")
-    public ResponseEntity<?> resendCode(@RequestBody ResendCodeRequest request) {
+    public ResponseEntity<?> resendCode(@Valid @RequestBody ResendCodeRequest request) {
         try {
             usuarioService.reenviarCodigo(request.emailOrUsername());
             return ResponseEntity.ok(Map.of("message", "Te reenviamos un código si tu usuario no estaba verificado."));
@@ -93,7 +111,7 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> procesarSolicitudRecuperacion(@RequestBody ForgotPasswordRequest request) {
+    public ResponseEntity<?> procesarSolicitudRecuperacion(@Valid @RequestBody ForgotPasswordRequest request) {
         try {
             usuarioService.iniciarRecuperacionPassword(request.email());
             return ResponseEntity.ok(Map.of("message", "Te enviamos un código de recuperación a tu email."));
@@ -105,7 +123,7 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<?> procesarRestablecimiento(@RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<?> procesarRestablecimiento(@Valid @RequestBody ResetPasswordRequest request) {
         if (!request.newPassword().equals(request.confirmPassword())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Las contraseñas no coinciden."));
         }

@@ -10,6 +10,7 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -19,12 +20,26 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "clientes", uniqueConstraints = {
+@Table(name = "clientes",
+    uniqueConstraints = {
         @UniqueConstraint(
                 name = "uk_cliente_dispositivo_agencia_v3",
                 columnNames = {"telefono", "dispositivo_id", "agencia_id"}
         )
-})
+    },
+    indexes = {
+        // Búsqueda por teléfono entrante de WhatsApp/Telegram
+        @Index(name = "idx_cliente_telefono", columnList = "telefono"),
+        // Filtrado por agencia en Kanban, dashboard, listados
+        @Index(name = "idx_cliente_agencia", columnList = "agencia_id"),
+        // Lookup compuesto más frecuente: buscar contacto por agencia + teléfono
+        @Index(name = "idx_cliente_agencia_telefono", columnList = "agencia_id, telefono"),
+        // Kanban: filtrado por agencia + etapa
+        @Index(name = "idx_cliente_agencia_etapa", columnList = "agencia_id, etapa_id"),
+        // Ordenamiento por último mensaje en listados
+        @Index(name = "idx_cliente_agencia_ultimo_msg", columnList = "agencia_id, ultimoMensajeFecha DESC")
+    }
+)
 @Getter
 @Setter
 public class Cliente {

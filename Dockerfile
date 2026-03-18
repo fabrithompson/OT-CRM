@@ -16,6 +16,8 @@ RUN mvn clean package -DskipTests
 
 # ── 3: Runtime ──
 FROM eclipse-temurin:21-jre-alpine
+# curl necesario para Docker health checks
+RUN apk add --no-cache curl
 WORKDIR /app
 COPY --from=backend /app/target/*.jar app.jar
 COPY --from=frontend /app/frontend/dist ./static

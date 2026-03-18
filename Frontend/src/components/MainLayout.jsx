@@ -63,7 +63,8 @@ export default function MainLayout() {
     }, [agenciaId]);
 
     // Suscripción global a presencia + heartbeat periódico
-    useWebSocket(agenciaId, () => {}, (client) => {
+    // connectionStatus: 'connecting' | 'connected' | 'reconnecting' | 'disconnected'
+    const { connectionStatus } = useWebSocket(agenciaId, () => {}, (client) => {
         // Suscribirse a presencia para registrar al usuario como online
         client.subscribe(`/topic/presence/${agenciaId}`, (msg) => {
             try {
@@ -154,7 +155,23 @@ export default function MainLayout() {
         <>
             <div className="ambient-bg"><div className="orb"></div></div>
             <div className="glass-overlay"></div>
-<div className="app-container">
+            {/* Badge de reconexión — se muestra solo cuando la conexión WebSocket se perdió */}
+            {connectionStatus === 'reconnecting' && (
+                <div style={{
+                    position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+                    background: '#f59e0b', color: '#000', padding: '8px 20px',
+                    borderRadius: 8, fontWeight: 600, fontSize: 14, zIndex: 9999,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)', display: 'flex',
+                    alignItems: 'center', gap: 8
+                }}>
+                    <span style={{
+                        width: 8, height: 8, borderRadius: '50%',
+                        background: '#000', animation: 'pulse 1.5s infinite'
+                    }} />
+                    Reconectando...
+                </div>
+            )}
+            <div className="app-container">
                 <Sidebar />
                 <div className="content-area">
                     <Outlet />

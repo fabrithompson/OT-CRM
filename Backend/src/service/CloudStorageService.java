@@ -3,10 +3,12 @@ package service;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -124,6 +126,32 @@ public class CloudStorageService {
             log.error("Fallo subiendo a Cloudinary", e);
             throw new FileStorageException("Error de comunicación con Cloudinary", e);
         }
+    }
+
+    /**
+     * Upload asíncrono de archivo — no bloquea el thread del request.
+     * El caller recibe un CompletableFuture con la URL de Cloudinary.
+     * Ideal para archivos de chat: el mensaje se envía a WhatsApp inmediatamente
+     * y la URL persistida se actualiza cuando Cloudinary responde.
+     */
+    @Async
+    public CompletableFuture<String> uploadFileAsync(byte[] bytes, String fileName) {
+        try {
+            String result = executeUpload(bytes, sanitizeFilename(fileName));
+            return CompletableFuture.completedFuture(result);
+        } catch (Exception e) {
+            log.error("Error en upload async a Cloudinary: {}", e.getMessage());
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    /**
+     * Upload asíncrono de avatar desde URL remota.
+     */
+    @Async
+    public CompletableFuture<String> uploadFromUrlAsync(String remoteUrl, String identifier) {
+        String result = uploadFromUrl(remoteUrl, identifier);
+        return CompletableFuture.completedFuture(result);
     }
 
     private String sanitizeFilename(String originalFilename) {

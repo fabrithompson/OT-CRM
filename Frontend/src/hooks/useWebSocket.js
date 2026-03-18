@@ -1,15 +1,27 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { getAuthHeaders } from '../utils/api';
 
+// Reconexión con backoff exponencial
+const INITIAL_DELAY = 2000;
+const MAX_DELAY = 30000;
+const BACKOFF_MULTIPLIER = 2;
+
 /**
- * @param {string|null} agenciaId  
- * @param {function} onEvent       
- * @param {function} onConnect     
+ * Hook de WebSocket STOMP con reconexión automática y backoff exponencial.
+ *
+ * @param {string|null} agenciaId
+ * @param {function} onEvent       - callback para eventos globales
+ * @param {function} onConnect     - callback al conectar (recibe el client)
+ * @returns {{ subscribe, send, clientRef, connectionStatus }}
+ *   connectionStatus: 'connecting' | 'connected' | 'reconnecting' | 'disconnected'
  */
 export default function useWebSocket(agenciaId, onEvent, onConnect) {
     const clientRef = useRef(null);
+    const intentionalClose = useRef(false);
+    const currentDelay = useRef(INITIAL_DELAY);
+    const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
     const subscribe = useCallback((destination, cb) => {
         if (!clientRef.current?.connected) return () => {};
@@ -27,25 +39,33 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
     useEffect(() => {
         if (!agenciaId) return;
 
+        intentionalClose.current = false;
+        currentDelay.current = INITIAL_DELAY;
+
         const BASE = import.meta.env.VITE_API_URL || '';
-        // El token se pasa como query param para que PresenceHandshakeInterceptor
-        // pueda autenticar al usuario durante el HTTP upgrade (antes del STOMP CONNECT)
         const token = localStorage.getItem('token') || '';
         const wsUrl = `${BASE}/ws-crm?agenciaId=${agenciaId}&token=${token}`;
+
+        setConnectionStatus('connecting');
 
         const client = new Client({
             webSocketFactory: () => new SockJS(wsUrl),
             connectHeaders: { ...getAuthHeaders(), agenciaId: String(agenciaId) },
-            reconnectDelay: 5000,
+            // Backoff dinámico: el getter se evalúa antes de cada reconexión
+            reconnectDelay: INITIAL_DELAY,
             debug: () => {},
+
             onConnect: () => {
-                // Alertas del sistema: conexión, desconexión, errores de dispositivo
+                // Conexión exitosa: resetear backoff
+                currentDelay.current = INITIAL_DELAY;
+                client.reconnectDelay = INITIAL_DELAY;
+                setConnectionStatus('connected');
+
+                // Suscribir a alertas del sistema
                 client.subscribe('/topic/global-notifications', (msg) => {
                     try {
                         const notif = JSON.parse(msg.body);
                         onEvent(notif);
-
-                        // Puente → NotificationBell (React)
                         window.__crmNotifAdd?.({
                             title:     notif.title,
                             message:   notif.message,
@@ -53,17 +73,47 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
                             link:      null,
                             timestamp: Date.now(),
                         });
-                    } catch {}
+                    } catch { /* payload no JSON, ignorar */ }
                 });
+
                 if (onConnect) onConnect(client);
+            },
+
+            onWebSocketClose: () => {
+                // Si el usuario cerró sesión, no reconectar
+                if (intentionalClose.current) {
+                    setConnectionStatus('disconnected');
+                    return;
+                }
+
+                setConnectionStatus('reconnecting');
+
+                // Incrementar delay con backoff exponencial para el próximo intento
+                currentDelay.current = Math.min(
+                    currentDelay.current * BACKOFF_MULTIPLIER,
+                    MAX_DELAY
+                );
+                client.reconnectDelay = currentDelay.current;
+            },
+
+            onStompError: (frame) => {
+                console.error('STOMP error:', frame.headers?.message || frame.body);
+                if (!intentionalClose.current) {
+                    setConnectionStatus('reconnecting');
+                }
             },
         });
 
         client.activate();
         clientRef.current = client;
 
-        return () => { client.deactivate(); };
+        return () => {
+            // Cleanup: marcar como cierre intencional para no reconectar
+            intentionalClose.current = true;
+            client.deactivate();
+            setConnectionStatus('disconnected');
+        };
     }, [agenciaId]);
 
-    return { subscribe, send, clientRef };
+    return { subscribe, send, clientRef, connectionStatus };
 }

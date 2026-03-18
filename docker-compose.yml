@@ -2,36 +2,50 @@ version: '3.8'
 
 services:
   backend:
-    build: . 
+    build: .
     container_name: crm_backend
-    restart: always
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      - NODE_BOT_URL=http://Bot-Whatsapp:3000 
+      - NODE_BOT_URL=http://Bot-Whatsapp:3000
       - BOT_SECRET_KEY=${BOT_SECRET_KEY}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
-      # ────────────────────────────────────
       - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
       - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
       - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
+    # Health check contra Actuator — Docker reinicia si falla 3 veces seguidas
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     depends_on:
-      - Bot-Whatsapp
+      Bot-Whatsapp:
+        condition: service_healthy
 
   Bot-Whatsapp:
     build: ./Bot-Whatsapp
     container_name: crm_bot
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      - PORT=3000 
+      - PORT=3000
       - JAVA_BACKEND_URL=http://backend:8080/api/webhook/whatsapp
       - BOT_SECRET_KEY=${BOT_SECRET_KEY}
     volumes:
       - whatsapp_sessions:/app/auth_info_v2
+    # Health check contra /health del bot Node.js
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
   whatsapp_sessions:
