@@ -9,21 +9,16 @@ name: OT CRM — CI/CD
     branches:
       - main
 
-# Cancela runs anteriores si se hace un nuevo push al mismo branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # JOB 1: Tests del Backend (Java 21 + Spring Boot + Maven)
-  # ───────────────────────────────────────────────────────────────────────────
   test-backend:
     name: Backend — Tests & Build
     runs-on: ubuntu-latest
 
-    # Base de datos temporal para tests de integración
     services:
       postgres:
         image: postgres:16-alpine
@@ -48,18 +43,14 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: maven          # cachea ~/.m2 automáticamente
+          cache: maven
 
-      # Valida que el pom.xml sea correcto y descarga dependencias
       - name: Resolver dependencias Maven
         run: mvn dependency:resolve --no-transfer-progress -q
 
-      # Compila sin correr tests (falla rápido si hay errores de compilación)
       - name: Compilar backend
         run: mvn compile --no-transfer-progress -q
 
-      # Corre tests con una BD de test real (PostgreSQL del service container)
-      # Se inyectan las variables de entorno mínimas para que Spring Boot arranque
       - name: Correr tests
         run: mvn test --no-transfer-progress
         env:
@@ -67,7 +58,6 @@ jobs:
           SPRING_DATASOURCE_USERNAME: test
           SPRING_DATASOURCE_PASSWORD: test
           SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
-          # Secrets falsos para tests — los servicios externos no se llaman en tests
           JWT_SECRET: test-secret-key-only-for-ci-must-be-at-least-256-bits-long-padding
           BOT_SECRET_KEY: test-bot-key
           NODE_BOT_URL: http://localhost:3000
@@ -85,22 +75,17 @@ jobs:
           TELEGRAM_API_ID: "12345"
           TELEGRAM_API_HASH: fakehash
 
-      # Construye el JAR final (sin tests porque ya los corrimos)
       - name: Build JAR de producción
         run: mvn package -DskipTests --no-transfer-progress -q
 
-      # Guarda el JAR como artifact para el job de deploy (evita recompilar)
       - name: Guardar JAR como artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-jar
           path: target/*.jar
-          retention-days: 1       # solo necesario para este pipeline run
+          retention-days: 1
 
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # JOB 2: Tests del Frontend (React 19 + Vite + Node 20)
-  # ───────────────────────────────────────────────────────────────────────────
   test-frontend:
     name: Frontend — Build check
     runs-on: ubuntu-latest
@@ -120,15 +105,11 @@ jobs:
         working-directory: Frontend
         run: npm ci --prefer-offline
 
-      # Si el proyecto tiene tests de Jest/Vitest, correrlos acá
-      # Por ahora hace un build de producción — si el build falla, el deploy no sigue
       - name: Build de producción
         working-directory: Frontend
         run: npm run build
         env:
-          # Vite necesita estas vars para el build
-          # Ajustar según las variables que usa tu vite.config.js
-          VITE_API_URL: ${{ secrets.APP_BASE_URL || 'https://ot-crm.com' }}
+          VITE_API_URL: https://ot-crm.com
 
       - name: Verificar que el build generó archivos
         run: |
@@ -139,9 +120,6 @@ jobs:
           echo "✅ Build del frontend OK — $(ls Frontend/dist | wc -l) archivos generados"
 
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # JOB 3: Lint del Bot de WhatsApp (Node.js 20 + Baileys)
-  # ───────────────────────────────────────────────────────────────────────────
   test-bot-whatsapp:
     name: Bot WhatsApp — Lint & syntax
     runs-on: ubuntu-latest
@@ -161,7 +139,6 @@ jobs:
         working-directory: Bot-Whatsapp
         run: npm ci --prefer-offline
 
-      # Verifica que index.js no tenga errores de sintaxis
       - name: Verificar sintaxis de index.js
         working-directory: Bot-Whatsapp
         run: node --check index.js
@@ -175,9 +152,6 @@ jobs:
           echo "✅ Bot WhatsApp OK"
 
 
-  # ───────────────────────────────────────────────────────────────────────────
-  # JOB 4: Lint del Bot de Telegram (Python 3.8+ + Telethon)
-  # ───────────────────────────────────────────────────────────────────────────
   test-bot-telegram:
     name: Bot Telegram — Lint & syntax
     runs-on: ubuntu-latest
@@ -197,85 +171,6 @@ jobs:
         working-directory: Bot-Telegram
         run: pip install -r requirements.txt
 
-      # py_compile verifica errores de sintaxis sin ejecutar el script
       - name: Verificar sintaxis de Python
         working-directory: Bot-Telegram
         run: python -m py_compile telegram_bridge.py && echo "✅ Bot Telegram OK"
-
-
-  # ───────────────────────────────────────────────────────────────────────────
-  # JOB 5: DEPLOY a Railway
-  # Solo corre si:
-  #   1. Es un push a main (no un PR)
-  #   2. TODOS los jobs de test pasaron
-  # ───────────────────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy a Railway
-    runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend, test-bot-whatsapp, test-bot-telegram]
-
-    # Condición clave: solo deployar en push a main, nunca en PRs
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    # Entorno de GitHub (opcional pero recomendado — agrega aprobación manual)
-    # Para activarlo: Settings → Environments → New environment → "production"
-    environment:
-      name: production
-      url: https://ot-crm.com
-
-    steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
-
-      # Instalar Railway CLI
-      - name: Instalar Railway CLI
-        run: npm install -g @railway/cli
-
-      # Verificar que el token es válido antes de deployar
-      - name: Verificar autenticación Railway
-        run: railway whoami
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      # Deploy del Backend + Frontend (son un solo servicio según tu Dockerfile)
-      - name: Deploy Backend + Frontend
-        run: |
-          echo "🚀 Deployando backend..."
-          railway up \
-            --service ${{ secrets.RAILWAY_SERVICE_BACKEND }} \
-            --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      # Deploy del Bot de WhatsApp (servicio separado)
-      - name: Deploy Bot WhatsApp
-        run: |
-          echo "🤖 Deployando bot WhatsApp..."
-          railway up \
-            --service ${{ secrets.RAILWAY_SERVICE_BOT_WA }} \
-            --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      # Health check post-deploy: espera que el backend responda
-      - name: Health check post-deploy
-        run: |
-          echo "⏳ Esperando que el backend levante..."
-          sleep 30
-
-          MAX_RETRIES=10
-          RETRY=0
-          URL="https://ot-crm.com/actuator/health"
-
-          until curl -sf "$URL" > /dev/null; do
-            RETRY=$((RETRY + 1))
-            if [ $RETRY -ge $MAX_RETRIES ]; then
-              echo "❌ El backend no respondió después de $MAX_RETRIES intentos"
-              echo "URL probada: $URL"
-              exit 1
-            fi
-            echo "Intento $RETRY/$MAX_RETRIES — esperando 15s..."
-            sleep 15
-          done
-
-          echo "✅ Backend en producción respondiendo OK"
