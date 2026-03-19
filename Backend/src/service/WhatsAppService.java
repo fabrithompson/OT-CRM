@@ -127,6 +127,13 @@ public class WhatsAppService {
     private void procesarMensajeRobotInterno(MensajeEntranteRequest req) {
         try {
             String telefono = limpiarTelefono(req.from());
+
+            // Si el teléfono es inválido (LID, newsletter, etc.), ignorar el mensaje
+            if (telefono.isEmpty()) {
+                log.warn("Mensaje ignorado: teléfono inválido o JID interno. Raw: {}", req.from());
+                return;
+            }
+
             Dispositivo dispositivo = dispositivoRepository.findBySessionId(req.sessionId()).orElse(null);
 
             if (dispositivo == null) {
@@ -559,13 +566,27 @@ public class WhatsAppService {
     }
 
     private Optional<Cliente> buscarClienteExistente(Agencia agencia, String telefono, Dispositivo dispositivo) {
+        // 1. Buscar match exacto: mismo teléfono + mismo dispositivo
         Optional<Cliente> existente = clienteRepository.findByAgenciaIdAndTelefonoAndDispositivoWithLock(
                 agencia.getId(), telefono, dispositivo);
+
+        // 2. Si no existe con ese dispositivo, buscar solo por teléfono en la agencia.
+        //    Esto evita duplicados cuando la misma persona escribe y el mensaje
+        //    entra por otro dispositivo/sesión de WhatsApp de la misma agencia,
+        //    o cuando Baileys cambia el formato del JID entre mensajes.
         if (existente.isEmpty()) {
-            existente = clienteRepository.findByAgenciaIdAndTelefonoAndDispositivoIsNull(agencia.getId(), telefono);
-            existente.ifPresent(c -> log.info("📥 Rescatando contacto del Excel: {}. Vinculando a cuenta: {}",
-                    c.getNombre(), dispositivo.getAlias()));
+            existente = clienteRepository.findFirstByAgenciaIdAndTelefono(agencia.getId(), telefono);
+            existente.ifPresent(c -> {
+                if (c.getDispositivo() == null) {
+                    log.info("📥 Rescatando contacto sin dispositivo: {}. Vinculando a: {}",
+                            c.getNombre(), dispositivo.getAlias());
+                } else {
+                    log.info("📥 Contacto {} ya existe en dispositivo {}. Reutilizando (evitando duplicado).",
+                            c.getNombre(), c.getDispositivo().getAlias());
+                }
+            });
         }
+
         return existente;
     }
 
@@ -644,8 +665,23 @@ public class WhatsAppService {
 
     private String limpiarTelefono(String tel) {
         if (tel == null || tel.isBlank()) return "";
+
+        // Defensa: rechazar JIDs internos de WhatsApp que no son teléfonos reales
+        // (LID = Linked Identity, newsletter, broadcast)
+        if (tel.contains("@lid") || tel.contains("@newsletter") || tel.contains("@broadcast")) {
+            log.warn("Teléfono rechazado por ser JID interno de WhatsApp: {}", tel);
+            return "";
+        }
+
         String base = extraerBaseNumerica(tel);
         String clean = base.replaceAll("\\D", "");
+
+        // Un teléfono real tiene entre 8 y 15 dígitos (estándar E.164)
+        if (clean.length() < 8 || clean.length() > 15) {
+            log.warn("Teléfono rechazado por longitud inválida ({}): {}", clean.length(), tel);
+            return "";
+        }
+
         return formatearNumeroArgentina(clean);
     }
 
@@ -653,21 +689,59 @@ public class WhatsAppService {
         return tel.split("@")[0].split(":")[0];
     }
 
+    /**
+     * Normaliza cualquier formato de teléfono argentino al canónico: 549XXXXXXXXXX (13 dígitos).
+     * WhatsApp/Baileys manda variantes como:
+     *   5491155551234  → ya OK (13 dígitos, formato 549 + 10 locales)
+     *   541155551234   → falta el 9 móvil → 549 + 1155551234
+     *   54001155551234 → tiene 00 espurio → limpiar a 549 + 10 locales
+     *   5400991155551234 → doble prefijo 009 → limpiar
+     *   01155551234    → formato local con 0 → 549 + 1155551234
+     *   1155551234     → 10 dígitos locales → 549 + 1155551234
+     */
     private static String formatearNumeroArgentina(String clean) {
-        if (clean.length() > 10 && !clean.startsWith("0")) {
-            if (clean.startsWith("54") && clean.length() == 12 && !clean.startsWith("549")) {
-                return "549" + clean.substring(2);
-            }
+        // Números no argentinos (no empiezan con 54 ni con 0): devolver tal cual
+        if (!clean.startsWith("54") && !clean.startsWith("0") && clean.length() != 10) {
             return clean;
         }
-        if (clean.length() == 10) return "549" + clean;
-        return formatearConCeroInicial(clean);
-    }
 
-    private static String formatearConCeroInicial(String clean) {
-        if (!clean.startsWith("0")) return clean;
-        String sinCero = clean.substring(1);
-        return sinCero.length() == 10 ? "549" + sinCero : clean;
+        // 10 dígitos = número local argentino sin prefijo → agregar 549
+        if (clean.length() == 10 && !clean.startsWith("0")) {
+            return "549" + clean;
+        }
+
+        // Empieza con 0: formato local (ej: 01155551234)
+        if (clean.startsWith("0")) {
+            String sinCero = clean.substring(1);
+            if (sinCero.length() == 10) return "549" + sinCero;
+            return clean;
+        }
+
+        // Empieza con 54: normalizar todas las variantes
+        if (clean.startsWith("54")) {
+            // Extraer la parte después de "54", limpiar ceros y 9 espurios
+            String resto = clean.substring(2);
+
+            // Quitar ceros iniciales espurios (540011... → 11..., 5400911... → 11...)
+            while (resto.startsWith("0")) {
+                resto = resto.substring(1);
+            }
+
+            // Quitar el 9 si quedó al inicio (ya lo vamos a poner nosotros)
+            if (resto.startsWith("9") && resto.length() == 11) {
+                resto = resto.substring(1);
+            }
+
+            // resto ahora debería ser 10 dígitos locales
+            if (resto.length() == 10) {
+                return "549" + resto;
+            }
+
+            // Si no matchea (número raro), devolver 549 + lo que haya
+            return "549" + resto;
+        }
+
+        return clean;
     }
 
     private Mensaje.TipoMensaje inferirTipoArchivo(String filename, String mimeType) {

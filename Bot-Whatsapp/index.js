@@ -235,7 +235,20 @@ const getRealNumber = (jid) => {
     const decoded = jidDecode(jid);
     const user = decoded ? decoded.user : jid.split('@')[0];
     const baseNumber = user.split(':')[0];
-    return baseNumber;
+
+    // Normalizar números argentinos al formato canónico 549XXXXXXXXXX
+    // para evitar duplicados por variantes (540011..., 5411..., etc.)
+    const digits = baseNumber.replace(/\D/g, '');
+    if (digits.startsWith('54')) {
+        let resto = digits.substring(2);
+        // Quitar ceros espurios: 540011... → 11...
+        while (resto.startsWith('0')) resto = resto.substring(1);
+        // Quitar 9 si ya está (lo ponemos nosotros): 5491155... → 1155...
+        if (resto.startsWith('9') && resto.length === 11) resto = resto.substring(1);
+        if (resto.length === 10) return '549' + resto;
+    }
+
+    return digits || baseNumber;
 };
 
 // FIX 1: Extensiones correctas para todos los tipos de audio/video/doc
@@ -342,11 +355,29 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
     try {
         const remoteJid = msg.key.remoteJid;
 
-        if (!remoteJid || remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') {
+        // Filtrar JIDs que nunca son chats 1:1
+        if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') {
             return;
         }
 
-        const numeroRaw = msg.key.senderPn || msg.key.participant || msg.key.remoteJid;
+        // Resolver teléfono real:
+        // - Si es @lid (Linked Identity), el número real viene en senderPn
+        // - Si es @s.whatsapp.net, se usa directo
+        // - senderPn tiene prioridad siempre (es el teléfono verificado por WhatsApp)
+        let numeroRaw;
+        if (remoteJid.includes('@lid')) {
+            // LID = ID interno de dispositivo vinculado, NO es un teléfono
+            // senderPn contiene el teléfono real asociado al LID
+            numeroRaw = msg.key.senderPn;
+            if (!numeroRaw) {
+                logger.warn({ sessionId, lid: remoteJid }, '⚠️ Mensaje LID sin senderPn — no se puede resolver el teléfono real, ignorando');
+                return;
+            }
+            logger.info({ sessionId, lid: remoteJid, senderPn: numeroRaw }, '🔄 LID resuelto a teléfono real vía senderPn');
+        } else {
+            numeroRaw = msg.key.senderPn || msg.key.participant || msg.key.remoteJid;
+        }
+
         const numeroReal = getRealNumber(numeroRaw);
 
         logger.info(`📥 RAW WEBHOOK - From: ${remoteJid} | Numero Real: ${numeroReal}`);
