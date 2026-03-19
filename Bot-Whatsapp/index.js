@@ -602,7 +602,13 @@ const startSession = async (sessionId, phoneNumber = null) => {
 
         sock.ev.on('messages.update', async (updates) => {
             for (const update of updates) {
+                // Solo procesar actualizaciones de mensajes enviados por nosotros
+                if (!update.key.fromMe) continue;
+
                 if (update.update.status) {
+                    // status=2: SERVER_ACK (tick simple, el servidor lo recibió — no notificar)
+                    // status=3: DELIVERY_ACK (doble tick gris, llegó al dispositivo del destinatario)
+                    // status=4/5: READ/PLAYED (doble tick azul)
                     const statusMap = { 3: 'DELIVERED', 4: 'READ', 5: 'READ' };
                     const newStatus = statusMap[update.update.status];
 
@@ -833,7 +839,20 @@ app.post('/send-media', async (req, res) => {
     if (!sock) return res.status(404).json({ error: 'Sesión no activa' });
 
     try {
-        const jid = formatToJid(number);
+        // Usar el mismo JID verificado que send-message para evitar entregas al número incorrecto
+        let jid;
+        const cachedJid = verifiedJids.get(number);
+        if (cachedJid) {
+            jid = cachedJid;
+        } else {
+            const rawJid = formatToJid(number);
+            const [result] = await sock.onWhatsApp(rawJid);
+            if (!result?.exists) {
+                return res.status(400).json({ error: 'Número no encontrado en WhatsApp', jid: rawJid });
+            }
+            jid = result.jid;
+            verifiedJids.set(number, jid);
+        }
 
         let buffer, contentType;
         if (base64) {
