@@ -1,4 +1,24 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+
+const PAGE_TITLES = {
+  '/login':             'OT CRM',
+  '/dashboard':         'Dashboard',
+  '/kanban':            'Embudo',
+  '/contactos':         'Contactos',
+  '/respuestas-rapidas':'Respuestas Rápidas',
+  '/planes':            'Suscripción',
+  '/mi-suscripcion':    'Mi Suscripción',
+  '/perfil':            'Cuenta',
+};
+
+function TitleUpdater() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    document.title = PAGE_TITLES[pathname] || 'OT CRM';
+  }, [pathname]);
+  return null;
+}
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Kanban from './pages/Kanban';
@@ -17,6 +37,7 @@ function App() {
   return (
     <ToastProvider>
       <Router>
+        <TitleUpdater />
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Auth />} />

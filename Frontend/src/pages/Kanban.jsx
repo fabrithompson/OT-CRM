@@ -158,9 +158,15 @@ export default function Kanban() {
         } else if (tipo === 'CLIENTE_ELIMINADO') {
             setClientes(prev => prev.filter(c => c.id !== ev.clienteId));
         } else if (tipo === 'ETIQUETAS_ACTUALIZADAS') {
-            setClientes(prev => prev.map(c =>
-                c.id === ev.clienteId ? { ...c, etiquetas: ev.etiquetas } : c
-            ));
+            setClientes(prev => {
+                const updated = prev.map(c =>
+                    c.id === ev.clienteId ? { ...c, etiquetas: ev.etiquetas } : c
+                );
+                const tagMap = new Map();
+                updated.forEach(c => c.etiquetas?.forEach(t => tagMap.set(t.id, t)));
+                setEtiquetas([...tagMap.values()]);
+                return updated;
+            });
         } else if (tipo === 'SALDO_ACTUALIZADO') {
             setClientes(prev => prev.map(c =>
                 c.id === ev.clienteId ? { ...c, saldo: ev.nuevoSaldo } : c
