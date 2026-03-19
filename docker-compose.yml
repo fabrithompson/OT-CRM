@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crm_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build: .
     container_name: crm_backend
@@ -8,26 +19,39 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - NODE_BOT_URL=http://Bot-Whatsapp:3000
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/crm_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - NODE_BOT_URL=http://bot-whatsapp:3000
       - BOT_SECRET_KEY=${BOT_SECRET_KEY}
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - APP_BASE_URL=http://localhost:8080
+      - APP_DEFAULT_ADMIN_PASSWORD=${APP_DEFAULT_ADMIN_PASSWORD}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
       - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
       - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
-      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN}
-    # Health check contra Actuator — Docker reinicia si falla 3 veces seguidas
+      - PAYPAL_MODE=sandbox
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - APP_EMAIL_ENABLED=false
+      - APP_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
+    depends_on:
+      postgres:
+        condition: service_started
+      bot-whatsapp:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    depends_on:
-      Bot-Whatsapp:
-        condition: service_healthy
 
-  Bot-Whatsapp:
+  bot-whatsapp:
     build: ./Bot-Whatsapp
     container_name: crm_bot
     restart: unless-stopped
@@ -39,7 +63,6 @@ services:
       - BOT_SECRET_KEY=${BOT_SECRET_KEY}
     volumes:
       - whatsapp_sessions:/app/auth_info_v2
-    # Health check contra /health del bot Node.js
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
@@ -49,3 +72,4 @@ services:
 
 volumes:
   whatsapp_sessions:
+  postgres_data:
