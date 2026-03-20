@@ -8,6 +8,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,6 +79,7 @@ public class PlanService {
                 .orElse(usuario.getPlan());
     }
 
+    @CacheEvict(value = "planEfectivo", allEntries = true)
     @Transactional
     public void cambiarPlan(Long usuarioId, Long planId) {
         @SuppressWarnings("null")
@@ -109,6 +112,7 @@ public class PlanService {
         }
     }
 
+    @CacheEvict(value = "planEfectivo", allEntries = true)
     @Transactional
     public void activarPlanPorPago(long usuarioId, long planId, String proveedorPago) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -137,6 +141,7 @@ public class PlanService {
         }
     }
 
+    @CacheEvict(value = "planEfectivo", allEntries = true)
     @Transactional
     public void cancelarPlanPorSuscripcion(long usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -162,6 +167,7 @@ public class PlanService {
         }
     }
 
+    @Cacheable("planFree")
     public Plan getPlanFree() {
         return planRepository.findByNombre("FREE")
                 .orElseThrow(() -> new RuntimeException("Plan FREE no encontrado."));

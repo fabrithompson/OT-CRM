@@ -58,7 +58,7 @@ jobs:
           SPRING_DATASOURCE_USERNAME: test
           SPRING_DATASOURCE_PASSWORD: test
           SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
-          JWT_SECRET: test-secret-key-only-for-ci-must-be-at-least-256-bits-long-padding
+          JWT_SECRET: dGVzdEp3dFNlY3JldEtleVF1ZVRpZW5lUXVlU2VyTGFyZ2FQYXJhSG1hYw==
           BOT_SECRET_KEY: test-bot-key
           NODE_BOT_URL: http://localhost:3000
           APP_BASE_URL: http://localhost:8080
