@@ -138,6 +138,12 @@ public class WhatsAppService {
                 return;
             }
 
+            if (Boolean.FALSE.equals(dispositivo.getActivo())) {
+                log.warn("Mensaje recibido en dispositivo inactivo '{}'. Ignorado por límite de plan.",
+                        req.sessionId());
+                return;
+            }
+
             Agencia agenciaDestino = dispositivo.getAgencia();
             String nombreFinal = (req.nombreSender() != null && !req.nombreSender().isBlank()) ? req.nombreSender()
                     : CLIENTE_DEFAULT_PREFIX + telefono;
@@ -453,20 +459,25 @@ public class WhatsAppService {
         Dispositivo disp = dispositivoRepository.findById(dispositivoId)
                 .orElseThrow(() -> new RegistroException("Dispositivo no encontrado"));
 
+        // 1. Desconectar del bot (WhatsApp o Telegram)
         try {
-            bridgeService.cerrarSesion(disp.getSessionId());
+            if (disp.getPlataforma() == Dispositivo.Plataforma.TELEGRAM) {
+                bridgeService.cerrarSesion(disp.getSessionId());
+            } else {
+                callNodeReset(disp.getSessionId());
+            }
         } catch (Exception e) {
-            log.warn("No se pudo cerrar sesión en el bridge, pero seguiremos con el borrado local.");
+            log.warn("No se pudo cerrar sesión en el bot, pero seguiremos con el borrado.");
         }
 
-        // SOFT DELETE: marcar como no visible en vez de borrar
-        // Los mensajes y clientes mantienen su historial intacto
-        disp.setVisible(false);
-        disp.setActivo(false);
-        disp.setEstado("ELIMINADO");
-        dispositivoRepository.save(disp);
+        // 2. Desvincular clientes (SET dispositivo_id = NULL) para preservar historial
+        clienteRepository.desvincularClientesDeDispositivo(disp.getId());
 
-        log.info("Dispositivo marcado como eliminado (soft delete). Historial preservado.");
+        // 3. Hard delete: eliminar el registro completamente de la BD
+        dispositivoRepository.delete(disp);
+
+        log.info("Dispositivo {} eliminado permanentemente. Clientes desvinculados, historial preservado.",
+                disp.getSessionId());
     }
 
     @Transactional

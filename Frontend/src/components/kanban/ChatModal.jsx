@@ -65,14 +65,17 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         setMessages(prev => prev.map(m => m.whatsappId === ev.whatsappId ? { ...m, estado: ev.nuevoEstado } : m));
     };
 
-    const subscribeWS = (id) => {
-        if (!stompClient?.connected) return;
+    const subscribeWS = (id, attempt = 0) => {
+        if (!stompClient?.connected) {
+            if (attempt < 5) setTimeout(() => subscribeWS(id, attempt + 1), 1000);
+            return;
+        }
         const s1 = stompClient.subscribe(`/topic/chat/${id}`, (msg) => handleInboundMessage(JSON.parse(msg.body)));
         const s2 = stompClient.subscribe(`/topic/chat/${id}/status`, (msg) => handleStatusUpdate(JSON.parse(msg.body)));
         subscriptionsRef.current = [s1, s2];
     };
 
-    const loadChat = async (id) => {
+    const loadChat = async (id, retry = true) => {
         setLoading(true);
         setMessages([]);
         setMedia([]);
@@ -94,6 +97,10 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
             markRead(id);
             subscribeWS(id);
         } catch (e) {
+            if (retry) {
+                await new Promise(r => setTimeout(r, 1500));
+                return loadChat(id, false);
+            }
             toast('Error', 'No se pudo abrir el chat', '#ef4444');
             onClose();
         } finally {

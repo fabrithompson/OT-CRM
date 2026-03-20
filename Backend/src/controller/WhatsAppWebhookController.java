@@ -92,8 +92,13 @@ public class WhatsAppWebhookController {
 
         dispositivoRepository.findBySessionId(payload.sessionId()).ifPresent(d -> {
             d.setEstado(payload.status());
-            if ("CONNECTED".equals(payload.status()) && payload.phone() != null) {
-                d.setNumeroTelefono(payload.phone());
+            if ("CONNECTED".equals(payload.status())) {
+                d.setActivo(true);
+                if (payload.phone() != null) {
+                    d.setNumeroTelefono(payload.phone());
+                }
+            } else if ("DISCONNECTED".equals(payload.status())) {
+                d.setActivo(false);
             }
             dispositivoRepository.save(d);
 

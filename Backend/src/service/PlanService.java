@@ -39,6 +39,9 @@ public class PlanService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private WhatsAppService whatsAppService;
+
     public boolean puedeConectarDispositivo(Long usuarioId, Plataforma plataforma) {
         @SuppressWarnings("null")
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -215,7 +218,18 @@ public class PlanService {
                 dispositivos.subList(nuevoLimite, dispositivos.size())
                         .forEach(d -> {
                             d.setActivo(false);
+                            d.setEstado("DISCONNECTED");
                             dispositivoRepository.save(d);
+
+                            try {
+                                whatsAppService.desvincularRobot(d.getSessionId());
+                            } catch (Exception e) {
+                                log.warn("No se pudo desconectar dispositivo {} del bot: {}",
+                                        d.getSessionId(), e.getMessage());
+                            }
+
+                            log.info("Dispositivo {} desactivado y desconectado por downgrade de plan.",
+                                    d.getSessionId());
                         });
             }
         }

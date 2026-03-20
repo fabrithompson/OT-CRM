@@ -52,6 +52,7 @@ class WhatsAppWebhookIntegrationTest extends BaseIntegrationTest {
     private Agencia agencia;
     private Dispositivo dispositivo;
 
+    @SuppressWarnings("null")
     @BeforeEach
     void setUp() {
         mensajeRepo.deleteAll();
@@ -70,6 +71,7 @@ class WhatsAppWebhookIntegrationTest extends BaseIntegrationTest {
         dispositivo.setAgencia(agencia);
         dispositivo.setPlataforma(Dispositivo.Plataforma.WHATSAPP);
         dispositivo.setEstado("CONNECTED");
+        dispositivo.setActivo(true);
         dispositivo = dispositivoRepo.save(dispositivo);
 
         // Admin con plan FREE para que SubscriptionValidationService funcione
