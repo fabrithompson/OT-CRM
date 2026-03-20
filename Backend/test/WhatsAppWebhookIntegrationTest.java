@@ -52,6 +52,7 @@ class WhatsAppWebhookIntegrationTest extends BaseIntegrationTest {
     private Agencia agencia;
     private Dispositivo dispositivo;
 
+    @SuppressWarnings("null")
     @BeforeEach
     void setUp() {
         mensajeRepo.deleteAll();
