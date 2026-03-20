@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ public class SubscriptionValidationService {
         this.planRepository = planRepository;
     }
 
+    @Cacheable(value = "planEfectivo", key = "#agencia.id")
     @Transactional(readOnly = true)
     public Plan getPlanEfectivoAgencia(Agencia agencia) {
         List<Usuario> usuarios = usuarioRepository.findByAgenciaId(agencia.getId());
