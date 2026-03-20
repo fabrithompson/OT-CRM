@@ -54,12 +54,12 @@ public class TelegramBridgeService {
     private final SubscriptionValidationService subscriptionValidationService;
 
     public TelegramBridgeService(DispositivoRepository dispositivoRepository,
-                                 ClienteRepository clienteRepository,
-                                 EtapaRepository etapaRepository,
-                                 MensajeRepository mensajeRepository,
-                                 SimpMessagingTemplate messaging,
-                                 CloudStorageService cloudStorageService,
-                                 SubscriptionValidationService subscriptionValidationService) {
+            ClienteRepository clienteRepository,
+            EtapaRepository etapaRepository,
+            MensajeRepository mensajeRepository,
+            SimpMessagingTemplate messaging,
+            CloudStorageService cloudStorageService,
+            SubscriptionValidationService subscriptionValidationService) {
         this.dispositivoRepository = dispositivoRepository;
         this.clienteRepository = clienteRepository;
         this.etapaRepository = etapaRepository;
@@ -95,10 +95,14 @@ public class TelegramBridgeService {
         }
     }
 
-    private record ChatEvent(String contenido, boolean inbound, String fecha, String tipo, String origen, String urlArchivo, String autor) {}
+    private record ChatEvent(String contenido, boolean inbound, String fecha, String tipo, String origen,
+            String urlArchivo, String autor) {
+    }
+
     private record KanbanEvent(Long clienteId, String nombre, String ultimoMensaje, int mensajesSinLeer,
-                               String avatarUrl, String ultimoMensajeFecha, Long etapaId,
-                               String origen, String nombreInstancia, boolean esSalida) {}
+            String avatarUrl, String ultimoMensajeFecha, Long etapaId,
+            String origen, String nombreInstancia, boolean esSalida) {
+    }
 
     @SuppressWarnings("null")
     public void enviarMensajeDesdeCrm(@NonNull Cliente cliente, String texto, String autor) {
@@ -145,7 +149,8 @@ public class TelegramBridgeService {
 
             restTemplate.postForEntity(url, body, String.class);
 
-            Mensaje mensaje = crearMensajeSalida(cliente, "📎 " + nombreArchivo, Mensaje.TipoMensaje.IMAGEN, urlPublica, autor);
+            Mensaje mensaje = crearMensajeSalida(cliente, "📎 " + nombreArchivo, Mensaje.TipoMensaje.IMAGEN, urlPublica,
+                    autor);
             mensajeRepository.save(mensaje);
 
             String nombreCajero = (autor != null && !autor.isEmpty()) ? autor : "Agente";
@@ -162,7 +167,8 @@ public class TelegramBridgeService {
         }
     }
 
-    private Mensaje crearMensajeSalida(Cliente cliente, String contenido, Mensaje.TipoMensaje tipo, String urlArchivo, String autor) {
+    private Mensaje crearMensajeSalida(Cliente cliente, String contenido, Mensaje.TipoMensaje tipo, String urlArchivo,
+            String autor) {
         Mensaje m = new Mensaje();
         m.setCliente(cliente);
         m.setContenido(contenido);
@@ -172,16 +178,16 @@ public class TelegramBridgeService {
         m.setTipo(tipo);
         m.setEstado(Mensaje.EstadoMensaje.SENT);
         m.setWhatsappId("TG_OUT_" + System.currentTimeMillis());
-        if (urlArchivo != null) m.setUrlArchivo(urlArchivo);
+        if (urlArchivo != null)
+            m.setUrlArchivo(urlArchivo);
         return m;
     }
-
 
     @SuppressWarnings("java:S107")
     @Transactional
     public void procesarMensajeWebhook(String deviceSessionId, String telegramId, String nombreSender,
-                                       String telefono, String texto, String avatarUrl,
-                                       String fileUrl, String fileType, String messageDate) {
+            String telefono, String texto, String avatarUrl,
+            String fileUrl, String fileType, String messageDate) {
 
         Optional<Dispositivo> dispositivoOpt = dispositivoRepository.findBySessionId(deviceSessionId);
         if (dispositivoOpt.isEmpty()) {
@@ -197,7 +203,7 @@ public class TelegramBridgeService {
     @SuppressWarnings({ "java:S107", "null" })
     @Transactional
     public void procesarMensajeEntrante(Dispositivo disp, String telefono, String nombreSender,
-                                        String texto, String avatarUrl, String fileUrl, String fileType, String dateStr) {
+            String texto, String avatarUrl, String fileUrl, String fileType, String dateStr) {
 
         if (disp == null || disp.getAgencia() == null) {
             log.warn("Dispositivo o agencia nula al procesar mensaje entrante");
@@ -230,7 +236,8 @@ public class TelegramBridgeService {
     }
 
     @SuppressWarnings("java:S3776")
-    private Mensaje crearMensajeEntradaConArchivo(Cliente cliente, String texto, String fileUrl, String fileType, LocalDateTime fecha) {
+    private Mensaje crearMensajeEntradaConArchivo(Cliente cliente, String texto, String fileUrl, String fileType,
+            LocalDateTime fecha) {
         Mensaje m = new Mensaje();
         m.setCliente(cliente);
         m.setContenido(texto != null ? texto : "");
@@ -243,16 +250,20 @@ public class TelegramBridgeService {
             m.setUrlArchivo(fileUrl);
             if ("photo".equalsIgnoreCase(fileType) || "sticker".equalsIgnoreCase(fileType)) {
                 m.setTipo(Mensaje.TipoMensaje.IMAGEN);
-                if (m.getContenido().isEmpty()) m.setContenido("Imagen");
+                if (m.getContenido().isEmpty())
+                    m.setContenido("Imagen");
             } else if ("video".equalsIgnoreCase(fileType)) {
                 m.setTipo(Mensaje.TipoMensaje.VIDEO);
-                if (m.getContenido().isEmpty()) m.setContenido("Video");
+                if (m.getContenido().isEmpty())
+                    m.setContenido("Video");
             } else if ("voice".equalsIgnoreCase(fileType) || "audio".equalsIgnoreCase(fileType)) {
                 m.setTipo(Mensaje.TipoMensaje.AUDIO);
-                if (m.getContenido().isEmpty()) m.setContenido("Audio");
+                if (m.getContenido().isEmpty())
+                    m.setContenido("Audio");
             } else {
                 m.setTipo(Mensaje.TipoMensaje.DOCUMENTO);
-                if (m.getContenido().isEmpty()) m.setContenido("Archivo");
+                if (m.getContenido().isEmpty())
+                    m.setContenido("Archivo");
             }
         } else {
             m.setTipo(Mensaje.TipoMensaje.TEXTO);
@@ -261,7 +272,8 @@ public class TelegramBridgeService {
     }
 
     private LocalDateTime parsearFechaTelegram(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty()) return LocalDateTime.now();
+        if (dateStr == null || dateStr.isEmpty())
+            return LocalDateTime.now();
         try {
             return OffsetDateTime.parse(dateStr).toLocalDateTime();
         } catch (RuntimeException e) {
@@ -282,15 +294,15 @@ public class TelegramBridgeService {
     }
 
     private void notificarCambio(Cliente c, Mensaje m, boolean esSalida, String nombreAutor, String aliasDisp) {
-        if (c.getAgencia() == null || c.getAgencia().getId() == null) return;
+        if (c.getAgencia() == null || c.getAgencia().getId() == null)
+            return;
         Long agenciaId = c.getAgencia().getId();
 
         String fechaWs = m.getFechaHora().toString() + "Z";
 
         ChatEvent chatEv = new ChatEvent(
                 m.getContenido(), !esSalida, fechaWs, m.getTipo().toString(),
-                ORIGEN_TELEGRAM, m.getUrlArchivo() != null ? m.getUrlArchivo() : "", nombreAutor
-        );
+                ORIGEN_TELEGRAM, m.getUrlArchivo() != null ? m.getUrlArchivo() : "", nombreAutor);
         messaging.convertAndSend("/topic/chat/" + c.getId(), chatEv);
 
         String nombreInstancia = (aliasDisp != null && !aliasDisp.isEmpty()) ? aliasDisp : "TELEGRAM";
@@ -300,14 +312,15 @@ public class TelegramBridgeService {
                 c.getFotoUrl() != null ? c.getFotoUrl() : "",
                 c.getUltimoMensajeFecha() != null ? c.getUltimoMensajeFecha().toString() : null,
                 c.getEtapa() != null ? c.getEtapa().getId() : null,
-                ORIGEN_TELEGRAM, nombreInstancia, esSalida
-        );
+                ORIGEN_TELEGRAM, nombreInstancia, esSalida);
         messaging.convertAndSend("/topic/embudo/" + agenciaId, kanbanEv);
     }
 
-    private Cliente buscarOCrearCliente(Agencia agencia, String telefono, String nombreSender, Dispositivo dispositivo) {
+    private Cliente buscarOCrearCliente(Agencia agencia, String telefono, String nombreSender,
+            Dispositivo dispositivo) {
         Long agenciaId = agencia.getId();
-        Optional<Cliente> opt = clienteRepository.findByAgenciaIdAndTelefonoAndDispositivo(agenciaId, telefono, dispositivo);
+        Optional<Cliente> opt = clienteRepository.findByAgenciaIdAndTelefonoAndDispositivo(agenciaId, telefono,
+                dispositivo);
 
         if (opt.isEmpty()) {
             opt = clienteRepository.findByAgenciaIdAndTelefonoAndDispositivoIsNull(agenciaId, telefono);
@@ -315,8 +328,10 @@ public class TelegramBridgeService {
 
         if (opt.isPresent()) {
             Cliente c = opt.get();
-            if (c.getDispositivo() == null) c.setDispositivo(dispositivo);
-            if (!"TELEGRAM".equals(c.getOrigen())) c.setOrigen("TELEGRAM");
+            if (c.getDispositivo() == null)
+                c.setDispositivo(dispositivo);
+            if (!"TELEGRAM".equals(c.getOrigen()))
+                c.setOrigen("TELEGRAM");
             return clienteRepository.save(c);
         } else {
             if (!subscriptionValidationService.puedeRecibirNuevoContacto(agencia)) {
@@ -341,7 +356,8 @@ public class TelegramBridgeService {
             Map<String, Object> payload = new HashMap<>();
             payload.put("tipo", "LIMIT_REACHED");
             payload.put("titulo", "Límite de Contactos");
-            payload.put("mensaje", "Un cliente nuevo intentó escribirte por Telegram, pero has alcanzado el límite de contactos de tu plan actual. ¡Mejora tu suscripción para no perder ventas!");
+            payload.put("mensaje",
+                    "Un cliente nuevo intentó escribirte por Telegram, pero has alcanzado el límite de contactos de tu plan actual. ¡Mejora tu suscripción para no perder ventas!");
 
             messaging.convertAndSend("/topic/bot/" + agencia.getId(), payload);
         } catch (Exception e) {
@@ -356,7 +372,8 @@ public class TelegramBridgeService {
             Map<String, String> body = new HashMap<>();
             body.put("user_id", sessionId);
             body.put("chat_id", chatId);
-            body.put("text", "Lo sentimos, el sistema de atención de esta empresa se encuentra saturado. Intente comunicarse más tarde.");
+            body.put("text",
+                    "Lo sentimos, el sistema de atención de esta empresa se encuentra saturado. Intente comunicarse más tarde.");
             restTemplate.postForEntity(url, body, String.class);
         } catch (Exception e) {
             log.warn("No se pudo enviar auto-respuesta de límite por Telegram", e);
@@ -365,7 +382,8 @@ public class TelegramBridgeService {
 
     private void asignarEtapaInicial(Cliente cliente, Long agenciaId) {
         Etapa etapaInicial = etapaRepository.findFirstByAgenciaIdOrderByOrdenAsc(agenciaId);
-        if (etapaInicial != null) cliente.setEtapa(etapaInicial);
+        if (etapaInicial != null)
+            cliente.setEtapa(etapaInicial);
     }
 
     private String obtenerSessionIdAgencia(Long agenciaId) {
@@ -386,8 +404,11 @@ public class TelegramBridgeService {
 
     public Dispositivo crearDispositivo(Agencia agencia, String alias, String telefono) {
         Dispositivo d = new Dispositivo();
-        d.setAgencia(agencia); d.setAlias(alias); d.setNumeroTelefono(telefono);
-        d.setPlataforma(Plataforma.TELEGRAM); d.setEstado("CONECTANDO");
+        d.setAgencia(agencia);
+        d.setAlias(alias);
+        d.setNumeroTelefono(telefono);
+        d.setPlataforma(Plataforma.TELEGRAM);
+        d.setEstado("CONECTANDO");
         d.setSessionId("tg_" + UUID.randomUUID().toString());
         return dispositivoRepository.save(d);
     }
@@ -422,10 +443,15 @@ public class TelegramBridgeService {
     }
 
     public void eliminarDispositivo(Long deviceId) {
-        if (deviceId == null) return;
+        if (deviceId == null)
+            return;
         dispositivoRepository.findById(deviceId).ifPresent(d -> {
             // Intentar desconectar sesión de Python
-            try { desvincular(d); } catch (Exception e) { log.warn("No se pudo desvincular: {}", e.getMessage()); }
+            try {
+                desvincular(d);
+            } catch (Exception e) {
+                log.warn("No se pudo desvincular: {}", e.getMessage());
+            }
             // SOFT DELETE: preservar historial de mensajes y clientes
             d.setVisible(false);
             d.setActivo(false);
@@ -436,7 +462,8 @@ public class TelegramBridgeService {
     }
 
     public void cerrarSesion(String sessionId) {
-        if (sessionId == null || sessionId.isEmpty()) return;
+        if (sessionId == null || sessionId.isEmpty())
+            return;
         try {
             log.info("Cerrando sesión en el bridge para el ID: {}", sessionId);
         } catch (RuntimeException e) {
