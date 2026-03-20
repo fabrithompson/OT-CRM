@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -6,7 +8,6 @@ const {
     makeCacheableSignalKeyStore,
     jidDecode,
     delay,
-    Browsers,
     downloadMediaMessage
 } = require('@whiskeysockets/baileys');
 const express = require('express');
@@ -17,21 +18,21 @@ const fs = require('fs');
 const path = require('path');
 const pino = require('pino');
 const NodeCache = require('node-cache');
-const { writeFile } = require('fs/promises');
+const { writeFile, readFile, unlink, readdir } = require('fs/promises');
 
 const http = require('http');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 8080;
 if (!process.env.JAVA_BACKEND_URL) {
-    console.error('ERROR: JAVA_BACKEND_URL no esta configurada. Define la variable de entorno antes de iniciar.');
+    console.error('ERROR: JAVA_BACKEND_URL no esta configurada.');
+    process.exit(1);
+}
+if (!process.env.BOT_SECRET_KEY) {
+    console.error('ERROR: BOT_SECRET_KEY no esta configurada.');
     process.exit(1);
 }
 const JAVA_BACKEND_URL = process.env.JAVA_BACKEND_URL;
-if (!process.env.BOT_SECRET_KEY) {
-    console.error('ERROR: BOT_SECRET_KEY no esta configurada. Define la variable de entorno antes de iniciar.');
-    process.exit(1);
-}
 const SECRET_KEY = process.env.BOT_SECRET_KEY;
 
 const PUBLIC_URL = process.env.RAILWAY_STATIC_URL
@@ -46,8 +47,14 @@ const UPLOADS_FOLDER = process.env.RAILWAY_VOLUME_MOUNT_PATH
     ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'public', 'uploads')
     : path.join(__dirname, 'public', 'uploads');
 
+// Carpeta para mensajes que no se pudieron enviar a Java (persistencia ante caidas)
+const FAILED_QUEUE_FOLDER = process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'failed_queue')
+    : path.join(__dirname, 'failed_queue');
+
 if (!fs.existsSync(UPLOADS_FOLDER)) fs.mkdirSync(UPLOADS_FOLDER, { recursive: true });
 if (!fs.existsSync(SESSION_FOLDER_NAME)) fs.mkdirSync(SESSION_FOLDER_NAME, { recursive: true });
+if (!fs.existsSync(FAILED_QUEUE_FOLDER)) fs.mkdirSync(FAILED_QUEUE_FOLDER, { recursive: true });
 
 const logger = pino({
     level: process.env.LOG_LEVEL || 'info',
@@ -58,12 +65,13 @@ const msgRetryCounterCache = new NodeCache();
 const processedMsgIds = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const messageQueues = new Map();
 
+// Cola en memoria por contacto: serializa mensajes del mismo remitente
 function enqueueMessage(remoteJid, handler) {
     const prev = messageQueues.get(remoteJid) || Promise.resolve();
     const next = prev
         .then(handler)
         .catch(err => {
-            logger.error({ remoteJid, error: err.message }, '❌ Error en cola de mensaje');
+            logger.error({ remoteJid, error: err.message }, 'Error en cola de mensaje');
         })
         .finally(() => {
             if (messageQueues.get(remoteJid) === next) {
@@ -115,12 +123,10 @@ io.on('connection', (socket) => {
 const sessions = new Map();
 const qrStore = new Map();
 
-// ── Reconexión automática con backoff exponencial ──────────────────────────
-// Cada sesión trackea sus reintentos independientemente.
-// Después de MAX_RETRIES fallos consecutivos, se marca como "requiere intervención manual".
+// ── Reconexion automatica con backoff exponencial ──────────────────────────
 const MAX_RETRIES = 5;
-const BACKOFF_DELAYS = [5000, 10000, 20000, 40000, 60000]; // ms por intento
-const reconnectState = new Map(); // sessionId → { retries, timer, healthTimer }
+const BACKOFF_DELAYS = [5000, 10000, 20000, 40000, 60000];
+const reconnectState = new Map();
 
 const getReconnectState = (sessionId) => {
     if (!reconnectState.has(sessionId)) {
@@ -138,32 +144,29 @@ const resetReconnectState = (sessionId) => {
     }
 };
 
-// Health check activo: ping cada 2 minutos a cada sesión conectada
 const startHealthCheck = (sessionId) => {
     const state = getReconnectState(sessionId);
-    // Limpiar health check anterior si existe
     if (state.healthTimer) clearInterval(state.healthTimer);
 
     state.healthTimer = setInterval(async () => {
         const sock = sessions.get(sessionId);
         if (!sock || !sock.user) {
-            logger.warn({ sessionId }, '💔 Health check: sesión no conectada, iniciando reconexión');
+            logger.warn({ sessionId }, 'Health check: sesion no conectada, reconectando');
             clearInterval(state.healthTimer);
             state.healthTimer = null;
             scheduleReconnect(sessionId);
             return;
         }
         try {
-            // Verificar que el socket sigue respondiendo
             await sock.sendPresenceUpdate('available');
-            logger.debug({ sessionId }, '💚 Health check OK');
+            logger.debug({ sessionId }, 'Health check OK');
         } catch (err) {
-            logger.warn({ sessionId, error: err.message }, '💔 Health check falló, sesión no responde');
+            logger.warn({ sessionId, error: err.message }, 'Health check fallo');
             clearInterval(state.healthTimer);
             state.healthTimer = null;
             scheduleReconnect(sessionId);
         }
-    }, 120000); // Cada 2 minutos
+    }, 120000);
 };
 
 const stopHealthCheck = (sessionId) => {
@@ -179,9 +182,9 @@ const scheduleReconnect = (sessionId) => {
 
     if (state.retries >= MAX_RETRIES) {
         logger.error({ sessionId, retries: state.retries },
-            '🚨 INTERVENCIÓN MANUAL REQUERIDA: se agotaron los reintentos de reconexión');
+            'INTERVENCION MANUAL REQUERIDA: se agotaron los reintentos');
         updateJavaStatus(sessionId, 'ERROR');
-        io.emit('bot_status', { sessionId, status: 'ERROR', message: 'Requiere intervención manual' });
+        io.emit('bot_status', { sessionId, status: 'ERROR', message: 'Requiere intervencion manual' });
         return;
     }
 
@@ -189,15 +192,16 @@ const scheduleReconnect = (sessionId) => {
     state.retries++;
 
     logger.info({ sessionId, attempt: state.retries, maxRetries: MAX_RETRIES, delayMs },
-        `🔄 Reconexión programada: intento ${state.retries}/${MAX_RETRIES} en ${delayMs}ms`);
+        `Reconexion programada: intento ${state.retries}/${MAX_RETRIES} en ${delayMs}ms`);
 
     state.timer = setTimeout(() => {
-        logger.info({ sessionId, attempt: state.retries }, '🔄 Ejecutando reconexión...');
+        logger.info({ sessionId, attempt: state.retries }, 'Ejecutando reconexion...');
         sessions.delete(sessionId);
         startSession(sessionId);
     }, delayMs);
 };
 
+// ── HTTP con reintentos ────────────────────────────────────────────────────
 const axiosWithRetry = async (config, retries = 3, baseDelay = 1000) => {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
@@ -208,21 +212,68 @@ const axiosWithRetry = async (config, retries = 3, baseDelay = 1000) => {
             const isServerError = err.response?.status >= 500;
 
             if (isLastAttempt || (!isTimeout && !isServerError)) {
-                logger.error({
-                    url: config.url,
-                    attempt,
-                    error: err.message,
-                    status: err.response?.status
-                }, '❌ Fallo definitivo en llamada a Java');
                 throw err;
             }
 
             const delayMs = baseDelay * Math.pow(2, attempt - 1);
-            logger.warn({ url: config.url, attempt, retryIn: delayMs }, `⚠️ Reintento ${attempt}/${retries} en ${delayMs}ms`);
+            logger.warn({ url: config.url, attempt, retryIn: delayMs }, `Reintento ${attempt}/${retries}`);
             await new Promise(resolve => setTimeout(resolve, delayMs));
         }
     }
 };
+
+// ── Persistencia: guardar mensajes fallidos a disco ────────────────────────
+// Si Java no responde despues de todos los reintentos, el mensaje se guarda
+// como archivo JSON en disco. Al reconectar, se reintentan automaticamente.
+const saveFailedMessage = async (payload) => {
+    try {
+        const fileName = `msg_${Date.now()}_${Math.random().toString(36).substring(7)}.json`;
+        const filePath = path.join(FAILED_QUEUE_FOLDER, fileName);
+        await writeFile(filePath, JSON.stringify(payload), 'utf8');
+        logger.warn({ file: fileName }, 'Mensaje guardado en disco (Java no responde)');
+    } catch (err) {
+        logger.error({ error: err.message }, 'ERROR CRITICO: No se pudo guardar mensaje a disco');
+    }
+};
+
+const retryFailedMessages = async () => {
+    try {
+        const files = await readdir(FAILED_QUEUE_FOLDER);
+        const jsonFiles = files.filter(f => f.endsWith('.json'));
+        if (jsonFiles.length === 0) return;
+
+        logger.info({ count: jsonFiles.length }, 'Reintentando mensajes guardados en disco...');
+
+        for (const file of jsonFiles) {
+            const filePath = path.join(FAILED_QUEUE_FOLDER, file);
+            try {
+                const data = await readFile(filePath, 'utf8');
+                const { url, payload } = JSON.parse(data);
+
+                await axiosWithRetry({
+                    method: 'post',
+                    url,
+                    data: payload,
+                    headers: { 'X-Bot-Token': SECRET_KEY },
+                    timeout: 15000
+                });
+
+                await unlink(filePath);
+                logger.info({ file }, 'Mensaje recuperado y enviado a Java');
+            } catch (err) {
+                logger.warn({ file, error: err.message }, 'Aun no se puede enviar, queda en disco');
+                break; // Si Java sigue caido, no seguir intentando
+            }
+        }
+    } catch (err) {
+        logger.error({ error: err.message }, 'Error reintentando mensajes fallidos');
+    }
+};
+
+// Reintentar mensajes fallidos cada 30 segundos
+setInterval(retryFailedMessages, 30000);
+
+// ── Funciones de utilidad ──────────────────────────────────────────────────
 
 const formatToJid = (number) => {
     if (!number) return null;
@@ -236,14 +287,11 @@ const getRealNumber = (jid) => {
     const user = decoded ? decoded.user : jid.split('@')[0];
     const baseNumber = user.split(':')[0];
 
-    // Normalizar números argentinos al formato canónico 549XXXXXXXXXX
-    // para evitar duplicados por variantes (540011..., 5411..., etc.)
+    // Normalizar numeros argentinos al formato canonico 549XXXXXXXXXX
     const digits = baseNumber.replace(/\D/g, '');
     if (digits.startsWith('54')) {
         let resto = digits.substring(2);
-        // Quitar ceros espurios: 540011... → 11...
         while (resto.startsWith('0')) resto = resto.substring(1);
-        // Quitar 9 si ya está (lo ponemos nosotros): 5491155... → 1155...
         if (resto.startsWith('9') && resto.length === 11) resto = resto.substring(1);
         if (resto.length === 10) return '549' + resto;
     }
@@ -251,7 +299,6 @@ const getRealNumber = (jid) => {
     return digits || baseNumber;
 };
 
-// FIX 1: Extensiones correctas para todos los tipos de audio/video/doc
 const getExtension = (mimetype) => {
     if (!mimetype) return 'bin';
     const mt = mimetype.toLowerCase();
@@ -262,12 +309,11 @@ const getExtension = (mimetype) => {
     if (mt.includes('video/mp4')) return 'mp4';
     if (mt.includes('video/webm')) return 'webm';
     if (mt.includes('video/3gpp')) return '3gp';
-    // Audio: ogg primero porque las notas de voz de WA son ogg/opus
     if (mt.includes('audio/ogg')) return 'ogg';
     if (mt.includes('audio/webm')) return 'webm';
     if (mt.includes('audio/mpeg') || mt.includes('audio/mp3')) return 'mp3';
     if (mt.includes('audio/mp4') || mt.includes('audio/m4a')) return 'm4a';
-    if (mt.includes('audio')) return 'ogg'; // fallback seguro para WA
+    if (mt.includes('audio')) return 'ogg';
     if (mt.includes('pdf')) return 'pdf';
     if (mt.includes('word') || mt.includes('docx')) return 'docx';
     if (mt.includes('excel') || mt.includes('xlsx') || mt.includes('spreadsheet')) return 'xlsx';
@@ -275,7 +321,6 @@ const getExtension = (mimetype) => {
     return 'bin';
 };
 
-// Extrae el nombre de archivo real de una URL o Content-Disposition header
 const getMimeFromFilename = (filename) => {
     if (!filename) return null;
     const ext = filename.split('.').pop().toLowerCase();
@@ -311,46 +356,89 @@ const getFileNameFromUrl = (url, mimetype) => {
     return `archivo.${ext}`;
 };
 
+// ── Comunicacion con Java Backend ──────────────────────────────────────────
+
+const getBaseUrl = () => {
+    let baseUrl = JAVA_BACKEND_URL.replace(/\/$/, '');
+    if (!baseUrl.includes('/api/webhook/whatsapp')) baseUrl += '/api/webhook/whatsapp';
+    return baseUrl;
+};
+
 const updateJavaStatus = async (sessionId, status, phoneUser = null) => {
     try {
         const cleanPhone = phoneUser ? phoneUser.split(':')[0] : null;
         const payload = { sessionId, status, phone: cleanPhone, qr: null };
 
-        let baseUrl = JAVA_BACKEND_URL.replace(/\/$/, '');
-        if (!baseUrl.includes('/api/webhook/whatsapp')) baseUrl += '/api/webhook/whatsapp';
-
         await axiosWithRetry({
             method: 'post',
-            url: `${baseUrl}/status`,
+            url: `${getBaseUrl()}/status`,
             data: payload,
             headers: { 'X-Bot-Token': SECRET_KEY },
             timeout: 15000
         });
-        logger.info({ sessionId, status, cleanPhone }, '📡 Estado enviado a Java CRM');
+        logger.info({ sessionId, status, cleanPhone }, 'Estado enviado a Java CRM');
     } catch (e) {
-        logger.error({ sessionId, error: e.message }, '❌ Error contactando Java Backend (status)');
+        logger.error({ sessionId, error: e.message }, 'Error contactando Java Backend (status)');
     }
 };
 
 const sendStatusUpdateToJava = async (sessionId, statusData) => {
     try {
-        let baseUrl = JAVA_BACKEND_URL.replace(/\/$/, '');
-        if (!baseUrl.includes('/api/webhook/whatsapp')) baseUrl += '/api/webhook/whatsapp';
-
         await axiosWithRetry({
             method: 'post',
-            url: `${baseUrl}/message-status`,
+            url: `${getBaseUrl()}/message-status`,
             data: { sessionId, ...statusData },
             headers: { 'X-Bot-Token': SECRET_KEY },
             timeout: 15000
         }, 2, 500);
     } catch (e) {
         if (e.code !== 'ECONNABORTED') {
-            logger.warn({ error: e.message }, '⚠️ Error enviando status tick a Java');
+            logger.warn({ error: e.message }, 'Error enviando status tick a Java');
         }
     }
 };
 
+// Enviar mensaje entrante a Java con fallback a disco
+const sendIncomingToJava = async (payload) => {
+    const url = `${getBaseUrl()}/robot`;
+    try {
+        await axiosWithRetry({
+            method: 'post',
+            url,
+            data: payload,
+            headers: { 'X-Bot-Token': SECRET_KEY },
+            timeout: 15000
+        });
+    } catch (err) {
+        logger.error({ from: payload.from, error: err.message }, 'Java no responde, guardando mensaje a disco');
+        await saveFailedMessage({ url, payload });
+    }
+};
+
+// ── Descarga de media con reintentos ───────────────────────────────────────
+const downloadMediaWithRetry = async (msg, sock, maxRetries = 3) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const buffer = await downloadMediaMessage(
+                msg,
+                'buffer',
+                {},
+                { logger, reuploadRequest: sock.updateMediaMessage }
+            );
+            return buffer;
+        } catch (err) {
+            if (attempt === maxRetries) {
+                logger.error({ attempt, error: err.message }, 'Fallo descarga de media despues de todos los reintentos');
+                return null;
+            }
+            logger.warn({ attempt, error: err.message }, `Reintento descarga media ${attempt}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        }
+    }
+    return null;
+};
+
+// ── Procesamiento de mensajes entrantes ────────────────────────────────────
 const processIncomingMessage = async (msg, sessionId, sock) => {
     try {
         const remoteJid = msg.key.remoteJid;
@@ -360,31 +448,26 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
             return;
         }
 
-        // Resolver teléfono real:
-        // - Si es @lid (Linked Identity), el número real viene en senderPn
-        // - Si es @s.whatsapp.net, se usa directo
-        // - senderPn tiene prioridad siempre (es el teléfono verificado por WhatsApp)
+        // Resolver telefono real:
+        // Si es @lid (Linked Identity), el numero real viene en senderPn
         let numeroRaw;
         if (remoteJid.includes('@lid')) {
-            // LID = ID interno de dispositivo vinculado, NO es un teléfono
-            // senderPn contiene el teléfono real asociado al LID
             numeroRaw = msg.key.senderPn;
             if (!numeroRaw) {
-                logger.warn({ sessionId, lid: remoteJid }, '⚠️ Mensaje LID sin senderPn — no se puede resolver el teléfono real, ignorando');
+                logger.warn({ sessionId, lid: remoteJid }, 'Mensaje LID sin senderPn, ignorando');
                 return;
             }
-            logger.info({ sessionId, lid: remoteJid, senderPn: numeroRaw }, '🔄 LID resuelto a teléfono real vía senderPn');
+            logger.info({ sessionId, lid: remoteJid, senderPn: numeroRaw }, 'LID resuelto via senderPn');
         } else {
             numeroRaw = msg.key.senderPn || msg.key.participant || msg.key.remoteJid;
         }
 
         const numeroReal = getRealNumber(numeroRaw);
-
-        logger.info(`📥 RAW WEBHOOK - From: ${remoteJid} | Numero Real: ${numeroReal}`);
-
         if (!numeroReal) return;
 
-        // FIX 2: Incluir viewOnceMessage y manejar texto anidado en viewOnce
+        logger.info(`Mensaje entrante - From: ${remoteJid} | Numero: ${numeroReal}`);
+
+        // Extraer tipo y texto del mensaje
         const messageType = Object.keys(msg.message)[0];
 
         let texto = msg.message?.conversation
@@ -407,33 +490,28 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
         let mimeType = null;
 
         if (isMedia) {
-            try {
-                const buffer = await downloadMediaMessage(
-                    msg,
-                    'buffer',
-                    {},
-                    { logger, reuploadRequest: sock.updateMediaMessage }
-                );
+            const buffer = await downloadMediaWithRetry(msg, sock);
 
-                if (buffer) {
-                    // Para viewOnce, el media está anidado
-                    const mediaObject = messageType === 'viewOnceMessage'
-                        ? (msg.message.viewOnceMessage?.message?.imageMessage
-                           || msg.message.viewOnceMessage?.message?.videoMessage)
-                        : msg.message[messageType];
+            if (buffer) {
+                // Para viewOnce, el media esta anidado
+                const mediaObject = messageType === 'viewOnceMessage'
+                    ? (msg.message.viewOnceMessage?.message?.imageMessage
+                       || msg.message.viewOnceMessage?.message?.videoMessage)
+                    : msg.message[messageType];
 
-                    mimeType = mediaObject?.mimetype || 'application/octet-stream';
-                    const ext = getExtension(mimeType);
-                    const fileName = `${sessionId}_${Date.now()}.${ext}`;
-                    const filePath = path.join(UPLOADS_FOLDER, fileName);
+                mimeType = mediaObject?.mimetype || 'application/octet-stream';
+                const ext = getExtension(mimeType);
+                const fileName = `${sessionId}_${Date.now()}.${ext}`;
+                const filePath = path.join(UPLOADS_FOLDER, fileName);
 
-                    await writeFile(filePath, buffer);
-                    mediaUrl = `${PUBLIC_URL}/uploads/${fileName}`;
+                await writeFile(filePath, buffer);
+                mediaUrl = `${PUBLIC_URL}/uploads/${fileName}`;
 
-                    if (!texto) texto = `[${messageType.replace('Message', '')}]`;
-                }
-            } catch (err) {
-                logger.error({ err: err.message }, "Error descargando media");
+                if (!texto) texto = `[${messageType.replace('Message', '')}]`;
+            } else {
+                // Media no descargable: enviar el mensaje de texto igualmente
+                if (!texto) texto = `[${messageType.replace('Message', '')} - no se pudo descargar]`;
+                logger.warn({ sessionId, messageType }, 'Media no descargable, enviando solo texto');
             }
         }
 
@@ -453,32 +531,22 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
             mimeType: mimeType
         };
 
-        let baseUrl = JAVA_BACKEND_URL.replace(/\/$/, '');
-        if (!baseUrl.includes('/api/webhook/whatsapp')) {
-            baseUrl += '/api/webhook/whatsapp';
-        }
-
-        logger.info({ from: numeroReal, body: texto }, "📨 Enviando a Java CRM");
-
-        await axiosWithRetry({
-            method: 'post',
-            url: `${baseUrl}/robot`,
-            data: payload,
-            headers: { 'X-Bot-Token': SECRET_KEY },
-            timeout: 15000
-        });
+        logger.info({ from: numeroReal, body: texto?.substring(0, 50) }, "Enviando a Java CRM");
+        await sendIncomingToJava(payload);
 
     } catch (e) {
-        logger.error({ error: e.message }, '❌ Error procesando mensaje entrante');
+        logger.error({ error: e.message }, 'Error procesando mensaje entrante');
     }
 };
+
+// ── Gestion de sesiones ────────────────────────────────────────────────────
 
 const safeRemoveSession = (sessionId) => {
     const authPath = path.join(SESSION_FOLDER_NAME, sessionId);
     try {
         if (fs.existsSync(authPath)) {
             fs.rmSync(authPath, { recursive: true, force: true });
-            logger.info({ sessionId }, '🗑️ Sesión eliminada del disco');
+            logger.info({ sessionId }, 'Sesion eliminada del disco');
         }
     } catch (err) { logger.error({ err }, 'Error limpiando archivos'); }
 };
@@ -525,7 +593,7 @@ const startSession = async (sessionId, phoneNumber = null) => {
         if (phoneNumber && !sock.authState.creds.registered) {
             setTimeout(async () => {
                 try {
-                    logger.info({ sessionId, phoneNumber }, '🔢 Pidiendo Pairing Code...');
+                    logger.info({ sessionId, phoneNumber }, 'Pidiendo Pairing Code...');
                     const code = await sock.requestPairingCode(phoneNumber);
                     qrStore.set(sessionId, code);
                 } catch (e) {
@@ -547,26 +615,26 @@ const startSession = async (sessionId, phoneNumber = null) => {
             }
 
             if (connection === 'open') {
-                logger.info({ sessionId }, '🚀 CONEXIÓN EXITOSA');
+                logger.info({ sessionId }, 'CONEXION EXITOSA');
                 qrStore.delete(sessionId);
-                // Conexión exitosa: resetear contador de reintentos e iniciar health check
                 resetReconnectState(sessionId);
                 startHealthCheck(sessionId);
                 const userPhone = sock.user ? sock.user.id.split(':')[0] : undefined;
                 await updateJavaStatus(sessionId, 'CONNECTED', userPhone);
                 io.emit('bot_status', { sessionId, status: 'CONNECTED' });
+
+                // Al reconectar, reintentar mensajes que quedaron en disco
+                retryFailedMessages();
             }
 
             if (connection === 'close') {
                 const statusCode = (lastDisconnect?.error)?.output?.statusCode;
                 const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-                // Detener health check al desconectarse
                 stopHealthCheck(sessionId);
 
                 if (!shouldReconnect) {
-                    // Logout intencional: limpiar todo, no reintentar
-                    logger.info({ sessionId, statusCode }, '👋 Logout intencional, sin reconexión');
+                    logger.info({ sessionId, statusCode }, 'Logout intencional, sin reconexion');
                     sessions.delete(sessionId);
                     qrStore.delete(sessionId);
                     safeRemoveSession(sessionId);
@@ -574,8 +642,7 @@ const startSession = async (sessionId, phoneNumber = null) => {
                     await updateJavaStatus(sessionId, 'DISCONNECTED');
                     io.emit('bot_status', { sessionId, status: 'DISCONNECTED' });
                 } else {
-                    // Caída inesperada: reconectar con backoff exponencial
-                    logger.warn({ sessionId, statusCode }, '⚠️ Desconexión inesperada, programando reconexión...');
+                    logger.warn({ sessionId, statusCode }, 'Desconexion inesperada, programando reconexion...');
                     sessions.delete(sessionId);
                     await updateJavaStatus(sessionId, 'RECONNECTING');
                     io.emit('bot_status', { sessionId, status: 'RECONNECTING' });
@@ -589,10 +656,7 @@ const startSession = async (sessionId, phoneNumber = null) => {
                 if (msg.key.fromMe || !msg.message) continue;
 
                 const msgId = msg.key.id;
-                if (processedMsgIds.get(msgId)) {
-                    logger.debug({ msgId }, '⏭️ Mensaje duplicado ignorado');
-                    continue;
-                }
+                if (processedMsgIds.get(msgId)) continue;
                 processedMsgIds.set(msgId, true);
 
                 const remoteJid = msg.key.remoteJid;
@@ -602,13 +666,9 @@ const startSession = async (sessionId, phoneNumber = null) => {
 
         sock.ev.on('messages.update', async (updates) => {
             for (const update of updates) {
-                // Solo procesar actualizaciones de mensajes enviados por nosotros
                 if (!update.key.fromMe) continue;
 
                 if (update.update.status) {
-                    // status=2: SERVER_ACK (tick simple, el servidor lo recibió — no notificar)
-                    // status=3: DELIVERY_ACK (doble tick gris, llegó al dispositivo del destinatario)
-                    // status=4/5: READ/PLAYED (doble tick azul)
                     const statusMap = { 3: 'DELIVERED', 4: 'READ', 5: 'READ' };
                     const newStatus = statusMap[update.update.status];
 
@@ -624,12 +684,11 @@ const startSession = async (sessionId, phoneNumber = null) => {
         });
 
     } catch (err) {
-        logger.error({ err }, "🔥 Error fatal iniciando sesión");
+        logger.error({ err }, "Error fatal iniciando sesion");
         qrStore.set(sessionId, "ERROR");
     }
 };
 
-// FIX 3: Restaurar sesiones existentes al arrancar el servidor
 const restoreExistingSessions = () => {
     try {
         if (!fs.existsSync(SESSION_FOLDER_NAME)) return;
@@ -640,25 +699,24 @@ const restoreExistingSessions = () => {
             .map(e => e.name);
 
         if (sessionIds.length === 0) {
-            logger.info('📂 No hay sesiones guardadas para restaurar');
+            logger.info('No hay sesiones guardadas para restaurar');
             return;
         }
 
-        logger.info({ count: sessionIds.length, sessions: sessionIds }, '♻️ Restaurando sesiones guardadas...');
+        logger.info({ count: sessionIds.length, sessions: sessionIds }, 'Restaurando sesiones guardadas...');
 
-        // Escalonado para no hacer flood al arrancar
         sessionIds.forEach((sessionId, index) => {
             setTimeout(() => {
-                logger.info({ sessionId }, `♻️ Restaurando sesión [${index + 1}/${sessionIds.length}]`);
+                logger.info({ sessionId }, `Restaurando sesion [${index + 1}/${sessionIds.length}]`);
                 startSession(sessionId);
             }, index * 2000);
         });
     } catch (err) {
-        logger.error({ err }, '❌ Error restaurando sesiones');
+        logger.error({ err }, 'Error restaurando sesiones');
     }
 };
 
-// ─── ENDPOINTS ────────────────────────────────────────────────
+// ── ENDPOINTS ──────────────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => {
     const sessionList = Array.from(sessions.entries()).map(([id, sock]) => ({
@@ -670,6 +728,7 @@ app.get('/health', (req, res) => {
         status: 'OK',
         uptime: process.uptime(),
         sessions: sessionList.length,
+        failedQueueSize: fs.readdirSync(FAILED_QUEUE_FOLDER).filter(f => f.endsWith('.json')).length,
         details: sessionList
     });
 });
@@ -691,9 +750,9 @@ app.post('/session/reset', async (req, res) => {
     if (sock) {
         try {
             await sock.logout();
-            logger.info({ sessionId }, "👋 Logout remoto enviado a WhatsApp");
+            logger.info({ sessionId }, "Logout remoto enviado a WhatsApp");
         } catch (e) {
-            logger.warn({ sessionId }, "No se pudo cerrar sesión remota (¿ya desconectado?)");
+            logger.warn({ sessionId }, "No se pudo cerrar sesion remota");
         }
         try { sock.end(undefined); } catch (e) {}
         sessions.delete(sessionId);
@@ -701,6 +760,7 @@ app.post('/session/reset', async (req, res) => {
 
     safeRemoveSession(sessionId);
     qrStore.delete(sessionId);
+    reconnectState.delete(sessionId);
 
     updateJavaStatus(sessionId, 'DISCONNECTED');
 
@@ -724,7 +784,6 @@ app.get('/session/status/:sessionId', (req, res) => {
 
 app.post('/session/start', (req, res) => {
     const { sessionId } = req.body;
-    // Resetear estado de reconexión al iniciar manualmente
     reconnectState.delete(sessionId);
     startSession(sessionId);
     res.json({ status: 'STARTING' });
@@ -762,7 +821,7 @@ app.post('/chat/read', async (req, res) => {
     const { sessionId, number, messageIds } = req.body;
     const sock = sessions.get(sessionId);
 
-    if (!sock) return res.status(404).json({ error: 'Sesión no activa' });
+    if (!sock) return res.status(404).json({ error: 'Sesion no activa' });
 
     try {
         const jid = formatToJid(number);
@@ -778,11 +837,12 @@ app.post('/chat/read', async (req, res) => {
 
         res.json({ status: 'READ_EMITTED' });
     } catch (e) {
-        logger.error({ error: e.message }, "Error marcando leído");
+        logger.error({ error: e.message }, "Error marcando leido");
         res.status(500).json({ error: e.message });
     }
 });
 
+// ── Rate limiting por numero ───────────────────────────────────────────────
 const sendTimestamps = new Map();
 
 const waitForRateLimit = async (numero) => {
@@ -798,10 +858,12 @@ const waitForRateLimit = async (numero) => {
 
 const verifiedJids = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
 
+// ── Envio de mensajes de texto ─────────────────────────────────────────────
+// Respuesta sincronica: devuelve el waId para que Java trackee delivery/read
 app.post('/send-message', async (req, res) => {
     const { sessionId, number, message } = req.body;
     const sock = sessions.get(sessionId);
-    if (!sock) return res.status(404).json({ error: 'Sesión no activa' });
+    if (!sock) return res.status(404).json({ error: 'Sesion no activa' });
 
     try {
         const jid = formatToJid(number);
@@ -811,35 +873,32 @@ app.post('/send-message', async (req, res) => {
 
         if (cachedJid) {
             finalJid = cachedJid;
-            logger.info({ number }, '📦 JID desde caché, sin lookup');
         } else {
             const [result] = await sock.onWhatsApp(jid);
             if (!result?.exists) {
-                return res.status(400).json({ error: 'Número no encontrado', jid });
+                return res.status(400).json({ error: 'Numero no encontrado', jid });
             }
             finalJid = result.jid;
             verifiedJids.set(number, finalJid);
-            logger.info({ number, finalJid }, '✅ Nuevo JID verificado y cacheado');
         }
 
         await waitForRateLimit(number);
         const sent = await sock.sendMessage(finalJid, { text: message });
         res.json({ status: 'SENT', jid: finalJid, id: sent.key.id });
     } catch (e) {
-        logger.error({ sessionId, number, error: e.message }, "❌ Error enviando mensaje");
+        logger.error({ sessionId, number, error: e.message }, "Error enviando mensaje");
         res.status(500).json({ error: e.message });
     }
 });
 
-// FIX 4: send-media corregido — audio, video, documento con mimetype real
+// ── Envio de media ─────────────────────────────────────────────────────────
+// Respuesta sincronica: devuelve el waId
 app.post('/send-media', async (req, res) => {
     const { sessionId, number, message, url, type, filename, base64, mimetype } = req.body;
-    console.log('📎 send-media recibido:', JSON.stringify({ type, filename, hasBase64: !!base64, url: url?.substring(0, 80) }));
     const sock = sessions.get(sessionId);
-    if (!sock) return res.status(404).json({ error: 'Sesión no activa' });
+    if (!sock) return res.status(404).json({ error: 'Sesion no activa' });
 
     try {
-        // Usar el mismo JID verificado que send-message para evitar entregas al número incorrecto
         let jid;
         const cachedJid = verifiedJids.get(number);
         if (cachedJid) {
@@ -848,7 +907,7 @@ app.post('/send-media', async (req, res) => {
             const rawJid = formatToJid(number);
             const [result] = await sock.onWhatsApp(rawJid);
             if (!result?.exists) {
-                return res.status(400).json({ error: 'Número no encontrado en WhatsApp', jid: rawJid });
+                return res.status(400).json({ error: 'Numero no encontrado en WhatsApp', jid: rawJid });
             }
             jid = result.jid;
             verifiedJids.set(number, jid);
@@ -856,11 +915,9 @@ app.post('/send-media', async (req, res) => {
 
         let buffer, contentType;
         if (base64) {
-            // Archivo enviado como base64 directo (evita descarga de Cloudinary)
             buffer = Buffer.from(base64, 'base64');
             contentType = mimetype || 'application/octet-stream';
         } else {
-            // Fallback: descargar desde URL
             const response = await axios.get(url, { responseType: 'arraybuffer' });
             buffer = Buffer.from(response.data, 'binary');
             contentType = response.headers['content-type'] || '';
@@ -869,7 +926,6 @@ app.post('/send-media', async (req, res) => {
         let mediaPayload = {};
 
         if (type === 'IMAGEN') {
-            // Detectar tipo de imagen real
             const imgMime = contentType.split(';')[0].trim() || 'image/jpeg';
             mediaPayload = {
                 image: buffer,
@@ -884,9 +940,7 @@ app.post('/send-media', async (req, res) => {
                 caption: message || ''
             };
         } else if (type === 'AUDIO') {
-            // FIX: PTT de WhatsApp debe ser audio/ogg; codecs=opus
-            // Si el archivo ya es ogg lo mandamos como PTT, sino como audio normal
-            const isOgg = contentType.includes('ogg') || url.endsWith('.ogg');
+            const isOgg = contentType.includes('ogg') || (url && url.endsWith('.ogg'));
             if (isOgg) {
                 mediaPayload = {
                     audio: buffer,
@@ -894,7 +948,6 @@ app.post('/send-media', async (req, res) => {
                     ptt: true
                 };
             } else {
-                // Archivos de audio normales (mp3, m4a, etc.) — no PTT
                 const audMime = contentType.split(';')[0].trim() || 'audio/mpeg';
                 mediaPayload = {
                     audio: buffer,
@@ -902,10 +955,15 @@ app.post('/send-media', async (req, res) => {
                     ptt: false
                 };
             }
+        } else if (type === 'STICKER') {
+            mediaPayload = {
+                sticker: buffer,
+                mimetype: 'image/webp'
+            };
         } else {
-            // DOCUMENTO: derivar mimetype desde filename si Cloudinary devuelve octet-stream
+            // DOCUMENTO: derivar mimetype desde filename si es octet-stream
             const rawMime = contentType.split(';')[0].trim();
-            const fileName = filename || getFileNameFromUrl(url, rawMime);
+            const fileName = filename || getFileNameFromUrl(url || '', rawMime);
             const docMime = (rawMime === 'application/octet-stream' || !rawMime)
                 ? (getMimeFromFilename(fileName) || rawMime || 'application/octet-stream')
                 : rawMime;
@@ -926,13 +984,14 @@ app.post('/send-media', async (req, res) => {
     }
 });
 
+// ── Keepalive ──────────────────────────────────────────────────────────────
 const KEEPALIVE_URL = process.env.RAILWAY_STATIC_URL
     ? `https://${process.env.RAILWAY_STATIC_URL}/health`
     : `http://localhost:${PORT}/health`;
 setInterval(() => { axios.get(KEEPALIVE_URL).catch(() => {}); }, 600000);
 
+// ── Arranque ───────────────────────────────────────────────────────────────
 server.listen(PORT, '0.0.0.0', () => {
-    logger.info(`✅ BOT SERVER (LINUX MODE) LISTO EN PUERTO ${PORT}`);
-    // FIX 3: Restaurar sesiones guardadas al arrancar
+    logger.info(`BOT SERVER LISTO EN PUERTO ${PORT}`);
     restoreExistingSessions();
 });
