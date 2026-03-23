@@ -74,11 +74,8 @@ public class PlanService {
             return usuario.getPlan();
         }
 
-        List<Usuario> miembros = usuarioRepository.findByAgenciaId(usuario.getAgencia().getId());
-        return miembros.stream()
-                .filter(u -> "ADMIN".equals(u.getRol()) && u.getPlan() != null)
+        return usuarioRepository.findAdminByAgenciaId(usuario.getAgencia().getId())
                 .map(Usuario::getPlan)
-                .findFirst()
                 .orElse(usuario.getPlan());
     }
 

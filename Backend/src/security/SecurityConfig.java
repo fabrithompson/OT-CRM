@@ -54,7 +54,7 @@ public class SecurityConfig {
                                 .policy("camera=(), microphone=(), geolocation=()"))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/webhook/**", "/api/telegram/**", "/api/mp/webhook", "/api/paypal/webhook").permitAll()
                         .requestMatchers("/ws-crm/**").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/assets/**", "/images/**", "/favicon.ico", "/webjars/**").permitAll()

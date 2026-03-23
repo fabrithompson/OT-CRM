@@ -208,7 +208,13 @@ public class MercadoPagoController {
     private void activarPlanDesdeRef(String externalRef) {
         try {
             String[] partes = externalRef.split("\\|");
+            if (partes.length < 2) {
+                log.error("External reference con formato invalido: '{}'", externalRef);
+                return;
+            }
             planService.activarPlanPorPago(Long.parseLong(partes[0]), Long.parseLong(partes[1]), "Mercado Pago");
+        } catch (NumberFormatException e) {
+            log.error("External reference con IDs no numericos: '{}'", externalRef);
         } catch (RuntimeException e) {
             log.error("Error activando plan desde ref '{}': {}", externalRef, e.getMessage());
         }

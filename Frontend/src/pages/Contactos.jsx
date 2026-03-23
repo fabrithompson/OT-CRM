@@ -77,7 +77,7 @@ function ResultModal({ active, type, title, message, onClose }) {
             <div className="custom-modal" style={{ maxWidth: 480, maxHeight: '80vh', overflowY: 'auto' }}>
                 <div className={`modal-icon ${isError ? 'icon-danger' : 'icon-success'}`}><i className={`fas ${isError ? 'fa-times-circle' : 'fa-check-circle'}`}></i></div>
                 <div className="modal-title">{title}</div>
-                <div className="modal-desc" style={{ wordBreak: 'break-word' }} dangerouslySetInnerHTML={{ __html: message }} />
+                <div className="modal-desc" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{message?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}</div>
                 <div className="modal-actions">
                     <button className="btn-modal btn-confirm" onClick={onClose}>{isError ? 'Entendido' : 'Aceptar'}</button>
                 </div>

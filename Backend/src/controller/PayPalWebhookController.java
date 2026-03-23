@@ -54,11 +54,13 @@ public class PayPalWebhookController {
             if ("PAYMENT.SALE.COMPLETED".equals(eventType) || "BILLING.SUBSCRIPTION.ACTIVATED".equals(eventType)) {
                 if (customId != null && customId.contains("|")) {
                     String[] partes = customId.split("\\|");
-                    long usuarioId = Long.parseLong(partes[0]);
-                    long planId = Long.parseLong(partes[1]);
+                    if (partes.length >= 2) {
+                        long usuarioId = Long.parseLong(partes[0]);
+                        long planId = Long.parseLong(partes[1]);
 
-                    planService.activarPlanPorPago(usuarioId, planId, "PayPal");
-                    log.info("PayPal: Plan {} activado para usuario {}", planId, usuarioId);
+                        planService.activarPlanPorPago(usuarioId, planId, "PayPal");
+                        log.info("PayPal: Plan {} activado para usuario {}", planId, usuarioId);
+                    }
                 }
             }
 

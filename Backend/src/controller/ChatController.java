@@ -110,9 +110,16 @@ public class ChatController {
         String autor = usuario.getUsername();
         Cliente cliente = validarAccesoCliente(clienteId, userDetails);
 
+        // Validate file is not empty
+        if (file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Archivo vacio");
+        }
+
         String nombreFinal = (filename != null && !filename.isEmpty())
-                ? filename
-                : file.getOriginalFilename();
+                ? filename.replaceAll("[^a-zA-Z0-9._-]", "_")
+                : (file.getOriginalFilename() != null
+                    ? file.getOriginalFilename().replaceAll("[^a-zA-Z0-9._-]", "_")
+                    : "archivo_" + System.currentTimeMillis());
 
         // Leer bytes en memoria antes de que el request se cierre
         byte[] fileBytes;
