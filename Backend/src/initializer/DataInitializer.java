@@ -39,9 +39,19 @@ public class DataInitializer implements CommandLineRunner {
     private final AgenciaRepository agenciaRepository;
     private final PasswordEncoder passwordEncoder;
     private final String defaultAdminPassword;
+    private final String defaultAdminEmail;
 
     @Value("${mercadopago.access.token:}")
     private String mpAccessToken;
+
+    @Value("${plan.price.pro:15000.0}")
+    private double planPricePro;
+
+    @Value("${plan.price.business:30000.0}")
+    private double planPriceBusiness;
+
+    @Value("${plan.price.enterprise:60000.0}")
+    private double planPriceEnterprise;
 
     @Value("${app.base.url}")
     private String baseUrl;
@@ -52,11 +62,13 @@ public class DataInitializer implements CommandLineRunner {
     public DataInitializer(UsuarioRepository usuarioRepository,
             AgenciaRepository agenciaRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${app.default-admin.password}") String defaultAdminPassword) {
+            @Value("${app.default-admin.password}") String defaultAdminPassword,
+            @Value("${app.default-admin.email:admin@example.com}") String defaultAdminEmail) {
         this.usuarioRepository = usuarioRepository;
         this.agenciaRepository = agenciaRepository;
         this.passwordEncoder = passwordEncoder;
         this.defaultAdminPassword = defaultAdminPassword;
+        this.defaultAdminEmail = defaultAdminEmail;
     }
 
     @Override
@@ -80,10 +92,10 @@ public class DataInitializer implements CommandLineRunner {
         if (planRepository.count() == 0) {
             logger.info("Creando planes de suscripcion en DB...");
             planRepository.saveAll(List.of(
-                new Plan("FREE",       1,  25,       0.0, "Plan gratuito"),
-                new Plan("PRO",        5,  75,   15000.0, "Plan profesional"),
-                new Plan("BUSINESS",  10, 250,   30000.0, "Plan empresarial"),
-                new Plan("ENTERPRISE", -1, -1,   60000.0, "Plan Ilimitado")
+                new Plan("FREE",       1,  25,            0.0, "Plan gratuito"),
+                new Plan("PRO",        5,  75,   planPricePro, "Plan profesional"),
+                new Plan("BUSINESS",  10, 250, planPriceBusiness, "Plan empresarial"),
+                new Plan("ENTERPRISE", -1, -1, planPriceEnterprise, "Plan Ilimitado")
             ));
             logger.info("Planes creados exitosamente.");
         }
@@ -181,7 +193,7 @@ public class DataInitializer implements CommandLineRunner {
 
         logger.info("Creando usuario Admin...");
         Usuario admin = new Usuario("admin", passwordEncoder.encode(defaultAdminPassword), "OWNER");
-        admin.setEmail("admin@example.com");
+        admin.setEmail(defaultAdminEmail);
         admin.setVerificado(true);
         admin.setAgencia(nuevaAgencia);
         admin.setPlan(planFree);

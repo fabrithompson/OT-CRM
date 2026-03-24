@@ -72,10 +72,7 @@ public class PresenceHandshakeInterceptor implements HandshakeInterceptor {
             attributes.put("username", resolvedUsername);
             log.info("DEBUG PRESENCIA: Usuario identificado correctamente: {}", resolvedUsername);
         } else {
-            log.error("**********************************************************");
-            log.error("ERROR CRÍTICO: El usuario llega como NULL al Handshake.");
-            log.error("Verificá que quitaste el .permitAll() de /ws-crm/**");
-            log.error("**********************************************************");
+            log.debug("WS Handshake: usuario no identificado en HTTP upgrade (normal si el token viene en STOMP connectHeaders)");
         }
 
         if (request instanceof ServletServerHttpRequest servletRequest) {

@@ -1,6 +1,5 @@
 package service;
 
-import java.util.List;
 import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
@@ -33,10 +32,6 @@ public class ClienteService {
         this.etapaRepository = etapaRepository;
         this.mensajeRepository = mensajeRepository;
         this.transaccionRepository = transaccionRepository;
-    }
-
-    public List<Cliente> listarClientes() {
-        return clienteRepository.findAll();
     }
 
     @Transactional

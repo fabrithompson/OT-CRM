@@ -56,6 +56,10 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         const m = { ...ev, esSalida: !ev.inbound, fechaHora: ev.fecha };
         setMessages(prev => {
             if (m.whatsappId && prev.some(x => x.whatsappId === m.whatsappId)) return prev;
+            if (m.esSalida) {
+                const tempIdx = prev.findIndex(x => typeof x.id === 'string' && x.id.startsWith('temp-'));
+                if (tempIdx !== -1) return prev.map((x, i) => i === tempIdx ? m : x);
+            }
             return [...prev, m];
         });
         if (!m.esSalida) scrollToBottom();
@@ -542,7 +546,7 @@ function MessageBubble({ msg }) {
         if (!msg.esSalida) return null;
         let cls = 'fas fa-check'; let color = '#a6b3bd';
         if (msg.estado === 'DELIVERED') { cls = 'fas fa-check-double'; }
-        else if (msg.estado === 'READ' || msg.estado === 'LEIDO') { cls = 'fas fa-check-double'; color = '#53bdeb'; }
+        else if (msg.estado === 'READ') { cls = 'fas fa-check-double'; color = '#53bdeb'; }
         return <span className="msg-ticks"><i className={cls} style={{ marginLeft: 5, fontSize: 10, color }}></i></span>;
     };
     const renderContent = () => {

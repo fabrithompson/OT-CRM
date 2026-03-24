@@ -10,6 +10,9 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -44,6 +47,9 @@ public class TelegramBridgeService {
     @Value("${telegram.bridge.url:http://127.0.0.1:5000}")
     private String pythonUrl;
 
+    @Value("${bot.secret.key}")
+    private String botSecretKey;
+
     private final RestTemplate restTemplate;
     private final DispositivoRepository dispositivoRepository;
     private final ClienteRepository clienteRepository;
@@ -74,13 +80,20 @@ public class TelegramBridgeService {
         this.restTemplate = new RestTemplate(factory);
     }
 
+    private <T> HttpEntity<T> botRequest(T body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Bot-Token", botSecretKey);
+        return new HttpEntity<>(body, headers);
+    }
+
     @SuppressWarnings("UseSpecificCatch")
     public void desvincular(Dispositivo dispositivo) {
         try {
             String url = pythonUrl + ENDPOINT_LOGOUT;
             Map<String, String> body = Map.of("user_id", dispositivo.getSessionId());
             log.info("Enviando petición de cierre de sesión real a Python para: {}", dispositivo.getSessionId());
-            restTemplate.postForEntity(url, body, String.class);
+            restTemplate.postForEntity(url, botRequest(body), String.class);
         } catch (Exception e) {
             log.error("Error al pedir logout a Python: {}", e.getMessage());
         }
@@ -115,7 +128,7 @@ public class TelegramBridgeService {
             body.put("chat_id", cliente.getTelefono());
             body.put("text", texto);
 
-            restTemplate.postForEntity(url, body, String.class);
+            restTemplate.postForEntity(url, botRequest(body), String.class);
 
             Mensaje mensaje = crearMensajeSalida(cliente, texto, Mensaje.TipoMensaje.TEXTO, null, autor);
             mensajeRepository.save(mensaje);
@@ -147,7 +160,7 @@ public class TelegramBridgeService {
             body.put("media_url", urlPublica);
             body.put("caption", nombreArchivo);
 
-            restTemplate.postForEntity(url, body, String.class);
+            restTemplate.postForEntity(url, botRequest(body), String.class);
 
             Mensaje mensaje = crearMensajeSalida(cliente, "📎 " + nombreArchivo, Mensaje.TipoMensaje.IMAGEN, urlPublica,
                     autor);
@@ -176,7 +189,7 @@ public class TelegramBridgeService {
         m.setAutor(autor);
         m.setFechaHora(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC));
         m.setTipo(tipo);
-        m.setEstado(Mensaje.EstadoMensaje.SENT);
+        m.setEstado(Mensaje.EstadoMensaje.ENVIADO);
         m.setWhatsappId("TG_OUT_" + System.currentTimeMillis());
         if (urlArchivo != null)
             m.setUrlArchivo(urlArchivo);
@@ -374,7 +387,7 @@ public class TelegramBridgeService {
             body.put("chat_id", chatId);
             body.put("text",
                     "Lo sentimos, el sistema de atención de esta empresa se encuentra saturado. Intente comunicarse más tarde.");
-            restTemplate.postForEntity(url, body, String.class);
+            restTemplate.postForEntity(url, botRequest(body), String.class);
         } catch (Exception e) {
             log.warn("No se pudo enviar auto-respuesta de límite por Telegram", e);
         }
@@ -387,16 +400,14 @@ public class TelegramBridgeService {
     }
 
     private String obtenerSessionIdAgencia(Long agenciaId) {
-        return dispositivoRepository.findAll().stream()
-                .filter(d -> d.getAgencia().getId().equals(agenciaId) && d.getPlataforma() == Plataforma.TELEGRAM)
+        return dispositivoRepository.findByAgenciaIdAndPlataforma(agenciaId, Plataforma.TELEGRAM).stream()
                 .findFirst()
                 .map(Dispositivo::getSessionId)
                 .orElseThrow(() -> new IllegalStateException("No hay Telegram conectado"));
     }
 
     private String obtenerAliasTelegramAgencia(Long agenciaId) {
-        return dispositivoRepository.findAll().stream()
-                .filter(d -> d.getAgencia().getId().equals(agenciaId) && d.getPlataforma() == Plataforma.TELEGRAM)
+        return dispositivoRepository.findByAgenciaIdAndPlataforma(agenciaId, Plataforma.TELEGRAM).stream()
                 .findFirst()
                 .map(Dispositivo::getAlias)
                 .orElse("TELEGRAM");
@@ -418,7 +429,7 @@ public class TelegramBridgeService {
         Map<String, String> body = new HashMap<>();
         body.put("phone", dispositivo.getNumeroTelefono());
         body.put("user_id", dispositivo.getSessionId());
-        return restTemplate.postForObject(pythonUrl + ENDPOINT_REQUEST_CODE, body, Map.class);
+        return restTemplate.postForObject(pythonUrl + ENDPOINT_REQUEST_CODE, botRequest(body), Map.class);
     }
 
     @SuppressWarnings({})
@@ -429,7 +440,7 @@ public class TelegramBridgeService {
         body.put("code", codigo);
         body.put("phone_code_hash", hash);
         @SuppressWarnings("unchecked")
-        Map<String, Object> res = restTemplate.postForObject(pythonUrl + ENDPOINT_SUBMIT_CODE, body, Map.class);
+        Map<String, Object> res = restTemplate.postForObject(pythonUrl + ENDPOINT_SUBMIT_CODE, botRequest(body), Map.class);
         dispositivo.setEstado("CONECTADO");
         dispositivoRepository.save(dispositivo);
         // Notificar frontend que el dispositivo se conectó

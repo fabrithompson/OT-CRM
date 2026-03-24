@@ -33,6 +33,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - APP_BASE_URL=http://localhost:8080
       - APP_DEFAULT_ADMIN_PASSWORD=${APP_DEFAULT_ADMIN_PASSWORD}
+      - APP_DEFAULT_ADMIN_EMAIL=${APP_DEFAULT_ADMIN_EMAIL:-admin@example.com}
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
@@ -40,11 +41,14 @@ services:
       - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID}
       - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET}
       - PAYPAL_MODE=sandbox
+      - PAYPAL_WEBHOOK_ID=${PAYPAL_WEBHOOK_ID:-}
+      - MERCADOPAGO_WEBHOOK_SECRET=${MERCADOPAGO_WEBHOOK_SECRET:-}
       - RESEND_API_KEY=${RESEND_API_KEY}
       - APP_EMAIL_ENABLED=false
       - APP_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
       - TELEGRAM_API_ID=${TELEGRAM_API_ID}
       - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
+      - TELEGRAM_BRIDGE_URL=http://bot-telegram:5000
     depends_on:
       postgres:
         condition: service_started
@@ -61,6 +65,23 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  bot-telegram:
+    build: ./Bot-Telegram
+    container_name: crm_bot_telegram
+    restart: unless-stopped
+    environment:
+      - PORT=5000
+      - TELEGRAM_API_ID=${TELEGRAM_API_ID}
+      - TELEGRAM_API_HASH=${TELEGRAM_API_HASH}
+      - JAVA_WEBHOOK_URL=http://backend:8080/api/telegram/webhook
+      - PUBLIC_URL=http://bot-telegram:5000
+      - BOT_SECRET_KEY=${BOT_SECRET_KEY}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
 
   bot-whatsapp:
     build: ./Bot-Whatsapp

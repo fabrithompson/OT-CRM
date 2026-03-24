@@ -2,6 +2,7 @@ package model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Column;
@@ -84,6 +85,7 @@ public class Cliente {
     @JoinColumn(name = "dispositivo_id")
     private Dispositivo dispositivo;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(
             name = "agencia_id",

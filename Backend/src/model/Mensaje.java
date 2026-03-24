@@ -28,7 +28,7 @@ import jakarta.persistence.Table;
 public class Mensaje {
 
     public enum EstadoMensaje {
-        ENVIADO, SENT, DELIVERED, READ, LEIDO
+        ENVIADO, DELIVERED, READ
     }
 
     public enum TipoMensaje {

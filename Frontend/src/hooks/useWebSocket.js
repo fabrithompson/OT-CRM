@@ -43,8 +43,7 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
         currentDelay.current = INITIAL_DELAY;
 
         const BASE = import.meta.env.VITE_API_URL || '';
-        const token = localStorage.getItem('token') || '';
-        const wsUrl = `${BASE}/ws-crm?agenciaId=${agenciaId}&token=${token}`;
+        const wsUrl = `${BASE}/ws-crm?agenciaId=${agenciaId}`;
 
         setConnectionStatus('connecting');
 

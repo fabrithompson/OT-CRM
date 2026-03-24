@@ -42,6 +42,7 @@ public class PlanService {
     @Autowired
     private WhatsAppService whatsAppService;
 
+    @Transactional(readOnly = true)
     public boolean puedeConectarDispositivo(Long usuarioId, Plataforma plataforma) {
         @SuppressWarnings("null")
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -179,17 +180,19 @@ public class PlanService {
         Long agenciaId = admin.getAgencia().getId();
         List<Usuario> miembros = usuarioRepository.findByAgenciaId(agenciaId);
 
+        List<Usuario> aActualizar = new java.util.ArrayList<>();
         for (Usuario miembro : miembros) {
             if (miembro.getId().equals(admin.getId())) continue;
 
             miembro.setPlan(nuevoPlan);
             miembro.setPlanVencimiento(admin.getPlanVencimiento());
             miembro.setProveedorPago(admin.getProveedorPago());
-            usuarioRepository.save(miembro);
+            aActualizar.add(miembro);
 
             log.info("Plan propagado a miembro {} (ID: {}) -> {}",
                     miembro.getUsername(), miembro.getId(), nuevoPlan.getNombre());
         }
+        usuarioRepository.saveAll(aActualizar);
 
         // Notify all team members via WebSocket
         Map<String, Object> evento = new HashMap<>();
