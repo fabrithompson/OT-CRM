@@ -1,7 +1,6 @@
 package service;
 
-import java.util.List;
-
+import org.hibernate.Hibernate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -39,23 +38,18 @@ public class SubscriptionValidationService {
     @Cacheable(value = "planEfectivo", key = "#agencia.id")
     @Transactional(readOnly = true)
     public Plan getPlanEfectivoAgencia(Agencia agencia) {
-        List<Usuario> usuarios = usuarioRepository.findByAgenciaId(agencia.getId());
-
-        return usuarios.stream()
-                .filter(u -> "ADMIN".equals(u.getRol()) && u.getPlan() != null)
+        Plan plan = usuarioRepository.findAdminByAgenciaId(agencia.getId())
                 .map(Usuario::getPlan)
-                .findFirst()
                 .orElseGet(() -> planRepository.findByNombre("FREE")
                     .orElseThrow(() -> new IllegalStateException("Plan FREE no existe en BD")));
+
+        Hibernate.initialize(plan);
+        return plan;
     }
 
     @Transactional(readOnly = true)
     public Usuario getAdminAgencia(Agencia agencia) {
-        List<Usuario> usuarios = usuarioRepository.findByAgenciaId(agencia.getId());
-        return usuarios.stream()
-                .filter(u -> "ADMIN".equals(u.getRol()))
-                .findFirst()
-                .orElse(null);
+        return usuarioRepository.findAdminByAgenciaId(agencia.getId()).orElse(null);
     }
 
     @Transactional(readOnly = true)

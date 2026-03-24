@@ -18,8 +18,6 @@ import model.Mensaje;
 @Repository
 public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
 
-    List<Mensaje> findByClienteIdOrderByFechaHoraAsc(Long clienteId);
-
     @Modifying
     @Transactional
     @Query("DELETE FROM Mensaje m WHERE m.cliente.id = :clienteId")
@@ -58,8 +56,8 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
     List<Mensaje> findLatestByClienteId(
         @Param("clienteId") Long clienteId, Pageable pageable);
 
-    @Query("SELECT m FROM Mensaje m WHERE m.cliente.id = :clienteId AND m.id < :beforeId ORDER BY m.fechaHora ASC")
-    List<Mensaje> findByClienteIdAndIdLessThanOrderByFechaHoraAsc(
+    @Query("SELECT m FROM Mensaje m WHERE m.cliente.id = :clienteId AND m.id < :beforeId ORDER BY m.id DESC")
+    List<Mensaje> findByClienteIdBeforeCursor(
         @Param("clienteId") Long clienteId,
         @Param("beforeId") Long beforeId,
         Pageable pageable);

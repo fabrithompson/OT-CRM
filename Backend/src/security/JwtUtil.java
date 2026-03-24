@@ -1,4 +1,5 @@
 package security;
+
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -20,6 +21,9 @@ public class JwtUtil {
 
     @Value("${jwt.secret}")
     private String secretKey;
+
+    @Value("${jwt.expiration-hours:10}")
+    private int expirationHours;
 
     private Key getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
@@ -57,13 +61,15 @@ public class JwtUtil {
                 .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 horas
+                .setExpiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * expirationHours))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        return (username.equals(userDetails.getUsername())
+                && !isTokenExpired(token)
+                && userDetails.isEnabled());
     }
 }

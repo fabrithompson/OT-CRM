@@ -1,10 +1,12 @@
 package controller;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.annotation.PreDestroy;
 import repository.DispositivoRepository;
 import service.WhatsAppService;
 
@@ -64,7 +67,7 @@ public class WhatsAppWebhookController {
             @RequestBody WebhookPayload payload) {
 
         if (payload == null) return ResponseEntity.badRequest().body("Payload invalido");
-        if (!Objects.equals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (!constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
         msgExecutor.submit(() -> {
             try {
@@ -87,7 +90,7 @@ public class WhatsAppWebhookController {
             @RequestHeader(value = HEADER_API_KEY, required = false) String apiKey,
             @RequestBody StatusPayload payload) {
 
-        if (!Objects.equals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (!constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         if (payload == null || payload.sessionId() == null) return ResponseEntity.badRequest().body("Payload invalido");
 
         dispositivoRepository.findBySessionId(payload.sessionId()).ifPresent(d -> {
@@ -119,7 +122,7 @@ public class WhatsAppWebhookController {
             @RequestHeader(value = HEADER_API_KEY, required = false) String apiKey,
             @RequestBody WhatsAppService.MensajeStatusUpdate dto) {
 
-        if (!Objects.equals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (!constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         CompletableFuture.runAsync(() -> {
             try {
                 whatsAppService.procesarCambioDeEstado(dto);
@@ -128,5 +131,26 @@ public class WhatsAppWebhookController {
             }
         });
         return ResponseEntity.ok("ACK RECEIVED");
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        msgExecutor.shutdown();
+        try {
+            if (!msgExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
+                msgExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            msgExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return false;
+        return MessageDigest.isEqual(
+                a.getBytes(StandardCharsets.UTF_8),
+                b.getBytes(StandardCharsets.UTF_8)
+        );
     }
 }

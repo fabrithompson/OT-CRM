@@ -46,6 +46,34 @@ body {
     --border-glass: rgba(255, 255, 255, 0.05);
 }
 
+/* Light theme overrides */
+[data-theme="light"] {
+    --text-main: #1e293b;
+    --text-sec: #475569;
+    --text-muted: #64748b;
+    --bg-app: #f1f5f9;
+    --bg-glass: rgba(255, 255, 255, 0.85);
+    --bg-glass-hover: rgba(255, 255, 255, 0.95);
+    --border-glass: rgba(0, 0, 0, 0.12);
+    --input-bg: rgba(255, 255, 255, 0.80);
+    --input-border: rgba(0, 0, 0, 0.15);
+    --input-focus: rgba(0, 0, 0, 0.25);
+}
+[data-theme="light"] body { background-color: var(--bg-app); color: var(--text-main); }
+[data-theme="light"] .sidebar { background: rgba(255,255,255,0.92); border-right: 1px solid var(--border-glass); }
+[data-theme="light"] .sidebar a, [data-theme="light"] .sidebar button { color: var(--text-main); }
+[data-theme="light"] .sidebar .menu-item a.active,
+[data-theme="light"] .sidebar .menu-item a:hover { background: rgba(16,185,129,0.1); }
+[data-theme="light"] .ambient-bg, [data-theme="light"] .glass-overlay { display: none; }
+[data-theme="light"] .kanban-column { background: rgba(255,255,255,0.75); border: 1px solid var(--border-glass); }
+[data-theme="light"] .card { background: #fff; border: 1px solid var(--border-glass); color: var(--text-main); }
+[data-theme="light"] .header-top { background: rgba(255,255,255,0.9); border-bottom: 1px solid var(--border-glass); }
+[data-theme="light"] .search-wrapper { background: var(--input-bg); border: 1px solid var(--input-border); }
+[data-theme="light"] .search-wrapper input { color: var(--text-main); }
+[data-theme="light"] .filter-dd-btn { background: rgba(0,0,0,0.04) !important; border-color: var(--input-border) !important; color: var(--text-main) !important; }
+[data-theme="light"] .filter-dd-menu { background: #fff !important; border-color: var(--border-glass) !important; }
+[data-theme="light"] .filter-item { color: var(--text-main) !important; }
+
 body {
     margin: 0;
     background-color: var(--bg-app);
@@ -3095,4 +3123,76 @@ display: flex;
 
 #tablero::-webkit-scrollbar-thumb:hover {
     background: rgba(255,255,255,0.6);
+}
+/* Skeleton loaders */
+.skeleton-pulse {
+    background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* WebSocket connection indicator */
+.ws-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    transition: background 0.3s;
+}
+.ws-status-dot.connected { background: #10b981; }
+.ws-status-dot.connecting, .ws-status-dot.reconnecting { background: #f59e0b; animation: ws-blink 1s infinite; }
+.ws-status-dot.disconnected { background: #ef4444; }
+@keyframes ws-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Mobile improvements */
+@media (max-width: 640px) {
+    .sidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto;
+        width: 100% !important;
+        height: 60px !important;
+        flex-direction: row !important;
+        z-index: 100;
+        border-right: none !important;
+        border-top: 1px solid var(--border-glass);
+        padding: 0 8px;
+    }
+    .sidebar .sidebar-header,
+    .sidebar .sidebar-footer,
+    .sidebar .menu-bottom,
+    .sidebar .link-text,
+    .sidebar .brand-text,
+    .sidebar .user-info { display: none !important; }
+    .sidebar .menu-list {
+        display: flex !important;
+        flex-direction: row !important;
+        width: 100%;
+        justify-content: space-around;
+        align-items: center;
+        padding: 0;
+        margin: 0;
+        gap: 0;
+    }
+    .sidebar .menu-item { margin: 0; }
+    .sidebar .menu-item a, .sidebar .menu-item button {
+        padding: 8px 12px !important;
+        font-size: 1.1rem;
+    }
+    .sidebar:hover { width: 100% !important; position: fixed; }
+    .content-area { padding-bottom: 65px !important; }
+    .header-top { padding: 0 12px !important; flex-wrap: wrap; gap: 8px; }
+    .search-wrapper { min-width: 0; flex: 1; }
+    #tablero { padding: 10px 10px 70px !important; gap: 12px !important; }
+    .kanban-column { min-width: 280px !important; }
+}
+
+@media (max-width: 640px) {
+    #chatModal .pro-modal { width: 100vw; height: 100vh; max-width: 100vw; border-radius: 0; }
 }

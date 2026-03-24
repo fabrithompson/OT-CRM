@@ -18,6 +18,7 @@ import model.Cliente;
 import model.Dispositivo;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
@@ -70,19 +71,23 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     @Query(value = "UPDATE clientes SET dispositivo_id = NULL WHERE dispositivo_id = :dispositivoId", nativeQuery = true)
     void desvincularClientesDeDispositivo(@Param("dispositivoId") Long dispositivoId);
 
+    @EntityGraph(attributePaths = {"etapa", "dispositivo"})
     @Query("SELECT c FROM Cliente c WHERE c.agencia.id = :agenciaId AND (LOWER(c.nombre) LIKE LOWER(CONCAT('%', :query, '%')) OR c.telefono LIKE %:query% OR (c.dispositivo IS NOT NULL AND LOWER(c.dispositivo.alias) LIKE LOWER(CONCAT('%', :query, '%'))))")
     List<Cliente> buscarGlobal(@Param("agenciaId") Long agenciaId, @Param("query") String query, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"etapa", "dispositivo"})
     @Query("SELECT c FROM Cliente c WHERE c.agencia.id = :agenciaId ORDER BY c.ultimoMensajeFecha DESC NULLS LAST")
     List<Cliente> findByAgenciaIdPaginatedByLastMessage(
             @Param("agenciaId") Long agenciaId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"etapa", "dispositivo"})
     @Query("SELECT c FROM Cliente c JOIN c.etiquetas e WHERE c.agencia.id = :agenciaId AND e.id = :etiquetaId ORDER BY c.ultimoMensajeFecha DESC NULLS LAST")
     List<Cliente> findByAgenciaIdAndEtiquetaIdPaginated(
             @Param("agenciaId") Long agenciaId,
             @Param("etiquetaId") Long etiquetaId,
             Pageable pageable);
 
+    @EntityGraph(attributePaths = {"etapa", "dispositivo"})
     @Query("SELECT c FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.etapa.id = :etapaId ORDER BY c.id DESC")
     List<Cliente> findByAgenciaIdAndEtapaId(
             @Param("agenciaId") Long agenciaId,

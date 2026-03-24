@@ -61,9 +61,40 @@ const logger = pino({
     timestamp: pino.stdTimeFunctions.isoTime,
 });
 
-const msgRetryCounterCache = new NodeCache();
+const msgRetryCounterCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
 const processedMsgIds = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const messageQueues = new Map();
+
+// ── Autenticacion de endpoints ────────────────────────────────────────────
+const requireAuth = (req, res, next) => {
+    const token = req.headers['x-bot-token'];
+    if (!token || !SECRET_KEY || token !== SECRET_KEY) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid or missing Bot Token' });
+    }
+    next();
+};
+
+// ── SSRF protection: bloquear URLs a redes internas ───────────────────────
+const isUrlSafe = (urlString) => {
+    try {
+        const parsed = new URL(urlString);
+        if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+        const hostname = parsed.hostname;
+        // Block private/internal IPs
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
+        if (hostname.startsWith('10.')) return false;
+        if (hostname.startsWith('192.168.')) return false;
+        if (hostname.startsWith('172.') && (() => {
+            const second = parseInt(hostname.split('.')[1], 10);
+            return second >= 16 && second <= 31;
+        })()) return false;
+        if (hostname === '169.254.169.254') return false; // Cloud metadata
+        if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return false;
+        return true;
+    } catch {
+        return false;
+    }
+};
 
 // Cola en memoria por contacto: serializa mensajes del mismo remitente
 function enqueueMessage(remoteJid, handler) {
@@ -121,6 +152,7 @@ io.on('connection', (socket) => {
 });
 
 const sessions = new Map();
+const sessionHandlers = new Map(); // Track event handlers per session for cleanup
 const qrStore = new Map();
 
 // ── Reconexion automatica con backoff exponencial ──────────────────────────
@@ -194,8 +226,10 @@ const scheduleReconnect = (sessionId) => {
     logger.info({ sessionId, attempt: state.retries, maxRetries: MAX_RETRIES, delayMs },
         `Reconexion programada: intento ${state.retries}/${MAX_RETRIES} en ${delayMs}ms`);
 
+    if (state.timer) clearTimeout(state.timer);
     state.timer = setTimeout(() => {
         logger.info({ sessionId, attempt: state.retries }, 'Ejecutando reconexion...');
+        cleanupSessionHandlers(sessionId);
         sessions.delete(sessionId);
         startSession(sessionId);
     }, delayMs);
@@ -278,6 +312,7 @@ setInterval(retryFailedMessages, 30000);
 const formatToJid = (number) => {
     if (!number) return null;
     let clean = number.toString().replace(/\D/g, '');
+    if (clean.length < 7 || clean.length > 15) return null;
     return `${clean}@s.whatsapp.net`;
 };
 
@@ -541,7 +576,21 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
 
 // ── Gestion de sesiones ────────────────────────────────────────────────────
 
+const cleanupSessionHandlers = (sessionId) => {
+    const handlers = sessionHandlers.get(sessionId);
+    if (handlers?.sock?.ev) {
+        try {
+            if (handlers.credsUpdate) handlers.sock.ev.off('creds.update', handlers.credsUpdate);
+            if (handlers.connectionUpdate) handlers.sock.ev.off('connection.update', handlers.connectionUpdate);
+            if (handlers.messagesUpsert) handlers.sock.ev.off('messages.upsert', handlers.messagesUpsert);
+            if (handlers.messagesUpdate) handlers.sock.ev.off('messages.update', handlers.messagesUpdate);
+        } catch (err) { logger.warn({ sessionId, error: err.message }, 'Error limpiando event listeners'); }
+    }
+    sessionHandlers.delete(sessionId);
+};
+
 const safeRemoveSession = (sessionId) => {
+    cleanupSessionHandlers(sessionId);
     const authPath = path.join(SESSION_FOLDER_NAME, sessionId);
     try {
         if (fs.existsSync(authPath)) {
@@ -602,9 +651,12 @@ const startSession = async (sessionId, phoneNumber = null) => {
             }, 6000);
         }
 
-        sock.ev.on('creds.update', saveCreds);
+        // Store handlers for cleanup on session destroy
+        const handlers = { sock };
+        handlers.credsUpdate = saveCreds;
+        sock.ev.on('creds.update', handlers.credsUpdate);
 
-        sock.ev.on('connection.update', async (update) => {
+        handlers.connectionUpdate = async (update) => {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
@@ -649,9 +701,10 @@ const startSession = async (sessionId, phoneNumber = null) => {
                     scheduleReconnect(sessionId);
                 }
             }
-        });
+        };
+        sock.ev.on('connection.update', handlers.connectionUpdate);
 
-        sock.ev.on('messages.upsert', (m) => {
+        handlers.messagesUpsert = (m) => {
             for (const msg of m.messages) {
                 if (msg.key.fromMe || !msg.message) continue;
 
@@ -662,9 +715,10 @@ const startSession = async (sessionId, phoneNumber = null) => {
                 const remoteJid = msg.key.remoteJid;
                 enqueueMessage(remoteJid, () => processIncomingMessage(msg, sessionId, sock));
             }
-        });
+        };
+        sock.ev.on('messages.upsert', handlers.messagesUpsert);
 
-        sock.ev.on('messages.update', async (updates) => {
+        handlers.messagesUpdate = async (updates) => {
             for (const update of updates) {
                 if (!update.key.fromMe) continue;
 
@@ -681,7 +735,10 @@ const startSession = async (sessionId, phoneNumber = null) => {
                     }
                 }
             }
-        });
+        };
+        sock.ev.on('messages.update', handlers.messagesUpdate);
+
+        sessionHandlers.set(sessionId, handlers);
 
     } catch (err) {
         logger.error({ err }, "Error fatal iniciando sesion");
@@ -742,7 +799,7 @@ app.get('/sessions', (req, res) => {
     res.json({ sessions: list, count: list.length });
 });
 
-app.post('/session/reset', async (req, res) => {
+app.post('/session/reset', requireAuth, async (req, res) => {
     const { sessionId } = req.body;
     if (!sessionId) return res.status(400).send("Falta sessionId");
 
@@ -782,7 +839,7 @@ app.get('/session/status/:sessionId', (req, res) => {
     res.json({ status: 'DISCONNECTED' });
 });
 
-app.post('/session/start', (req, res) => {
+app.post('/session/start', requireAuth, (req, res) => {
     const { sessionId } = req.body;
     reconnectState.delete(sessionId);
     startSession(sessionId);
@@ -797,7 +854,7 @@ app.get('/qr/:sessionId', (req, res) => {
     res.json({ status: 'WAITING' });
 });
 
-app.post('/session/pair-code', async (req, res) => {
+app.post('/session/pair-code', requireAuth, async (req, res) => {
     const { sessionId, phoneNumber } = req.body;
     if (!sessionId || !phoneNumber) return res.status(400).json({ error: 'Faltan datos' });
     const cleanNumber = phoneNumber.toString().replace(/\D/g, '');
@@ -817,7 +874,7 @@ app.post('/session/pair-code', async (req, res) => {
     }, 500);
 });
 
-app.post('/chat/read', async (req, res) => {
+app.post('/chat/read', requireAuth, async (req, res) => {
     const { sessionId, number, messageIds } = req.body;
     const sock = sessions.get(sessionId);
 
@@ -844,6 +901,15 @@ app.post('/chat/read', async (req, res) => {
 
 // ── Rate limiting por numero ───────────────────────────────────────────────
 const sendTimestamps = new Map();
+const RATE_LIMIT_TTL = 60000; // 1 minuto
+
+// Limpieza periodica de sendTimestamps para evitar memory leak
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, ts] of sendTimestamps) {
+        if (now - ts > RATE_LIMIT_TTL) sendTimestamps.delete(key);
+    }
+}, RATE_LIMIT_TTL);
 
 const waitForRateLimit = async (numero) => {
     const lastSend = sendTimestamps.get(numero) || 0;
@@ -860,7 +926,7 @@ const verifiedJids = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
 
 // ── Envio de mensajes de texto ─────────────────────────────────────────────
 // Respuesta sincronica: devuelve el waId para que Java trackee delivery/read
-app.post('/send-message', async (req, res) => {
+app.post('/send-message', requireAuth, async (req, res) => {
     const { sessionId, number, message } = req.body;
     const sock = sessions.get(sessionId);
     if (!sock) return res.status(404).json({ error: 'Sesion no activa' });
@@ -893,7 +959,7 @@ app.post('/send-message', async (req, res) => {
 
 // ── Envio de media ─────────────────────────────────────────────────────────
 // Respuesta sincronica: devuelve el waId
-app.post('/send-media', async (req, res) => {
+app.post('/send-media', requireAuth, async (req, res) => {
     const { sessionId, number, message, url, type, filename, base64, mimetype } = req.body;
     const sock = sessions.get(sessionId);
     if (!sock) return res.status(404).json({ error: 'Sesion no activa' });
@@ -915,10 +981,17 @@ app.post('/send-media', async (req, res) => {
 
         let buffer, contentType;
         if (base64) {
+            const MAX_BASE64_SIZE = 50 * 1024 * 1024; // 50MB
+            if (base64.length > MAX_BASE64_SIZE) {
+                return res.status(400).json({ error: 'Archivo demasiado grande' });
+            }
             buffer = Buffer.from(base64, 'base64');
             contentType = mimetype || 'application/octet-stream';
         } else {
-            const response = await axios.get(url, { responseType: 'arraybuffer' });
+            if (!url || !isUrlSafe(url)) {
+                return res.status(400).json({ error: 'URL no permitida o invalida' });
+            }
+            const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 30000 });
             buffer = Buffer.from(response.data, 'binary');
             contentType = response.headers['content-type'] || '';
         }

@@ -37,6 +37,7 @@ export default function Kanban() {
     const [filterEtiquetaId, setFilterEtiquetaId] = useState('');
     const [showFilterMenu, setShowFilterMenu]     = useState(false);
     const [searchQuery, setSearchQuery]           = useState('');
+    const [debouncedSearch, setDebouncedSearch]   = useState('');
 
     const [createOpen, setCreateOpen]   = useState(false);
     const [editStage, setEditStage]     = useState(null);
@@ -96,6 +97,11 @@ export default function Kanban() {
     }, [toast]);
 
     useEffect(() => { loadBoard(filterEtiquetaId); }, [filterEtiquetaId, loadBoard]);
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(searchQuery), 250);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
 
     const handleClienteEvent = useCallback((ev, muted) => {
         if (!ev.cliente) return;
@@ -208,7 +214,7 @@ export default function Kanban() {
         handleClienteEvent({ cliente }, mutedStages);
     }, [handleClienteEvent, mutedStages]);
 
-    const { clientRef: stompRef } = useWebSocket(agenciaId, handleWSEvent, (client) => {
+    const { clientRef: stompRef, connectionStatus } = useWebSocket(agenciaId, handleWSEvent, (client) => {
         client.publish({ destination: '/app/presence', body: JSON.stringify({ username: usuario, status: 'ONLINE', agenciaId, timestamp: Date.now() }) });
 
         // Mensajes y movimientos de clientes en el kanban
@@ -281,8 +287,8 @@ export default function Kanban() {
 
     const clientesForEtapa = (etapaId) => clientes.filter(c => {
         if (c.etapa?.id !== etapaId) return false;
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
+        if (debouncedSearch) {
+            const q = debouncedSearch.toLowerCase();
             const text = `${c.nombre || ''} ${c.telefono || ''} ${c.ultimoMensajeResumen || ''}`.toLowerCase();
             return text.includes(q);
         }
@@ -291,9 +297,16 @@ export default function Kanban() {
 
     const renderBoard = () => {
         if (loading) return (
-            <div className="loading-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: 12 }}>
-                <div className="spinner"></div><p style={{ color: '#94a3b8' }}>Cargando embudo...</p>
-            </div>
+            <>
+                {[1,2,3,4].map(i => (
+                    <div key={i} className="kanban-column skeleton-col" style={{ minWidth: 300, flexShrink: 0, opacity: 0.5 }}>
+                        <div className="skeleton-pulse" style={{ height: 28, width: '60%', borderRadius: 6, marginBottom: 16 }}></div>
+                        {[1,2,3].map(j => (
+                            <div key={j} className="skeleton-pulse" style={{ height: 72, borderRadius: 10, marginBottom: 10 }}></div>
+                        ))}
+                    </div>
+                ))}
+            </>
         );
         if (etapas.length === 0) return (
             <button className="ghost-column-placeholder" onClick={() => setCreateOpen(true)} style={{ width: 320 }}>
@@ -406,7 +419,8 @@ export default function Kanban() {
 
                 {/* FIX: NotificationBell removed from here — now globally in MainLayout */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                    <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }} title={connectionStatus === 'connected' ? 'Conectado' : connectionStatus === 'reconnecting' ? 'Reconectando...' : connectionStatus === 'connecting' ? 'Conectando...' : 'Desconectado'}>
+                        <span className={`ws-status-dot ${connectionStatus}`}></span>
                         <i className="fas fa-user" style={{ opacity: 0.6 }}></i> {usuario}
                     </span>
                     <NotificationBell />

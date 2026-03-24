@@ -84,6 +84,4 @@ public class Usuario {
         return nombreCompleto != null ? nombreCompleto : username;
     }
 
-    public void setPlanActivo(boolean b) {
-    }
 }

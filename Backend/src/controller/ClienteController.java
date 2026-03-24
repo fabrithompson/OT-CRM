@@ -11,7 +11,6 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -38,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import dto.ClienteSearchResult;
 import model.Agencia;
 import model.Cliente;
 import model.Etapa;
@@ -51,6 +51,7 @@ import model.Plan;
 import service.ExcelService;
 import service.SubscriptionValidationService;
 import service.UsuarioService;
+import util.PhoneUtil;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -60,22 +61,32 @@ public class ClienteController {
     private static final String MENSAJE_USUARIO_SIN_AGENCIA = "Usuario sin agencia asignada.";
     private static final String CONTENT_TYPE_EXCEL = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    @Autowired
-    private ClienteRepository clienteRepository;
-    @Autowired
-    private EtapaRepository etapaRepository;
-    @Autowired
-    private UsuarioService usuarioService;
-    @Autowired
-    private ExcelService excelService;
-    @Autowired
-    private SubscriptionValidationService subscriptionValidationService;
-    @Autowired
-    private MensajeRepository mensajeRepository;
-    @Autowired
-    private EtiquetaRepository etiquetaRepository;
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
+    private final ClienteRepository clienteRepository;
+    private final EtapaRepository etapaRepository;
+    private final UsuarioService usuarioService;
+    private final ExcelService excelService;
+    private final SubscriptionValidationService subscriptionValidationService;
+    private final MensajeRepository mensajeRepository;
+    private final EtiquetaRepository etiquetaRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    public ClienteController(ClienteRepository clienteRepository,
+                             EtapaRepository etapaRepository,
+                             UsuarioService usuarioService,
+                             ExcelService excelService,
+                             SubscriptionValidationService subscriptionValidationService,
+                             MensajeRepository mensajeRepository,
+                             EtiquetaRepository etiquetaRepository,
+                             SimpMessagingTemplate messagingTemplate) {
+        this.clienteRepository = clienteRepository;
+        this.etapaRepository = etapaRepository;
+        this.usuarioService = usuarioService;
+        this.excelService = excelService;
+        this.subscriptionValidationService = subscriptionValidationService;
+        this.mensajeRepository = mensajeRepository;
+        this.etiquetaRepository = etiquetaRepository;
+        this.messagingTemplate = messagingTemplate;
+    }
 
     @GetMapping("/embudo/etapas")
     public ResponseEntity<List<Etapa>> obtenerEtapasEmbudo(Authentication auth) {
@@ -236,7 +247,7 @@ public class ClienteController {
     private ResultadoGuardado guardarCliente(Cliente cliente, Usuario usuario) {
         try {
             cliente.setAgencia(usuario.getAgencia());
-            cliente.setTelefono(normalizarTelefono(cliente.getTelefono()));
+            cliente.setTelefono(PhoneUtil.normalizar(cliente.getTelefono()));
 
             Optional<Cliente> existente = clienteRepository.findByAgenciaIdAndTelefono(
                     usuario.getAgencia().getId(),
@@ -275,7 +286,7 @@ public class ClienteController {
 
         long contactosNuevos = nuevosClientes.stream()
                 .filter(c -> {
-                    String telNormalizado = normalizarTelefono(c.getTelefono());
+                    String telNormalizado = PhoneUtil.normalizar(c.getTelefono());
                     return clienteRepository.findByAgenciaIdAndTelefono(agencia.getId(), telNormalizado).isEmpty();
                 })
                 .count();
@@ -404,23 +415,6 @@ public class ClienteController {
         return usuario != null && usuario.getAgencia() != null;
     }
 
-    private String normalizarTelefono(String tel) {
-        if (tel == null || tel.isBlank()) return "";
-        String clean = tel.replaceAll("\\D", "");
-        if (clean.length() > 10 && !clean.startsWith("0")) {
-            if (clean.startsWith("54") && clean.length() == 12 && !clean.startsWith("549")) {
-                return "549" + clean.substring(2);
-            }
-            return clean;
-        }
-        if (clean.length() == 10) return "549" + clean;
-        if (clean.startsWith("0")) {
-            String sinCero = clean.substring(1);
-            return sinCero.length() == 10 ? "549" + sinCero : clean;
-        }
-        return clean;
-    }
-
     private enum ResultadoGuardado {
         CREADO, OMITIDO, ERROR
     }
@@ -518,7 +512,13 @@ public class ClienteController {
         if (monto == null || accion == null) {
             return ResponseEntity.badRequest().body("{\"error\": \"Monto y acción son requeridos\"}");
         }
-        
+        if (monto <= 0 || monto > 999_999_999) {
+            return ResponseEntity.badRequest().body("{\"error\": \"El monto debe ser positivo y razonable\"}");
+        }
+        if (!"sumar".equals(accion) && !"restar".equals(accion)) {
+            return ResponseEntity.badRequest().body("{\"error\": \"Acción inválida. Usar 'sumar' o 'restar'\"}");
+        }
+
         double montoValidado = monto;
         
         Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
@@ -712,10 +712,10 @@ public class ClienteController {
     }
 
     @GetMapping("/busqueda/global")
-    public ResponseEntity<List<Map<String, Object>>> buscarGlobal(
-            @RequestParam String q, 
+    public ResponseEntity<List<ClienteSearchResult>> buscarGlobal(
+            @RequestParam String q,
             Authentication auth) {
-        
+
         Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
         if (!tieneAgenciaValida(usuario)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -726,33 +726,26 @@ public class ClienteController {
         }
 
         List<Cliente> resultados = clienteRepository.buscarGlobal(
-                usuario.getAgencia().getId(), 
-                q.trim(), 
+                usuario.getAgencia().getId(),
+                q.trim(),
                 PageRequest.of(0, 20)
         );
 
-        List<Map<String, Object>> response = resultados.stream().map(c -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", c.getId());
-            map.put("nombre", c.getNombre());
-            map.put("telefono", c.getTelefono());
-            map.put("fotoUrl", c.getFotoUrl());
-            map.put("origen", c.getOrigen());
-            map.put("etapa", c.getEtapa() != null ? c.getEtapa().getNombre() : "-");
-            map.put("dispositivo", c.getDispositivo() != null ? c.getDispositivo().getAlias() : null);
-            map.put("ultimoMensaje", c.getUltimoMensajeResumen());
-            
-            List<Map<String, String>> tags = c.getEtiquetas().stream().map(t -> {
-                Map<String, String> tMap = new HashMap<>();
-                tMap.put("nombre", t.getNombre());
-                tMap.put("color", t.getColor());
-                return tMap;
-            }).toList();
-
-            map.put("etiquetas", tags);
-
-            return map;
-        }).toList();
+        List<ClienteSearchResult> response = resultados.stream().map(c ->
+            new ClienteSearchResult(
+                c.getId(),
+                c.getNombre(),
+                c.getTelefono(),
+                c.getFotoUrl(),
+                c.getOrigen(),
+                c.getEtapa() != null ? c.getEtapa().getNombre() : "-",
+                c.getDispositivo() != null ? c.getDispositivo().getAlias() : null,
+                c.getUltimoMensajeResumen(),
+                c.getEtiquetas().stream()
+                    .map(t -> new ClienteSearchResult.TagDto(t.getNombre(), t.getColor()))
+                    .toList()
+            )
+        ).toList();
 
         return ResponseEntity.ok(response);
     }

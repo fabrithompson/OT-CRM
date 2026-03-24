@@ -54,13 +54,13 @@ public class SecurityConfig {
                                 .policy("camera=(), microphone=(), geolocation=()"))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/webhook/**", "/api/telegram/**", "/api/mp/webhook", "/api/paypal/webhook").permitAll()
+                        .requestMatchers("/ws-crm/**").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/assets/**", "/images/**", "/favicon.ico", "/webjars/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/", "/index.html", "/login", "/register", "/dashboard/**").permitAll() // ← SPA routes
-                        .requestMatchers("/**").permitAll() // ← permite que el SpaController sirva el index.html
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/v1/**").authenticated()
+                        .anyRequest().permitAll()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

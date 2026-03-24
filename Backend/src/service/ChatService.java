@@ -1,6 +1,8 @@
 package service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
@@ -29,18 +31,19 @@ public class ChatService {
     }
 
     @Transactional(readOnly = true)
-    public List<Mensaje> historial(Long clienteId) {
-        return mensajeRepository.findByClienteIdOrderByFechaHoraAsc(clienteId);
-    }
-
-    @Transactional(readOnly = true)
     public List<Mensaje> historialPaginado(Long clienteId, Long beforeId, int size) {
         int pageSize = Math.max(1, Math.min(size, 100));
+        List<Mensaje> result;
         if (beforeId != null) {
-            return mensajeRepository.findByClienteIdAndIdLessThanOrderByFechaHoraAsc(
+            result = mensajeRepository.findByClienteIdBeforeCursor(
                     clienteId, beforeId, PageRequest.of(0, pageSize));
+        } else {
+            result = mensajeRepository.findLatestByClienteId(clienteId, PageRequest.of(0, pageSize));
         }
-        return mensajeRepository.findLatestByClienteId(clienteId, PageRequest.of(0, pageSize));
+        // Both queries return DESC order; reverse to chronological ASC
+        List<Mensaje> ordered = new ArrayList<>(result);
+        Collections.reverse(ordered);
+        return ordered;
     }
 
     @Transactional(readOnly = true)

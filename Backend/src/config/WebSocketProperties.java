@@ -10,7 +10,7 @@ import lombok.Data;
 @ConfigurationProperties(prefix = "app.websocket")
 public class WebSocketProperties {
     private String endpoint = "/ws-crm";
-    private String[] allowedOrigins = {"*"};
+    private String[] allowedOrigins = {"http://localhost:5173"};
     private long heartbeatIncoming = 10000;
     private long heartbeatOutgoing = 10000;
     private int schedulerPoolSize = 4; 

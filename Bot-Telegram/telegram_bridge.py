@@ -33,6 +33,25 @@ global_loop = asyncio.new_event_loop()
 asyncio.set_event_loop(global_loop)
 
 active_clients = {}
+MAX_ACTIVE_SESSIONS = 100
+
+
+def require_bot_auth():
+    """Validate BOT_SECRET_KEY on inbound requests."""
+    token = request.headers.get('X-Bot-Token')
+    if not token or token != BOT_SECRET_KEY:
+        return jsonify({"error": "Unauthorized: Invalid or missing Bot Token"}), 401
+    return None
+
+
+def _sanitize_user_id(user_id):
+    """Prevent path traversal in user_id used for session files."""
+    if not user_id or not isinstance(user_id, str):
+        return None
+    sanitized = user_id.replace('..', '').replace('/', '').replace('\\', '')
+    if not sanitized or sanitized != user_id:
+        return None
+    return sanitized
 
 def run_async(coro):
     if global_loop.is_running():
@@ -121,6 +140,9 @@ async def get_client(user_id):
             await client.connect()
         return client
 
+    if len(active_clients) >= MAX_ACTIVE_SESSIONS:
+        raise RuntimeError(f"Maximum active sessions ({MAX_ACTIVE_SESSIONS}) reached")
+
     session_path = os.path.join(SESSION_FOLDER, user_id)
     client = TelegramClient(session_path, API_ID, API_HASH, loop=global_loop)
     await client.connect()
@@ -141,8 +163,16 @@ def status():
 
 @app.route('/request-code', methods=['POST'])
 def request_code():
+    auth_err = require_bot_auth()
+    if auth_err:
+        return auth_err
     data = request.json
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 400
     phone, user_id = data.get('phone'), data.get('user_id')
+    user_id = _sanitize_user_id(user_id)
+    if not phone or not user_id:
+        return jsonify({"error": "Missing or invalid phone/user_id"}), 400
     try:
         async def do_request():
             client = await get_client(user_id)
@@ -156,8 +186,16 @@ def request_code():
 
 @app.route('/submit-code', methods=['POST'])
 def submit_code():
+    auth_err = require_bot_auth()
+    if auth_err:
+        return auth_err
     data = request.json
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 400
     phone, code, ph_hash, user_id = data.get('phone'), data.get('code'), data.get('phone_code_hash'), data.get('user_id')
+    user_id = _sanitize_user_id(user_id)
+    if not phone or not code or not ph_hash or not user_id:
+        return jsonify({"error": "Missing required fields"}), 400
     try:
         async def do_login():
             client = await get_client(user_id)
@@ -169,8 +207,18 @@ def submit_code():
         return jsonify({"error": str(e)}), 500
 @app.route('/send-message', methods=['POST'])
 def send_message():
+    auth_err = require_bot_auth()
+    if auth_err:
+        return auth_err
     data = request.json
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 400
     user_id, chat_id, text = data.get('user_id'), data.get('chat_id'), data.get('text')
+    user_id = _sanitize_user_id(user_id)
+    if not user_id or not chat_id or not text:
+        return jsonify({"error": "Missing required fields"}), 400
+    if len(text) > 4096:
+        return jsonify({"error": "Message too long"}), 400
     try:
         async def do_send():
             client = await get_client(user_id)
@@ -212,14 +260,28 @@ async def _resolver_entidad(client, chat_id: str):
 
 @app.route('/send-media', methods=['POST'])
 def send_media():
+    auth_err = require_bot_auth()
+    if auth_err:
+        return auth_err
     data = request.json
-    user_id = data.get('user_id')
+    if not data:
+        return jsonify({"error": "Missing JSON body"}), 400
+    user_id = _sanitize_user_id(data.get('user_id'))
     chat_id = data.get('chat_id')
     media_url = data.get('media_url')
     caption = data.get('caption', '')
 
     if not user_id or not chat_id or not media_url:
         return jsonify({"error": "Missing parameters"}), 400
+
+    # SSRF protection: only allow http/https and block internal networks
+    from urllib.parse import urlparse
+    parsed = urlparse(media_url)
+    if parsed.scheme not in ('http', 'https'):
+        return jsonify({"error": "Invalid URL scheme"}), 400
+    blocked = ('localhost', '127.0.0.1', '::1', '169.254.169.254')
+    if parsed.hostname and (parsed.hostname in blocked or parsed.hostname.endswith('.internal') or parsed.hostname.endswith('.local') or parsed.hostname.startswith('10.') or parsed.hostname.startswith('192.168.')):
+        return jsonify({"error": "URL not allowed"}), 400
 
     try:
         async def do_send_media():
@@ -236,7 +298,14 @@ def send_media():
 
 @app.route('/logout', methods=['POST'])
 def logout():
-    user_id = request.json.get('user_id')
+    auth_err = require_bot_auth()
+    if auth_err:
+        return auth_err
+    if not request.json:
+        return jsonify({"error": "Missing JSON body"}), 400
+    user_id = _sanitize_user_id(request.json.get('user_id'))
+    if not user_id:
+        return jsonify({"error": "Missing or invalid user_id"}), 400
     if user_id in active_clients:
         client = active_clients[user_id]
         async def real_logout():
@@ -257,8 +326,9 @@ def startup_load_sessions():
     for f in [f for f in os.listdir(SESSION_FOLDER) if f.endswith('.session')]:
         try:
             run_async(get_client(f.replace('.session', '')))
-        except Exception:
-            pass
+            print(f"Session loaded: {f}")
+        except Exception as e:
+            print(f"Failed to load session {f}: {e}")
 startup_load_sessions()
 def loop_in_thread(loop):
     asyncio.set_event_loop(loop)
@@ -266,4 +336,4 @@ def loop_in_thread(loop):
 t = threading.Thread(target=loop_in_thread, args=(global_loop,), daemon=True)
 t.start()
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=int(os.environ.get('PORT', 5000)))
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

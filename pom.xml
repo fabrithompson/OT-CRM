@@ -10,10 +10,10 @@
     </parent>
     
     <groupId>com.crm</groupId>
-    <artifactId>crm-casino</artifactId>
+    <artifactId>OT-crm</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>crm-casino</name>
-    <description>CRM con integración de WhatsApp para Casinos</description>
+    <name>OT-crm</name>
+    <description>CRM con integración de WhatsApp y Telegram.</description>
 
     <properties>
         <java.version>21</java.version>

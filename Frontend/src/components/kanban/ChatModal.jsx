@@ -67,25 +67,28 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
 
     const subscribeWS = (id, attempt = 0) => {
         if (!stompClient?.connected) {
-            if (attempt < 5) setTimeout(() => subscribeWS(id, attempt + 1), 1000);
+            if (attempt < 10) setTimeout(() => subscribeWS(id, attempt + 1), 500 + attempt * 300);
             return;
         }
-        const s1 = stompClient.subscribe(`/topic/chat/${id}`, (msg) => handleInboundMessage(JSON.parse(msg.body)));
-        const s2 = stompClient.subscribe(`/topic/chat/${id}/status`, (msg) => handleStatusUpdate(JSON.parse(msg.body)));
+        subscriptionsRef.current.forEach(s => { try { s.unsubscribe(); } catch {} });
+        const s1 = stompClient.subscribe(`/topic/chat/${id}`, (msg) => { try { handleInboundMessage(JSON.parse(msg.body)); } catch {} });
+        const s2 = stompClient.subscribe(`/topic/chat/${id}/status`, (msg) => { try { handleStatusUpdate(JSON.parse(msg.body)); } catch {} });
         subscriptionsRef.current = [s1, s2];
     };
 
-    const loadChat = async (id, retry = true) => {
+    const loadChat = async (id, attempt = 0) => {
         setLoading(true);
-        setMessages([]);
-        setMedia([]);
+        if (attempt === 0) { setMessages([]); setMedia([]); }
         try {
-            const [resC, resM] = await Promise.all([
+            const [resC, resM] = await Promise.allSettled([
                 api.get(`/clientes/${id}`),
-                api.get(`/chat/${id}/historial`)
+                api.get(`/chat/${id}/historial?size=50`)
             ]);
-            setCliente(resC.data);
-            const msgs = resM.data;
+            if (resC.status === 'rejected' || resM.status === 'rejected') {
+                throw new Error(resC.reason?.message || resM.reason?.message || 'Error cargando chat');
+            }
+            setCliente(resC.value.data);
+            const msgs = resM.value.data;
             setMessages(msgs);
             if (msgs.length > 0) {
                 setMsgCursor(msgs[0].id);
@@ -97,9 +100,9 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
             markRead(id);
             subscribeWS(id);
         } catch (e) {
-            if (retry) {
-                await new Promise(r => setTimeout(r, 1500));
-                return loadChat(id, false);
+            if (attempt < 2) {
+                await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                return loadChat(id, attempt + 1);
             }
             toast('Error', 'No se pudo abrir el chat', '#ef4444');
             onClose();
@@ -118,7 +121,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
     const loadOlder = async () => {
         if (msgExhausted || !msgCursor || !clienteId) return;
         try {
-            const res = await api.get(`/chat/${clienteId}/historial`);
+            const res = await api.get(`/chat/${clienteId}/historial?beforeId=${msgCursor}&size=50`);
             const older = res.data;
             if (older.length > 0) setMsgCursor(older[0].id);
             if (older.length < 50) setMsgExhausted(true);
@@ -133,9 +136,17 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         const text = msgInput.trim();
         if (!text || !clienteId) return;
         setMsgInput('');
+        const tempId = `temp-${Date.now()}`;
+        const optimistic = { id: tempId, contenido: text, esSalida: true, autor: usuario || 'Agente', fechaHora: new Date().toISOString(), tipo: 'TEXTO', estado: 'SENDING' };
+        setMessages(prev => [...prev, optimistic]);
+        scrollToBottom();
         try {
             await api.post(`/chat/${clienteId}/send?text=${encodeURIComponent(text)}&autor=${encodeURIComponent(usuario || 'Agente')}`);
-        } catch { toast('Error', 'No se pudo enviar', '#ef4444'); }
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...m, estado: 'SENT' } : m));
+        } catch {
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...m, estado: 'FAILED' } : m));
+            toast('Error', 'No se pudo enviar', '#ef4444');
+        }
     };
 
     const uploadFile = async (file) => {
@@ -535,11 +546,11 @@ function MessageBubble({ msg }) {
         return <span className="msg-ticks"><i className={cls} style={{ marginLeft: 5, fontSize: 10, color }}></i></span>;
     };
     const renderContent = () => {
-        if ((msg.tipo === 'IMAGEN' || msg.tipo === 'STICKER') && msg.urlArchivo) return <button style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => window.open(msg.urlArchivo)}><img src={msg.urlArchivo} className={msg.tipo === 'STICKER' ? 'msg-sticker' : 'msg-img'} style={msg.tipo === 'STICKER' ? { width: 120, height: 120, objectFit: 'contain' } : {}} alt="" /></button>;
+        if ((msg.tipo === 'IMAGEN' || msg.tipo === 'STICKER') && msg.urlArchivo) return <button style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => window.open(msg.urlArchivo)}><img src={msg.urlArchivo} loading="lazy" className={msg.tipo === 'STICKER' ? 'msg-sticker' : 'msg-img'} style={msg.tipo === 'STICKER' ? { width: 120, height: 120, objectFit: 'contain' } : {}} alt="" /></button>;
         
         // FIX SONARLINT S4084
         if (msg.tipo === 'VIDEO' && msg.urlArchivo) return (
-            <video controls src={msg.urlArchivo} className="msg-video">
+            <video controls preload="none" src={msg.urlArchivo} className="msg-video">
                 <track kind="captions" />
             </video>
         );
@@ -548,7 +559,8 @@ function MessageBubble({ msg }) {
         if (msg.tipo === 'AUDIO' && msg.urlArchivo) return <AudioPlayer src={msg.urlArchivo} sent={msg.esSalida} />;
         return null;
     };
-    const text = msg.contenido?.replace(/\n/g, '<br>') || '';
+    const escapeHtml = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const text = msg.contenido ? escapeHtml(msg.contenido).replace(/\n/g, '<br>') : '';
     return (
         <div className={className} data-wa-id={msg.whatsappId || ''}>
             {msg.esSalida && <span className="msg-author" style={{ fontSize: '0.75rem', opacity: 0.7 }}>{msg.autor || 'Agente'}</span>}

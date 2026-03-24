@@ -27,6 +27,7 @@ import TelegramVincular from './pages/TelegramVincular';
 import Contactos from './pages/Contactos';
 import MainLayout from './components/MainLayout';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import RespuestasRapidas from './pages/RespuestasRapidas';
 import Perfil from './pages/Perfil';
 import Planes from './pages/Planes';
@@ -35,6 +36,7 @@ import MiSuscripcion from './pages/MiSuscripcion';
 
 function App() {
   return (
+    <ThemeProvider>
     <ToastProvider>
       <Router>
         <TitleUpdater />
@@ -57,6 +59,7 @@ function App() {
         </Routes>
       </Router>
     </ToastProvider>
+    </ThemeProvider>
   );
 }
 

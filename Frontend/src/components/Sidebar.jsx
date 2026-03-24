@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Sidebar() {
     const navigate = useNavigate();
     const [usuario, setUsuario] = useState(null);
+    const { theme, toggle: toggleTheme } = useTheme();
 
     useEffect(() => {
         const loadPerfil = () => {
@@ -79,6 +81,12 @@ export default function Sidebar() {
             </ul>
 
             <ul className="menu-bottom">
+                <li className="menu-item">
+                    <button type="button" onClick={toggleTheme} className="logout-btn" style={{ background: 'transparent', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+                        <i className={theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon'}></i>
+                        <span className="link-text">{theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}</span>
+                    </button>
+                </li>
                 <li className="menu-item">
                     <NavLink to="/perfil" className={({ isActive }) => isActive ? 'active' : ''}>
                         <i className="fa-solid fa-user"></i>

@@ -119,7 +119,7 @@ export default function Checkout() {
         setError('');
         try {
             const endpoint = metodo === 'mp'
-                ? `/mp/crear-suscripcion?planId=${plan.id}`
+                ? `/mp/crear-suscripcion?planId=${plan.id}&payerEmail=${encodeURIComponent(email)}`
                 : `/paypal/crear-suscripcion?planId=${plan.id}`;
             const res = await api.post(endpoint);
             const url = res.data.initPoint || res.data.paypalUrl;
@@ -191,13 +191,34 @@ export default function Checkout() {
                                 })}
                             </div>
 
-                            {metodo === 'mp' && email && (
+                            {metodo === 'mp' && (
                                 <div style={S.aviso}>
-                                    <i className="fas fa-info-circle" style={{ color: '#60a5fa', flexShrink: 0 }} />
-                                    <p style={{ color: '#93c5fd', fontSize: '0.82rem', margin: 0, lineHeight: 1.45 }}>
-                                        Usá tu cuenta de Mercado Pago vinculada a:
-                                        <strong style={{ color: '#fff', display: 'block', marginTop: 2 }}>{email}</strong>
-                                    </p>
+                                    <i className="fas fa-info-circle" style={{ color: '#60a5fa', flexShrink: 0, marginTop: 2 }} />
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ color: '#93c5fd', fontSize: '0.82rem', margin: '0 0 8px 0', lineHeight: 1.45 }}>
+                                            Email de tu cuenta de Mercado Pago:
+                                        </p>
+                                        <input
+                                            type="email"
+                                            value={email}
+                                            onChange={e => setEmail(e.target.value)}
+                                            placeholder="tu@email.com"
+                                            style={{
+                                                width: '100%',
+                                                background: 'rgba(255,255,255,0.07)',
+                                                border: '1px solid rgba(59,130,246,0.35)',
+                                                borderRadius: 8,
+                                                padding: '7px 10px',
+                                                color: '#fff',
+                                                fontSize: '0.85rem',
+                                                outline: 'none',
+                                                boxSizing: 'border-box',
+                                            }}
+                                        />
+                                        <p style={{ color: '#6b8fbd', fontSize: '0.75rem', margin: '5px 0 0 0' }}>
+                                            Modificalo si es distinto al email del CRM.
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>

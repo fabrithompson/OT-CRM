@@ -76,7 +76,8 @@ public class WhatsAppService {
             SimpMessagingTemplate messaging,
             TelegramBridgeService bridgeService,
             SubscriptionValidationService subscriptionValidationService,
-            CloudStorageService cloudStorageService) {
+            CloudStorageService cloudStorageService,
+            RestTemplate restTemplate) {
         this.subscriptionValidationService = subscriptionValidationService;
         this.cloudStorageService = cloudStorageService;
         this.clienteRepository = clienteRepository;
@@ -85,7 +86,7 @@ public class WhatsAppService {
         this.dispositivoRepository = dispositivoRepository;
         this.messaging = messaging;
         this.bridgeService = bridgeService;
-        this.http = new RestTemplate();
+        this.http = restTemplate;
     }
 
     public record MensajeEntranteRequest(String from, String texto, String nombreSender, String sessionId,
@@ -684,34 +685,7 @@ public class WhatsAppService {
     }
 
     private String limpiarTelefono(String tel) {
-        if (tel == null || tel.isBlank())
-            return "";
-        String base = extraerBaseNumerica(tel);
-        String clean = base.replaceAll("\\D", "");
-        return formatearNumeroArgentina(clean);
-    }
-
-    private static String extraerBaseNumerica(String tel) {
-        return tel.split("@")[0].split(":")[0];
-    }
-
-    private static String formatearNumeroArgentina(String clean) {
-        if (clean.length() > 10 && !clean.startsWith("0")) {
-            if (clean.startsWith("54") && clean.length() == 12 && !clean.startsWith("549")) {
-                return "549" + clean.substring(2);
-            }
-            return clean;
-        }
-        if (clean.length() == 10)
-            return "549" + clean;
-        return formatearConCeroInicial(clean);
-    }
-
-    private static String formatearConCeroInicial(String clean) {
-        if (!clean.startsWith("0"))
-            return clean;
-        String sinCero = clean.substring(1);
-        return sinCero.length() == 10 ? "549" + sinCero : clean;
+        return util.PhoneUtil.normalizar(tel);
     }
 
     private Mensaje.TipoMensaje inferirTipoArchivo(String filename, String mimeType) {

@@ -70,6 +70,7 @@ public class MercadoPagoController {
     @PostMapping("/api/v1/mp/crear-suscripcion")
     public ResponseEntity<Map<String, Object>> crearSuscripcion(
             @RequestParam Long planId,
+            @RequestParam(required = false) String payerEmail,
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
             @SuppressWarnings("null")
@@ -78,9 +79,12 @@ public class MercadoPagoController {
             Usuario usuario = usuarioRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
+            // Usar el email provisto por el usuario en el checkout, o el del CRM como fallback
+            String emailPagador = (payerEmail != null && !payerEmail.isBlank()) ? payerEmail : usuario.getEmail();
+
             Map<String, Object> body = new HashMap<>();
             body.put("reason",              "CRM O'T - Plan " + plan.getNombre());
-            body.put("payer_email",         usuario.getEmail());
+            body.put("payer_email",         emailPagador);
             body.put("back_url",            baseUrl + "/planes?pago=exitoso");
             body.put("external_reference",  usuario.getId() + "|" + planId);
             body.put("status",              "pending");
@@ -204,7 +208,13 @@ public class MercadoPagoController {
     private void activarPlanDesdeRef(String externalRef) {
         try {
             String[] partes = externalRef.split("\\|");
+            if (partes.length < 2) {
+                log.error("External reference con formato invalido: '{}'", externalRef);
+                return;
+            }
             planService.activarPlanPorPago(Long.parseLong(partes[0]), Long.parseLong(partes[1]), "Mercado Pago");
+        } catch (NumberFormatException e) {
+            log.error("External reference con IDs no numericos: '{}'", externalRef);
         } catch (RuntimeException e) {
             log.error("Error activando plan desde ref '{}': {}", externalRef, e.getMessage());
         }
