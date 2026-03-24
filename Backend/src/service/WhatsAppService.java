@@ -46,7 +46,7 @@ public class WhatsAppService {
     private static final Logger log = LoggerFactory.getLogger(WhatsAppService.class);
 
     private static final String CLIENTE_DEFAULT_PREFIX = "Cliente ";
-    private static final String API_KEY_HEADER = "x-api-key";
+    private static final String API_KEY_HEADER = "X-Bot-Token";
     private static final String ESTADO_CONNECTED = "CONNECTED";
     private static final String ESTADO_DISCONNECTED = "DISCONNECTED";
 
@@ -188,9 +188,9 @@ public class WhatsAppService {
     }
 
     @Transactional
-    public void enviarTextoDesdeCrm(Cliente cliente, String texto, String autor) {
+    public boolean enviarTextoDesdeCrm(Cliente cliente, String texto, String autor) {
         if (cliente == null || cliente.getAgencia() == null) {
-            return;
+            return false;
         }
 
         Dispositivo disp = cliente.getDispositivo();
@@ -201,7 +201,7 @@ public class WhatsAppService {
 
         if (disp == null) {
             log.error("No hay ningún bot conectado para la agencia {}.", cliente.getAgencia().getId());
-            return;
+            return false;
         }
 
         String telefonoDestino = limpiarTelefono(cliente.getTelefono());
@@ -209,7 +209,9 @@ public class WhatsAppService {
 
         if (waId != null) {
             guardarYNotificarSalida(cliente, texto, Mensaje.TipoMensaje.TEXTO, waId, null, autor);
+            return true;
         }
+        return false;
     }
 
     @Transactional
@@ -431,7 +433,7 @@ public class WhatsAppService {
             case "READ", "PLAYED" ->
                 Mensaje.EstadoMensaje.READ;
             default ->
-                Mensaje.EstadoMensaje.SENT;
+                Mensaje.EstadoMensaje.ENVIADO;
         };
     }
 
@@ -439,7 +441,7 @@ public class WhatsAppService {
         if (actual == Mensaje.EstadoMensaje.READ) {
             return false;
         }
-        return !(actual == Mensaje.EstadoMensaje.DELIVERED && nuevo == Mensaje.EstadoMensaje.SENT);
+        return !(actual == Mensaje.EstadoMensaje.DELIVERED && nuevo == Mensaje.EstadoMensaje.ENVIADO);
     }
 
     @Transactional
@@ -516,7 +518,7 @@ public class WhatsAppService {
         m.setEsSalida(false);
         m.setFechaHora(ahoraArgentina());
         m.setWhatsappId("IN_" + System.currentTimeMillis());
-        m.setEstado(Mensaje.EstadoMensaje.LEIDO);
+        m.setEstado(Mensaje.EstadoMensaje.READ);
 
         if (req.mediaUrl() != null && !req.mediaUrl().isEmpty()) {
             m.setUrlArchivo(req.mediaUrl());

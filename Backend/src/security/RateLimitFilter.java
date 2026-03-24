@@ -2,13 +2,15 @@ package security;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
@@ -22,7 +24,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Rate limiting por IP para proteger endpoints críticos contra brute force y abuso.
- * Usa Bucket4j en memoria — suficiente para una instancia (Railway single-container).
+ * Usa Bucket4j en memoria con Caffeine (TTL 10 min, max 10k IPs) para evitar memory leak.
  * Si escalás a múltiples instancias, migrar a Redis.
  */
 @Component
@@ -30,13 +32,22 @@ import jakarta.servlet.http.HttpServletResponse;
 public class RateLimitFilter implements Filter {
 
     // Login/register: 10 requests por minuto por IP (protección contra brute force)
-    private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Bucket> authBuckets = Caffeine.newBuilder()
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .maximumSize(10_000)
+            .build();
 
     // Webhooks: 60 requests por minuto por IP (MercadoPago/PayPal pueden hacer ráfagas)
-    private final Map<String, Bucket> webhookBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Bucket> webhookBuckets = Caffeine.newBuilder()
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .maximumSize(10_000)
+            .build();
 
     // API general: 120 requests por minuto por IP
-    private final Map<String, Bucket> generalBuckets = new ConcurrentHashMap<>();
+    private final Cache<String, Bucket> generalBuckets = Caffeine.newBuilder()
+            .expireAfterAccess(10, TimeUnit.MINUTES)
+            .maximumSize(10_000)
+            .build();
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -49,12 +60,12 @@ public class RateLimitFilter implements Filter {
 
         Bucket bucket;
         if (path.startsWith("/api/auth/") || path.startsWith("/api/v1/auth/")) {
-            bucket = authBuckets.computeIfAbsent(ip, k -> createBucket(10, Duration.ofMinutes(1)));
+            bucket = authBuckets.get(ip, k -> createBucket(10, Duration.ofMinutes(1)));
         } else if (path.startsWith("/api/webhook/") || path.startsWith("/api/mp/webhook")
                 || path.startsWith("/api/paypal/webhook") || path.startsWith("/api/telegram/")) {
-            bucket = webhookBuckets.computeIfAbsent(ip, k -> createBucket(60, Duration.ofMinutes(1)));
+            bucket = webhookBuckets.get(ip, k -> createBucket(60, Duration.ofMinutes(1)));
         } else if (path.startsWith("/api/")) {
-            bucket = generalBuckets.computeIfAbsent(ip, k -> createBucket(120, Duration.ofMinutes(1)));
+            bucket = generalBuckets.get(ip, k -> createBucket(120, Duration.ofMinutes(1)));
         } else {
             // Assets estáticos, SPA — sin rate limit
             chain.doFilter(request, response);
@@ -81,7 +92,12 @@ public class RateLimitFilter implements Filter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        // Railway/proxies pasan la IP real en X-Forwarded-For
+        // Cloudflare pasa la IP real del cliente en CF-Connecting-IP (no spoofeable)
+        String cfIp = request.getHeader("CF-Connecting-IP");
+        if (cfIp != null && !cfIp.isBlank()) {
+            return cfIp.trim();
+        }
+        // Fallback para Railway/otros proxies
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
             return xff.split(",")[0].trim();

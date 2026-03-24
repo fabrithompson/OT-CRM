@@ -11,6 +11,7 @@ import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,6 +42,7 @@ public class PerfilController {
         this.subscriptionValidationService = subscriptionValidationService;
     }
 
+    @Transactional(readOnly = true)
     @GetMapping
     public ResponseEntity<?> verPerfil(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {

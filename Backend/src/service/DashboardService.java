@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import model.Usuario;
 import repository.ClienteRepository;
@@ -24,6 +25,7 @@ public class DashboardService {
         this.usuarioRepository = usuarioRepository;
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> getDashboardData(Usuario usuario) {
         if (usuario == null) return Collections.emptyMap();
 

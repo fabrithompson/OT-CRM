@@ -27,7 +27,7 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
     List<Mensaje> findUltimosEntrantesPorCliente(@Param("clienteId") Long clienteId);
 
     @Query("SELECT COUNT(m) FROM Mensaje m WHERE m.cliente.id = :clienteId "
-            + "AND m.estado NOT IN (model.Mensaje.EstadoMensaje.READ, model.Mensaje.EstadoMensaje.LEIDO)")
+            + "AND m.estado NOT IN (model.Mensaje.EstadoMensaje.READ)")
     long countUnreadByCliente(@Param("clienteId") Long clienteId);
 
     Optional<Mensaje> findByWhatsappId(String whatsappId);

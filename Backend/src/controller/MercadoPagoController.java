@@ -1,7 +1,11 @@
 package controller;
 
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +21,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -42,6 +47,9 @@ public class MercadoPagoController {
 
     @Value("${mercadopago.access.token}")
     private String mpAccessToken;
+
+    @Value("${mercadopago.webhook.secret:}")
+    private String mpWebhookSecret;
 
     @Value("${app.base.url}")
     private String baseUrl;
@@ -132,12 +140,24 @@ public class MercadoPagoController {
 
     @PostMapping("/api/mp/webhook")
     public ResponseEntity<String> recibirWebhook(
+            @RequestHeader(value = "x-signature", required = false) String xSignature,
+            @RequestHeader(value = "x-request-id", required = false) String xRequestId,
             @RequestBody(required = false) String body,
             @RequestParam(required = false) String type,
             @RequestParam(required = false, name = "data.id") String dataId) {
         try {
             log.info("WEBHOOK MP - type: {} - id: {}", type, dataId);
             if (dataId == null || type == null) return ResponseEntity.ok("OK");
+
+            // Verificar firma HMAC-SHA256 si el secret está configurado
+            if (mpWebhookSecret != null && !mpWebhookSecret.isBlank()) {
+                if (!verificarFirmaMercadoPago(xSignature, xRequestId, dataId)) {
+                    log.warn("Webhook MercadoPago con firma inválida rechazado");
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+                }
+            } else {
+                log.warn("MERCADOPAGO_WEBHOOK_SECRET no configurado — omitiendo verificación de firma");
+            }
 
             // Idempotencia: si ya procesamos este evento, responder OK sin reprocesar
             String eventKey = "MP_" + type + "_" + dataId;
@@ -233,5 +253,38 @@ public class MercadoPagoController {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(mpAccessToken);
         return (ResponseEntity<Map<String, Object>>) (ResponseEntity<?>) restTemplate.exchange("https://api.mercadopago.com" + path, method, new HttpEntity<>(body, headers), Map.class);
+    }
+
+    private boolean verificarFirmaMercadoPago(String xSignature, String xRequestId, String dataId) {
+        try {
+            if (xSignature == null || xSignature.isBlank()) return false;
+
+            // Parsear ts y v1 de "ts=<timestamp>,v1=<hash>"
+            String ts = null;
+            String v1 = null;
+            for (String part : xSignature.split(",")) {
+                String[] kv = part.trim().split("=", 2);
+                if (kv.length == 2) {
+                    if ("ts".equals(kv[0])) ts = kv[1];
+                    else if ("v1".equals(kv[0])) v1 = kv[1];
+                }
+            }
+            if (ts == null || v1 == null) return false;
+
+            // Construir el mensaje firmado: id:<dataId>;request-id:<xRequestId>;ts:<ts>;
+            String manifest = "id:" + dataId + ";request-id:" + (xRequestId != null ? xRequestId : "") + ";ts:" + ts + ";";
+
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(mpWebhookSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] computed = mac.doFinal(manifest.getBytes(StandardCharsets.UTF_8));
+
+            // Convertir a hex y comparar
+            StringBuilder sb = new StringBuilder();
+            for (byte b : computed) sb.append(String.format("%02x", b));
+            return sb.toString().equals(v1);
+        } catch (Exception e) {
+            log.error("Error verificando firma MercadoPago: {}", e.getMessage());
+            return false;
+        }
     }
 }

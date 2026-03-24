@@ -151,6 +151,12 @@
             <version>8.10.1</version>
         </dependency>
 
+        <!-- Caffeine — cache con TTL para evitar memory leak en RateLimitFilter -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- JSON Structured Logging (produccion) -->
         <dependency>
             <groupId>net.logstash.logback</groupId>

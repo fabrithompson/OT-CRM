@@ -83,12 +83,17 @@ public class ChatController {
 
         Cliente cliente = validarAccesoCliente(clienteId, userDetails);
 
+        boolean enviado;
         if ("TELEGRAM".equalsIgnoreCase(cliente.getOrigen())) {
             telegramBridgeService.enviarMensajeDesdeCrm(cliente, texto, nombreAutor);
+            enviado = true;
         } else {
-            whatsAppService.enviarTextoDesdeCrm(cliente, texto, nombreAutor);
+            enviado = whatsAppService.enviarTextoDesdeCrm(cliente, texto, nombreAutor);
         }
 
+        if (!enviado) {
+            return ResponseEntity.status(503).build();
+        }
         return ResponseEntity.ok().build();
     }
 

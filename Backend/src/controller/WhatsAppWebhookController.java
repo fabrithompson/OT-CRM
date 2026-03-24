@@ -1,7 +1,5 @@
 package controller;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -22,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.annotation.PreDestroy;
 import repository.DispositivoRepository;
 import service.WhatsAppService;
+import util.SecurityUtil;
 
 /**
  * Controlador separado para los webhooks del bot de WhatsApp.
@@ -67,7 +66,7 @@ public class WhatsAppWebhookController {
             @RequestBody WebhookPayload payload) {
 
         if (payload == null) return ResponseEntity.badRequest().body("Payload invalido");
-        if (!constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (!SecurityUtil.constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
         msgExecutor.submit(() -> {
             try {
@@ -90,7 +89,7 @@ public class WhatsAppWebhookController {
             @RequestHeader(value = HEADER_API_KEY, required = false) String apiKey,
             @RequestBody StatusPayload payload) {
 
-        if (!constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (!SecurityUtil.constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         if (payload == null || payload.sessionId() == null) return ResponseEntity.badRequest().body("Payload invalido");
 
         dispositivoRepository.findBySessionId(payload.sessionId()).ifPresent(d -> {
@@ -122,7 +121,7 @@ public class WhatsAppWebhookController {
             @RequestHeader(value = HEADER_API_KEY, required = false) String apiKey,
             @RequestBody WhatsAppService.MensajeStatusUpdate dto) {
 
-        if (!constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (!SecurityUtil.constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         CompletableFuture.runAsync(() -> {
             try {
                 whatsAppService.procesarCambioDeEstado(dto);
@@ -146,11 +145,4 @@ public class WhatsAppWebhookController {
         }
     }
 
-    private boolean constantTimeEquals(String a, String b) {
-        if (a == null || b == null) return false;
-        return MessageDigest.isEqual(
-                a.getBytes(StandardCharsets.UTF_8),
-                b.getBytes(StandardCharsets.UTF_8)
-        );
-    }
 }
