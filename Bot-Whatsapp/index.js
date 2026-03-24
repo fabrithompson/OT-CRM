@@ -40,11 +40,11 @@ const PUBLIC_URL = process.env.RAILWAY_STATIC_URL
     : `http://localhost:${PORT}`;
 
 const SESSION_FOLDER_NAME = process.env.RAILWAY_VOLUME_MOUNT_PATH
-    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'auth_info_v2')
+    ? process.env.RAILWAY_VOLUME_MOUNT_PATH
     : path.join(__dirname, 'auth_info_v2');
 
 const UPLOADS_FOLDER = process.env.RAILWAY_VOLUME_MOUNT_PATH
-    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'public', 'uploads')
+    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'uploads')
     : path.join(__dirname, 'public', 'uploads');
 
 // Carpeta para mensajes que no se pudieron enviar a Java (persistencia ante caidas)
