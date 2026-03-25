@@ -4,7 +4,7 @@
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
@@ -105,7 +105,7 @@ El proyecto sigue una arquitectura de **microservicios distribuidos** orquestado
                         |          |
               +---------+--+  +----+----------+
               | Bot WhatsApp|  | Bot Telegram  |
-              | Node.js 20  |  | Python 3.8+   |
+              | Node.js 20  |  | Python 3.11   |
               | Baileys     |  | Telethon      |
               | Socket.io   |  | Flask         |
               +-------------+  +---------------+
@@ -153,8 +153,8 @@ OT-crm/
 |       |-- exception/       # Excepciones custom
 |       |-- initializer/     # DataInitializer (planes, admin, etapas)
 |       |-- listener/        # WebSocket presence events
-|       |-- model/           # 11 entidades JPA
-|       |-- repository/      # 11 repositorios Spring Data
+|       |-- model/           # 12 entidades JPA
+|       |-- repository/      # 12 repositorios Spring Data
 |       |-- security/        # JWT, filtros, interceptores
 |       |-- service/         # 20 servicios de logica de negocio
 |       |-- application.properties
@@ -162,10 +162,10 @@ OT-crm/
 |-- Frontend/
 |   |-- src/
 |       |-- components/      # KanbanCard, ChatModal, Sidebar, etc.
-|       |-- context/         # ToastContext
+|       |-- context/         # UserContext, ToastContext
 |       |-- hooks/           # useWebSocket, useAudio
 |       |-- pages/           # 11 paginas (Auth, Dashboard, Kanban, etc.)
-|       |-- utils/           # api.js (Axios config)
+|       |-- utils/           # api.js (Axios config), notifications.js
 |       |-- App.jsx          # Rutas principales
 |
 |-- Bot-Whatsapp/
@@ -214,7 +214,7 @@ OT-crm/
 | `TableroSocketController` | WebSocket | Actualizaciones en tiempo real del tablero |
 | `SpaController` | `/**` | Sirve el index.html del SPA para rutas del frontend |
 
-### Modelos (11 entidades JPA)
+### Modelos (12 entidades JPA)
 
 | Entidad | Descripcion |
 |---------|-------------|
@@ -229,6 +229,7 @@ OT-crm/
 | `Etiqueta` | Sistema de tags con colores para clientes |
 | `RespuestaRapida` | Templates de respuestas predefinidas |
 | `SolicitudUnionEquipo` | Solicitudes de ingreso a un equipo |
+| `ProcessedWebhook` | Idempotencia de webhooks para evitar procesamiento duplicado |
 
 ### Servicios Clave (20 servicios)
 
@@ -269,8 +270,8 @@ OT-crm/
 | `Dashboard.jsx` | `/dashboard` | KPIs, equipo, presencia, estado de dispositivos |
 | `Kanban.jsx` | `/kanban` | Tablero drag & drop con chat integrado |
 | `Contactos.jsx` | `/contactos` | Lista de contactos, importar/exportar Excel, busqueda |
-| `WhatsAppVincular.jsx` | `/vincular-whatsapp` | Vincular dispositivo WhatsApp via QR |
-| `TelegramVincular.jsx` | `/vincular-telegram` | Conectar bot de Telegram |
+| `WhatsAppVincular.jsx` | `/whatsapp-vincular` | Vincular dispositivo WhatsApp via QR |
+| `TelegramVincular.jsx` | `/telegram-vincular` | Conectar bot de Telegram |
 | `Planes.jsx` | `/planes` | Comparacion y seleccion de planes |
 | `Checkout.jsx` | `/checkout` | Procesamiento de pagos |
 | `MiSuscripcion.jsx` | `/mi-suscripcion` | Detalles de plan actual, miembros del equipo |
@@ -295,6 +296,7 @@ OT-crm/
 | `@stomp/stompjs` | Cliente WebSocket STOMP |
 | `sockjs-client` | Fallback para WebSocket |
 | `emoji-picker-react` | Selector de emojis en el chat |
+| `@fortawesome/fontawesome-free` | Iconos (bundled localmente) |
 
 ---
 
@@ -316,7 +318,7 @@ OT-crm/
 
 ## Bot de Telegram
 
-**Stack:** Python 3.8+ / Flask / Telethon / httpx
+**Stack:** Python 3.11 / Flask / Telethon / httpx
 
 ### Funcionalidades
 
@@ -380,22 +382,34 @@ El plan del usuario con rol **ADMIN** aplica a todos los miembros de la agencia.
 
 ### Autenticacion y Autorizacion
 
-- **JWT (JSON Web Tokens)** con expiracion de 10 horas.
+- **JWT (JSON Web Tokens)** con expiracion configurable (default 10 horas).
 - **BCrypt** para hash de contrasenas.
 - **Spring Security** con sesiones stateless.
-- **Verificacion de email** con codigos de 6 digitos.
-- **Recuperacion de contrasena** via email con tokens temporales.
+- **Verificacion de email** con codigos de 6 digitos y expiracion de 15 minutos.
+- **Recuperacion de contrasena** via email con codigos temporales y expiracion.
+- **Comparacion timing-safe** de codigos con `MessageDigest.isEqual()` para prevenir ataques de timing.
 
 ### Proteccion de Endpoints
 
 - **Publicos:** `/api/v1/auth/**`, `/api/webhook/**`, `/api/telegram/**`, webhooks de pago.
 - **Protegidos:** Todos los demas endpoints requieren JWT valido.
 - **CORS:** Whitelist de origenes permitidos.
+- **Rate Limiting:** Bucket4j con limites diferenciados por endpoint (auth: 10 req/min, webhooks: 60 req/min, API general: 120 req/min).
+- **Correlation IDs:** Cada request recibe un ID unico para trazabilidad en logs.
+- **Ownership checks:** Los endpoints de eliminacion/modificacion verifican que el recurso pertenezca a la agencia del usuario.
 
 ### Webhooks
 
-- Autenticacion bot-to-backend via `BOT_SECRET_KEY` en headers.
+- Autenticacion bot-to-backend via `BOT_SECRET_KEY` en headers con comparacion constant-time.
 - Validacion de payloads en webhooks de MercadoPago y PayPal.
+
+### Headers de Seguridad
+
+- **HSTS** con max-age de 1 ano e includeSubDomains.
+- **X-Frame-Options: DENY** para prevencion de clickjacking.
+- **X-Content-Type-Options: nosniff** para prevenir MIME sniffing.
+- **Referrer-Policy: strict-origin-when-cross-origin**.
+- **Permissions-Policy:** Camara, microfono y geolocalizacion deshabilitados.
 
 ### Gestion de Secretos
 
@@ -430,9 +444,11 @@ El frontend se compila y se sirve como archivos estaticos desde Spring Boot en u
 docker-compose up --build
 ```
 
-Levanta 2 servicios:
-- **backend** (puerto 8080) - Spring Boot + React estatifico
+Levanta 4 servicios:
+- **postgres** (puerto 5432) - PostgreSQL 16 con volumen persistente
+- **backend** (puerto 8080) - Spring Boot + React estatico
 - **Bot-Whatsapp** (puerto 3000) - Bot de WhatsApp con volumen persistente para sesiones
+- **Bot-Telegram** (puerto 5000) - Bot de Telegram con Telethon
 
 ### Infraestructura Cloud
 
@@ -448,7 +464,7 @@ Levanta 2 servicios:
 - Docker y Docker Compose
 - Java 21 (opcional, si se corre fuera de Docker)
 - Node.js 20+ (opcional, para desarrollo del bot)
-- Python 3.8+ (opcional, para el bot de Telegram)
+- Python 3.11 (opcional, para el bot de Telegram)
 - PostgreSQL 16+ (o usar uno remoto)
 
 ### Paso a paso
