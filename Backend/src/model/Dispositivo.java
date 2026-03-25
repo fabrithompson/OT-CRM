@@ -68,6 +68,7 @@ public class Dispositivo {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id")
+    @JsonIgnore
     private Usuario usuario;
 
     @Column(nullable = false)

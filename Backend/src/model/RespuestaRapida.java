@@ -39,14 +39,14 @@ public class RespuestaRapida {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String respuesta; 
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "usuario_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "agencia"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "agencia", "plan"})
     private Usuario usuario;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "agencia_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "usuarios"})
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "usuarios", "dispositivos", "clientes"})
     private Agencia agencia;
 
     @CreationTimestamp

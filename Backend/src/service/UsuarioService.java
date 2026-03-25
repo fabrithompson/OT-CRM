@@ -249,6 +249,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public void iniciarRecuperacionPassword(String email) {
         Usuario usuario = usuarioRepository.findByEmail(email)

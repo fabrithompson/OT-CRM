@@ -137,7 +137,7 @@ public class PayPalWebhookController {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "null" })
     private boolean verificarFirmaPayPal(String transmissionId, String transmissionTime,
             String certUrl, String authAlgo, String transmissionSig, String body) {
         try {
@@ -149,6 +149,7 @@ public class PayPalWebhookController {
             HttpHeaders tokenHeaders = new HttpHeaders();
             tokenHeaders.setBasicAuth(paypalClientId, paypalClientSecret);
             tokenHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            @SuppressWarnings("rawtypes")
             ResponseEntity<Map> tokenResp = restTemplate.exchange(
                     baseUrl + "/v1/oauth2/token",
                     HttpMethod.POST,
@@ -170,6 +171,7 @@ public class PayPalWebhookController {
             verifyBody.put("webhook_id", paypalWebhookId);
             verifyBody.put("webhook_event", new ObjectMapper().readTree(body));
 
+            @SuppressWarnings("rawtypes")
             ResponseEntity<Map> verifyResp = restTemplate.exchange(
                     baseUrl + "/v1/notifications/verify-webhook-signature",
                     HttpMethod.POST,
