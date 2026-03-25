@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.sts4-cache
+
+# Environment
+.env
+.env.*
+
+# Build artifacts
+target/
+Frontend/dist/
+Frontend/node_modules/
+Bot-Whatsapp/node_modules/
+Bot-Telegram/venv/
+Bot-Telegram/.venv/
+Bot-Telegram/__pycache__/
+
+# Sessions and auth
+auth_info_v2/
+Bot-Whatsapp/.wwebjs_auth/
+Bot-Whatsapp/.wwebjs_cache/
+*.session
+*.session-journal
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+
+# Docker
+docker-compose.yml

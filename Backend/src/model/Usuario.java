@@ -1,6 +1,7 @@
 package model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -42,6 +43,8 @@ public class Usuario {
 
     private String codigoVerificacion;
 
+    private LocalDateTime codigoExpiracion;
+
     @Column(nullable = false)
     private boolean verificado = false;
 
@@ -55,12 +58,12 @@ public class Usuario {
     @Transient
     private String codigoInvitacion;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @ManyToOne(optional = false, fetch = FetchType.EAGER)
     @JoinColumn(name = "agencia_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "dispositivos", "usuarios", "clientes"})
     private Agencia agencia;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "plan_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Plan plan;

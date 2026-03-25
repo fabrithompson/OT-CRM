@@ -1,6 +1,7 @@
 package repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,9 @@ import org.springframework.data.jpa.repository.EntityGraph;
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     Optional<Cliente> findByAgenciaIdAndTelefono(Long agenciaId, String telefono);
+
+    @Query("SELECT c.telefono FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.telefono IN :telefonos")
+    List<String> findTelefonosExistentes(@Param("agenciaId") Long agenciaId, @Param("telefonos") Collection<String> telefonos);
 
     Optional<Cliente> findFirstByAgenciaIdAndTelefono(Long agenciaId, String telefono);
 

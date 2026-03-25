@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { useUser } from '../context/UserContext';
 
 export default function Perfil() {
+    const { refresh: refreshGlobal } = useUser();
     const [usuario, setUsuario]         = useState({ nombreCompleto: '', email: '', fotoUrl: '', username: '' });
     const [newPassword, setNewPassword] = useState('');
     const [fotoFile, setFotoFile]       = useState(null);
@@ -50,6 +52,7 @@ export default function Perfil() {
             });
             setMensaje({ tipo: 'exito', texto: res.data?.message || 'Perfil actualizado correctamente.' });
             fetchPerfil();
+            refreshGlobal();
             setNewPassword('');
             setFotoFile(null);
         } catch (error) {

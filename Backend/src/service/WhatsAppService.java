@@ -10,7 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +64,10 @@ public class WhatsAppService {
     private final TelegramBridgeService bridgeService;
     private final SubscriptionValidationService subscriptionValidationService;
     private final CloudStorageService cloudStorageService;
-    private final ConcurrentHashMap<String, Object> phoneLocks = new ConcurrentHashMap<>();
+    private final Cache<String, Object> phoneLocks = Caffeine.newBuilder()
+            .expireAfterAccess(2, TimeUnit.MINUTES)
+            .maximumSize(10_000)
+            .build();
 
     @Value("${node.bot.url}")
     private String nodeBotUrl;
@@ -561,7 +567,7 @@ public class WhatsAppService {
 
     private Cliente obtenerOCrearCliente(Agencia agencia, String telefono, String nombre, String photo, String origen,
             Dispositivo dispositivo, String nombreEntrante) {
-        Object lock = phoneLocks.computeIfAbsent(telefono, k -> new Object());
+        Object lock = phoneLocks.get(telefono, k -> new Object());
         synchronized (lock) {
             try {
                 Optional<Cliente> existente = buscarClienteExistente(agencia, telefono, dispositivo);
@@ -581,7 +587,7 @@ public class WhatsAppService {
                         .findByAgenciaIdAndTelefonoAndDispositivo(agencia.getId(), telefono, dispositivo)
                         .orElseThrow(() -> new RuntimeException("Error crítico al recuperar cliente tras colisión"));
             } finally {
-                phoneLocks.remove(telefono, lock);
+                phoneLocks.invalidate(telefono);
             }
         }
     }

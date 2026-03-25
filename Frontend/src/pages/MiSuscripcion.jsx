@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
+import { useUser } from '../context/UserContext';
 
 const PLAN_ICON = {
     FREE: { icon: 'fa-seedling', color: '#6b7280' },
@@ -22,22 +23,14 @@ const formatVencimiento = (v) => {
 const capitalize = (s) => s ? s.charAt(0) + s.slice(1).toLowerCase() : '';
 
 export default function MiSuscripcion() {
-    const [perfil, setPerfil] = useState(null);
+    const { usuario: perfil, agenciaId, refresh: refreshUser } = useUser();
     const [equipo, setEquipo] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [agenciaId, setAgenciaId] = useState(null);
 
     const loadData = useCallback(async () => {
         try {
-            const [perfilRes, equipoRes] = await Promise.all([
-                api.get('/perfil'),
-                api.get('/planes/equipo'),
-            ]);
-            setPerfil(perfilRes.data);
+            const equipoRes = await api.get('/planes/equipo');
             setEquipo(equipoRes.data);
-            if (perfilRes.data.agencia?.id) {
-                setAgenciaId(perfilRes.data.agencia.id);
-            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -51,9 +44,10 @@ export default function MiSuscripcion() {
     const handleWSEvent = useCallback((ev) => {
         if (ev?.tipo === 'PLAN_EQUIPO_ACTUALIZADO') {
             loadData();
+            refreshUser();
             window.dispatchEvent(new CustomEvent('crm:plan-updated'));
         }
-    }, [loadData]);
+    }, [loadData, refreshUser]);
 
     useWebSocket(agenciaId, handleWSEvent, (client) => {
         // Subscribe only needed; the hook auto-subscribes to global-notifications

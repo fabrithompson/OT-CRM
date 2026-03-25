@@ -25,6 +25,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -284,11 +285,14 @@ public class ClienteController {
 
         long contactosActuales = clienteRepository.countByAgenciaId(agencia.getId());
 
-        long contactosNuevos = nuevosClientes.stream()
-                .filter(c -> {
-                    String telNormalizado = PhoneUtil.normalizar(c.getTelefono());
-                    return clienteRepository.findByAgenciaIdAndTelefono(agencia.getId(), telNormalizado).isEmpty();
-                })
+        List<String> telefonosNormalizados = nuevosClientes.stream()
+                .map(c -> PhoneUtil.normalizar(c.getTelefono()))
+                .toList();
+        java.util.Set<String> existentes = new java.util.HashSet<>(
+                clienteRepository.findTelefonosExistentes(agencia.getId(), telefonosNormalizados));
+        long contactosNuevos = telefonosNormalizados.stream()
+                .distinct()
+                .filter(t -> !existentes.contains(t))
                 .count();
 
         long totalDespuesDeImportar = contactosActuales + contactosNuevos;
@@ -342,6 +346,7 @@ public class ClienteController {
                 .body(new InputStreamResource(in));
     }
 
+    @Transactional
     @DeleteMapping("/clientes/{id}")
     public ResponseEntity<?> eliminarCliente(@PathVariable @NonNull Long id, Authentication auth) {
         try {
@@ -408,7 +413,7 @@ public class ClienteController {
         }
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("{\"error\": \"" + mensajeError + "\"}");
+                .body(Map.of("error", mensajeError));
     }
 
     private boolean tieneAgenciaValida(Usuario usuario) {

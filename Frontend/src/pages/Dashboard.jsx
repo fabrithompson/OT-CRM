@@ -91,10 +91,6 @@ export default function Dashboard() {
             if (agencia.id) setAgenciaId(agencia.id);
         } catch (error) {
             console.error('Error cargando el dashboard', error);
-            if (error.response?.status === 401 || error.response?.status === 403) {
-                localStorage.removeItem('token');
-                navigate('/login');
-            }
         } finally {
             setLoading(false);
         }
@@ -267,15 +263,27 @@ export default function Dashboard() {
                     <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>Resumen de actividad en tiempo real.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <a
-                        href={`${import.meta.env.VITE_API_URL}/api/reportes/descargar/excel`}
+                    <button
+                        type="button"
                         className="btn-excel-animado"
                         title="Descargar Reporte Diario"
-                        download
+                        onClick={async () => {
+                            try {
+                                const res = await api.get('/reportes/descargar/excel', { responseType: 'blob' });
+                                const url = URL.createObjectURL(res.data);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = 'reporte.xlsx';
+                                a.click();
+                                URL.revokeObjectURL(url);
+                            } catch {
+                                alert('Error al descargar el reporte.');
+                            }
+                        }}
                     >
                         <i className="fas fa-file-excel"></i>
                         <span className="texto-btn">Descargar Reporte</span>
-                    </a>
+                    </button>
                     <NotificationBell />
                 </div>
             </div>

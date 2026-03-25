@@ -1,43 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import useWebSocket from '../hooks/useWebSocket';
 import useAudio from '../hooks/useAudio';
 import api from '../utils/api';
+import { requestNotifPermission, pushBrowserNotif } from '../utils/notifications';
+import { useUser } from '../context/UserContext';
 
-// ─── Browser push notification ────────────────────────────────────────────────
-function requestNotifPermission() {
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
-}
-
-function pushBrowserNotif(title, body, icon = '/images/favicon.svg') {
-    if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body, icon, tag: title, renotify: true });
-    }
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
 export default function MainLayout() {
     const token = localStorage.getItem('token');
-    const [agenciaId, setAgenciaId] = useState(null);
+    const { agenciaId } = useUser();
     const { playConnect, playDisconnect } = useAudio();
 
     // Cache sessionId → alias para mostrar el nombre real del dispositivo
     const deviceCacheRef = useRef({});
 
     useEffect(() => {
-        // Pedir permiso de notificaciones al cargar el layout
         requestNotifPermission();
-
-        api.get('/perfil')
-            .then(res => {
-                const id = res.data.agencia?.id;
-                if (id) { setAgenciaId(id); return; }
-                return api.get('/agencia').then(r => setAgenciaId(r.data.id || 1));
-            })
-            .catch(() => setAgenciaId(1));
     }, []);
 
     // Cargar dispositivos (WhatsApp + Telegram) para el cache sessionId → alias

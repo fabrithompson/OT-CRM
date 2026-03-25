@@ -1,6 +1,5 @@
 package controller;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -17,6 +16,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import model.Dispositivo;
 import model.Usuario;
@@ -24,6 +25,7 @@ import repository.DispositivoRepository;
 import repository.UsuarioRepository;
 import service.PlanService;
 import service.TelegramBridgeService;
+import util.DispositivoMapper;
 
 @RestController
 @RequestMapping("/api/v1/telegram-devices")
@@ -43,21 +45,6 @@ public class TelegramDispositivoController {
         this.planService = planService;
     }
 
-    /**
-     * FIX: Convierte Dispositivo a Map simple para evitar que Jackson intente
-     * serializar los proxies lazy de Hibernate (Agencia -> Plan -> HibernateProxy).
-     */
-    private Map<String, Object> toDto(Dispositivo d) {
-        Map<String, Object> dto = new HashMap<>();
-        dto.put("id", d.getId());
-        dto.put("alias", d.getAlias());
-        dto.put("sessionId", d.getSessionId());
-        dto.put("estado", d.getEstado());
-        dto.put("numeroTelefono", d.getNumeroTelefono());
-        dto.put("plataforma", d.getPlataforma() != null ? d.getPlataforma().name() : null);
-        return dto;
-    }
-
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> listarDispositivos(@AuthenticationPrincipal UserDetails userDetails) {
         Usuario usuario = getUsuarioOrThrow(userDetails);
@@ -65,7 +52,7 @@ public class TelegramDispositivoController {
                 .findByAgenciaIdAndPlataforma(usuario.getAgencia().getId(), Dispositivo.Plataforma.TELEGRAM)
                 .stream()
                 .filter(d -> !"ELIMINADO".equals(d.getEstado()) && Boolean.TRUE.equals(d.isVisible()))
-                .map(this::toDto)
+                .map(DispositivoMapper::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
@@ -84,7 +71,7 @@ public class TelegramDispositivoController {
             Dispositivo dispositivo;
             if (request.deviceId() != null) {
                 dispositivo = dispositivoRepository.findById(request.deviceId())
-                        .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dispositivo no encontrado"));
                 if (!dispositivo.getAgencia().getId().equals(usuario.getAgencia().getId())) {
                     return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
                 }
@@ -121,7 +108,7 @@ public class TelegramDispositivoController {
             Usuario usuario = getUsuarioOrThrow(userDetails);
             @SuppressWarnings("null")
             Dispositivo dispositivo = dispositivoRepository.findById(deviceId)
-                    .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dispositivo no encontrado"));
 
             if (!dispositivo.getAgencia().getId().equals(usuario.getAgencia().getId())) return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
 
@@ -142,7 +129,7 @@ public class TelegramDispositivoController {
             Usuario usuario = getUsuarioOrThrow(userDetails);
             @SuppressWarnings("null")
             Dispositivo dispositivo = dispositivoRepository.findById(request.deviceId())
-                    .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dispositivo no encontrado"));
 
             if (!dispositivo.getAgencia().getId().equals(usuario.getAgencia().getId())) {
                 return ResponseEntity.status(403).body(Map.of("error", "No autorizado"));
@@ -165,6 +152,6 @@ public class TelegramDispositivoController {
     }
 
     private Usuario getUsuarioOrThrow(UserDetails userDetails) {
-        return usuarioRepository.findByUsername(userDetails.getUsername()).orElseThrow(() -> new RuntimeException("Usuario no encontrado en sesión"));
+        return usuarioRepository.findByUsername(userDetails.getUsername()).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado en sesión"));
     }
 }

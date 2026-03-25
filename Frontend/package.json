@@ -1,7 +1,7 @@
 {
-  "name": "Frontend",
+  "name": "ot-crm-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,13 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.4.0",
     "@stomp/stompjs": "^7.3.0",
     "axios": "^1.13.6",
+    "emoji-picker-react": "^4.12.0",
     "prop-types": "^15.8.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
-    "emoji-picker-react": "^4.12.0",
     "sockjs-client": "^1.6.1"
   },
   "devDependencies": {

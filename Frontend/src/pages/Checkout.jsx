@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import { useUser } from '../context/UserContext';
 
 const METODOS = [
     {
@@ -89,6 +90,7 @@ export default function Checkout() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const planId = searchParams.get('planId');
+    const { usuario: userCtx } = useUser();
 
     const [plan, setPlan] = useState(null);
     const [email, setEmail] = useState('');
@@ -99,17 +101,14 @@ export default function Checkout() {
 
     useEffect(() => {
         if (!planId) { navigate('/planes'); return; }
-        Promise.all([
-            api.get('/planes'),
-            api.get('/perfil'),
-        ]).then(([planesRes, perfilRes]) => {
+        api.get('/planes').then(planesRes => {
             const found = planesRes.data.find(p => String(p.id) === String(planId));
             if (!found || found.precioMensual === 0) { navigate('/planes'); return; }
             setPlan(found);
-            setEmail(perfilRes.data.email || '');
+            setEmail(userCtx?.email || '');
         }).catch(() => navigate('/planes'))
           .finally(() => setCargando(false));
-    }, [planId]);
+    }, [planId, userCtx]);
 
     const metodoActivo = METODOS.find(m => m.id === metodo);
 

@@ -41,6 +41,7 @@ import repository.DispositivoRepository;
 import repository.UsuarioRepository;
 import service.PlanService;
 import service.WhatsAppService;
+import util.DispositivoMapper;
 
 import jakarta.annotation.PostConstruct;
 
@@ -89,21 +90,6 @@ public class WhatsAppController {
     public record CreateDeviceRequest(String alias) {}
     public record PairCodeRequest(Long deviceId, String phoneNumber) {}
 
-    /**
-     * FIX: Convierte Dispositivo a Map simple para evitar que Jackson intente
-     * serializar los proxies lazy de Hibernate (Agencia -> Plan -> HibernateProxy).
-     */
-    private Map<String, Object> toDto(Dispositivo d) {
-        Map<String, Object> dto = new HashMap<>();
-        dto.put("id", d.getId());
-        dto.put("alias", d.getAlias());
-        dto.put("sessionId", d.getSessionId());
-        dto.put("estado", d.getEstado());
-        dto.put("numeroTelefono", d.getNumeroTelefono());
-        dto.put("plataforma", d.getPlataforma() != null ? d.getPlataforma().name() : null);
-        return dto;
-    }
-
     // -------------------------------------------------------------------------
     // ENDPOINTS INTERNOS FRONTEND
     // La clase tiene @RequestMapping("/api/v1/whatsapp"), los metodos usan rutas relativas
@@ -116,7 +102,7 @@ public class WhatsAppController {
         List<Map<String, Object>> dtos = dispositivoRepository
                 .findByAgenciaIdAndPlataformaAndVisibleTrue(usuario.getAgencia().getId(), Dispositivo.Plataforma.WHATSAPP)
                 .stream()
-                .map(this::toDto)
+                .map(DispositivoMapper::toDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
@@ -130,16 +116,24 @@ public class WhatsAppController {
             }
             String alias = (request.alias() == null || request.alias().isBlank()) ? "Nuevo Dispositivo" : request.alias();
             Dispositivo d = whatsAppService.crearDispositivo(usuario.getAgencia(), alias);
-            return ResponseEntity.ok(toDto(d));
+            return ResponseEntity.ok(DispositivoMapper.toDto(d));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @DeleteMapping("/{deviceId}")
-    public ResponseEntity<?> eliminarDispositivo(@PathVariable @NonNull Long deviceId) {
-        whatsAppService.eliminarDispositivoCompleto(deviceId);
-        return ResponseEntity.ok().body(Map.of("message", "Eliminado"));
+    public ResponseEntity<?> eliminarDispositivo(@AuthenticationPrincipal UserDetails userDetails, @PathVariable @NonNull Long deviceId) {
+        Usuario usuario = getUsuarioOrThrow(userDetails);
+        if (usuario.getAgencia() == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Sin agencia"));
+
+        return dispositivoRepository.findById(deviceId)
+                .filter(dev -> dev.getAgencia() != null && Objects.equals(dev.getAgencia().getId(), usuario.getAgencia().getId()))
+                .map(d -> {
+                    whatsAppService.eliminarDispositivoCompleto(deviceId);
+                    return ResponseEntity.ok().body((Object) Map.of("message", "Eliminado"));
+                })
+                .orElse(ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "No autorizado")));
     }
 
     @PostMapping("/{deviceId}/disconnect")

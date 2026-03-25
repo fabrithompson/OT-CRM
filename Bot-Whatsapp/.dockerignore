@@ -1,0 +1,7 @@
+node_modules
+.env
+.wwebjs_auth
+.wwebjs_cache
+auth_info_v2
+*.log
+.git

@@ -54,6 +54,7 @@ export default function Auth() {
             // ¡CAMBIO CRÍTICO 3! La barrera de seguridad
             if (res.data && res.data.token && res.data.token !== 'undefined') {
                 localStorage.setItem('token', res.data.token);
+                localStorage.removeItem('crm_theme');
                 navigate('/dashboard');
             } else {
                 setError('Error en el servidor: No se generó un token válido.');

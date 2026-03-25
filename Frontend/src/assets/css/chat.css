@@ -872,14 +872,3 @@ emoji-picker.show { display: flex; }
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
     border-radius: 12px !important;
 }
-/* Light theme chat overrides */
-[data-theme="light"] #chatModal .pro-modal { background: rgba(255,255,255,0.95) !important; border-color: rgba(0,0,0,0.12); }
-[data-theme="light"] #chatModal .modal-overlay { background: rgba(0,0,0,0.4); }
-[data-theme="light"] #chatModal .chat-main-panel { background: transparent !important; }
-[data-theme="light"] .messages-area { background: #f8fafc !important; }
-[data-theme="light"] .msg.received { background: #fff !important; color: #1e293b !important; border: 1px solid rgba(0,0,0,0.08); }
-[data-theme="light"] .msg.sent { background: #dcfce7 !important; color: #1e293b !important; }
-[data-theme="light"] .chat-input-area { background: rgba(255,255,255,0.9) !important; border-top: 1px solid rgba(0,0,0,0.1); }
-[data-theme="light"] .chat-input-area input, [data-theme="light"] .chat-input-area textarea { color: #1e293b !important; background: #f1f5f9 !important; }
-[data-theme="light"] .sidebar-panel { background: rgba(248,250,252,0.95) !important; border-left: 1px solid rgba(0,0,0,0.1); }
-[data-theme="light"] .date-separator { color: #64748b; }

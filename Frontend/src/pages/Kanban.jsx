@@ -8,18 +8,15 @@ import ChatModal from '../components/kanban/ChatModal';
 import { CreateStageModal, EditStageModal, DeleteStageModal } from '../components/kanban/StageModals';
 import useAudio from '../hooks/useAudio';
 import NotificationBell from '../components/kanban/NotificationBell';
+import { pushBrowserNotif } from '../utils/notifications';
+import { useUser } from '../context/UserContext';
 const PAGE_SIZE = 40;
-
-function pushBrowserNotif(title, body, icon = '/images/favicon.svg') {
-    if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body, icon, tag: 'chat-' + title, renotify: true });
-    }
-}
 
 export default function Kanban() {
     const toast = useToast();
     const {playNotification } = useAudio();
     const [searchParams] = useSearchParams();
+    const { usuario: userCtx, agenciaId } = useUser();
 
     useEffect(() => {
         const id = Number.parseInt(searchParams.get('openChat'), 10);
@@ -28,7 +25,6 @@ export default function Kanban() {
 
     const [etapas, setEtapas]       = useState([]);
     const [clientes, setClientes]   = useState([]);
-    const [agenciaId, setAgenciaId] = useState(null);
     const [usuario, setUsuario]     = useState('Agente');
     const [loading, setLoading]     = useState(true);
 
@@ -53,22 +49,10 @@ export default function Kanban() {
     const wsEventRef   = useRef(null);
 
     useEffect(() => {
-        const load = async () => {
-            try {
-                const res = await api.get('/perfil');
-                setUsuario(res.data.username || res.data.nombreCompleto || 'Agente');
-                if (res.data.agencia?.id) {
-                    setAgenciaId(res.data.agencia.id);
-                } else {
-                    try {
-                        const ar = await api.get('/agencia');
-                        setAgenciaId(ar.data.id || 1);
-                    } catch { setAgenciaId(1); }
-                }
-            } catch { setAgenciaId(1); }
-        };
-        load();
-    }, []);
+        if (userCtx) {
+            setUsuario(userCtx.username || userCtx.nombreCompleto || 'Agente');
+        }
+    }, [userCtx]);
 
     const loadBoard = useCallback(async (etiquetaId = '') => {
         setLoading(true);

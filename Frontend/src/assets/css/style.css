@@ -19,6 +19,12 @@
     --z-toast: 2000;
 }
 
+.app-loading {
+    width: 100vw;
+    height: 100vh;
+    background: var(--bg-app);
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
 
@@ -45,34 +51,6 @@ body {
     --bg-glass: rgba(20, 20, 25, 0.55);
     --border-glass: rgba(255, 255, 255, 0.05);
 }
-
-/* Light theme overrides */
-[data-theme="light"] {
-    --text-main: #1e293b;
-    --text-sec: #475569;
-    --text-muted: #64748b;
-    --bg-app: #f1f5f9;
-    --bg-glass: rgba(255, 255, 255, 0.85);
-    --bg-glass-hover: rgba(255, 255, 255, 0.95);
-    --border-glass: rgba(0, 0, 0, 0.12);
-    --input-bg: rgba(255, 255, 255, 0.80);
-    --input-border: rgba(0, 0, 0, 0.15);
-    --input-focus: rgba(0, 0, 0, 0.25);
-}
-[data-theme="light"] body { background-color: var(--bg-app); color: var(--text-main); }
-[data-theme="light"] .sidebar { background: rgba(255,255,255,0.92); border-right: 1px solid var(--border-glass); }
-[data-theme="light"] .sidebar a, [data-theme="light"] .sidebar button { color: var(--text-main); }
-[data-theme="light"] .sidebar .menu-item a.active,
-[data-theme="light"] .sidebar .menu-item a:hover { background: rgba(16,185,129,0.1); }
-[data-theme="light"] .ambient-bg, [data-theme="light"] .glass-overlay { display: none; }
-[data-theme="light"] .kanban-column { background: rgba(255,255,255,0.75); border: 1px solid var(--border-glass); }
-[data-theme="light"] .card { background: #fff; border: 1px solid var(--border-glass); color: var(--text-main); }
-[data-theme="light"] .header-top { background: rgba(255,255,255,0.9); border-bottom: 1px solid var(--border-glass); }
-[data-theme="light"] .search-wrapper { background: var(--input-bg); border: 1px solid var(--input-border); }
-[data-theme="light"] .search-wrapper input { color: var(--text-main); }
-[data-theme="light"] .filter-dd-btn { background: rgba(0,0,0,0.04) !important; border-color: var(--input-border) !important; color: var(--text-main) !important; }
-[data-theme="light"] .filter-dd-menu { background: #fff !important; border-color: var(--border-glass) !important; }
-[data-theme="light"] .filter-item { color: var(--text-main) !important; }
 
 body {
     margin: 0;

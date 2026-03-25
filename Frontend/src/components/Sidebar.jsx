@@ -1,26 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import api from '../utils/api';
-import { useTheme } from '../context/ThemeContext';
+import React from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useUser } from '../context/UserContext';
 
 export default function Sidebar() {
     const navigate = useNavigate();
-    const [usuario, setUsuario] = useState(null);
-    const { theme, toggle: toggleTheme } = useTheme();
-
-    useEffect(() => {
-        const loadPerfil = () => {
-            api.get('/perfil')
-                .then(res => setUsuario(res.data))
-                .catch(err => console.error('Error cargando perfil', err));
-        };
-        loadPerfil();
-
-        // Re-fetch profile when plan changes via WebSocket
-        const handler = () => loadPerfil();
-        window.addEventListener('crm:plan-updated', handler);
-        return () => window.removeEventListener('crm:plan-updated', handler);
-    }, []);
+    const { pathname } = useLocation();
+    const { usuario } = useUser();
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -32,6 +17,8 @@ export default function Sidebar() {
         if (usuario?.username)       return usuario.username.charAt(0).toUpperCase();
         return '?';
     };
+
+    const isSuscripcionActive = pathname === '/planes' || pathname === '/mi-suscripcion' || pathname === '/checkout';
 
     return (
         <div className="sidebar">
@@ -66,27 +53,14 @@ export default function Sidebar() {
                     </NavLink>
                 </li>
                 <li className="menu-item">
-                    <NavLink to="/planes" className={({ isActive }) => isActive ? 'active' : ''}>
+                    <NavLink to="/planes" className={() => isSuscripcionActive ? 'active' : ''}>
                         <i className="fas fa-crown"></i>
-                        <span className="link-text" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-                            Suscripción
-                            {usuario?.plan?.nombre && (
-                                <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    {usuario.plan.nombre}
-                                </span>
-                            )}
-                        </span>
+                        <span className="link-text">Suscripción</span>
                     </NavLink>
                 </li>
             </ul>
 
             <ul className="menu-bottom">
-                <li className="menu-item">
-                    <button type="button" onClick={toggleTheme} className="logout-btn" style={{ background: 'transparent', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}>
-                        <i className={theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon'}></i>
-                        <span className="link-text">{theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}</span>
-                    </button>
-                </li>
                 <li className="menu-item">
                     <NavLink to="/perfil" className={({ isActive }) => isActive ? 'active' : ''}>
                         <i className="fa-solid fa-user"></i>

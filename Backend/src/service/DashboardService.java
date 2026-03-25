@@ -10,8 +10,10 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import model.Dispositivo;
 import model.Usuario;
 import repository.ClienteRepository;
+import repository.DispositivoRepository;
 import repository.UsuarioRepository;
 
 @Service
@@ -19,10 +21,13 @@ public class DashboardService {
 
     private final ClienteRepository clienteRepository;
     private final UsuarioRepository usuarioRepository;
+    private final DispositivoRepository dispositivoRepository;
 
-    public DashboardService(ClienteRepository clienteRepository, UsuarioRepository usuarioRepository) {
+    public DashboardService(ClienteRepository clienteRepository, UsuarioRepository usuarioRepository,
+                            DispositivoRepository dispositivoRepository) {
         this.clienteRepository = clienteRepository;
         this.usuarioRepository = usuarioRepository;
+        this.dispositivoRepository = dispositivoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -55,8 +60,13 @@ public class DashboardService {
             data.put("nuevosLeads", nuevosLeads);
             data.put("leadsSinLeer", leadsSinLeer);
             data.put("totalLeads", totalLeads);
-            data.put("whatsappConectado", totalLeads > 0);
-            data.put("telegramConnected", false);
+
+            boolean waConectado = dispositivoRepository.findByAgenciaIdAndPlataforma(agenciaId, Dispositivo.Plataforma.WHATSAPP)
+                    .stream().anyMatch(d -> "CONNECTED".equals(d.getEstado()));
+            boolean tgConectado = dispositivoRepository.findByAgenciaIdAndPlataforma(agenciaId, Dispositivo.Plataforma.TELEGRAM)
+                    .stream().anyMatch(d -> "CONECTADO".equals(d.getEstado()));
+            data.put("whatsappConectado", waConectado);
+            data.put("telegramConnected", tgConectado);
 
             List<Map<String, Object>> equipoDto = usuarioRepository.findByAgenciaId(agenciaId)
                     .stream()

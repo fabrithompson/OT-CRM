@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 
 const PAGE_TITLES = {
   '/login':             'OT CRM',
@@ -19,47 +19,53 @@ function TitleUpdater() {
   }, [pathname]);
   return null;
 }
+
+// Auth se carga eager (es la primera pantalla que ve el usuario)
 import Auth from './pages/Auth';
-import Dashboard from './pages/Dashboard';
-import Kanban from './pages/Kanban';
-import WhatsAppVincular from './pages/WhatsAppVincular';
-import TelegramVincular from './pages/TelegramVincular';
-import Contactos from './pages/Contactos';
 import MainLayout from './components/MainLayout';
 import { ToastProvider } from './context/ToastContext';
-import { ThemeProvider } from './context/ThemeContext';
-import RespuestasRapidas from './pages/RespuestasRapidas';
-import Perfil from './pages/Perfil';
-import Planes from './pages/Planes';
-import Checkout from './pages/Checkout';
-import MiSuscripcion from './pages/MiSuscripcion';
+import { UserProvider } from './context/UserContext';
+
+// Lazy loading: cada página se descarga solo cuando el usuario navega a ella
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Kanban = lazy(() => import('./pages/Kanban'));
+const WhatsAppVincular = lazy(() => import('./pages/WhatsAppVincular'));
+const TelegramVincular = lazy(() => import('./pages/TelegramVincular'));
+const Contactos = lazy(() => import('./pages/Contactos'));
+const RespuestasRapidas = lazy(() => import('./pages/RespuestasRapidas'));
+const Perfil = lazy(() => import('./pages/Perfil'));
+const Planes = lazy(() => import('./pages/Planes'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const MiSuscripcion = lazy(() => import('./pages/MiSuscripcion'));
 
 function App() {
   return (
-    <ThemeProvider>
+    <UserProvider>
     <ToastProvider>
       <Router>
         <TitleUpdater />
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Auth />} />
+        <Suspense fallback={<div className="app-loading" />}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Auth />} />
 
-          <Route element={<MainLayout />}>
-            <Route path="/dashboard"          element={<Dashboard />} />
-            <Route path="/kanban"             element={<Kanban />} />
-            <Route path="/whatsapp-vincular"  element={<WhatsAppVincular />} />
-            <Route path="/telegram-vincular"  element={<TelegramVincular />} />
-            <Route path="/respuestas-rapidas" element={<RespuestasRapidas/>} />
-            <Route path="/contactos"          element={<Contactos />} />
-            <Route path="/planes"             element={<Planes />} />
-            <Route path="/perfil"             element={<Perfil />} />
-            <Route path="/checkout"        element={<Checkout />} />
-            <Route path="/mi-suscripcion"  element={<MiSuscripcion />} />
-          </Route>
-        </Routes>
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard"          element={<Dashboard />} />
+              <Route path="/kanban"             element={<Kanban />} />
+              <Route path="/whatsapp-vincular"  element={<WhatsAppVincular />} />
+              <Route path="/telegram-vincular"  element={<TelegramVincular />} />
+              <Route path="/respuestas-rapidas" element={<RespuestasRapidas/>} />
+              <Route path="/contactos"          element={<Contactos />} />
+              <Route path="/planes"             element={<Planes />} />
+              <Route path="/perfil"             element={<Perfil />} />
+              <Route path="/checkout"        element={<Checkout />} />
+              <Route path="/mi-suscripcion"  element={<MiSuscripcion />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </Router>
     </ToastProvider>
-    </ThemeProvider>
+    </UserProvider>
   );
 }
 

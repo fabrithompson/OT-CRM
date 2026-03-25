@@ -1,6 +1,9 @@
 package service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -69,9 +72,28 @@ public class UsuarioService {
 
     }
 
+    private static final int CODIGO_EXPIRACION_MINUTOS = 15;
+
+    private boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return false;
+        return MessageDigest.isEqual(
+                a.getBytes(StandardCharsets.UTF_8),
+                b.getBytes(StandardCharsets.UTF_8));
+    }
+
     private String generarCodigoEmail() {
         int v = secureRandom.nextInt(900000) + 100000;
         return String.valueOf(v);
+    }
+
+    private void setCodigoConExpiracion(Usuario usuario, String codigo) {
+        usuario.setCodigoVerificacion(codigo);
+        usuario.setCodigoExpiracion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+    }
+
+    private boolean codigoExpirado(Usuario usuario) {
+        return usuario.getCodigoExpiracion() == null
+                || LocalDateTime.now().isAfter(usuario.getCodigoExpiracion());
     }
 
     private String generarCodigoAgencia() {
@@ -138,7 +160,7 @@ public class UsuarioService {
         }
         
         String codigo = generarCodigoEmail();
-        usuario.setCodigoVerificacion(codigo);
+        setCodigoConExpiracion(usuario, codigo);
         usuario.setUsername(username);
         usuario.setPassword(passwordEncoder.encode(password));
         usuarioRepository.save(usuario);
@@ -176,7 +198,7 @@ public class UsuarioService {
         }
 
         String codigoEmail = generarCodigoEmail();
-        nuevo.setCodigoVerificacion(codigoEmail);
+        setCodigoConExpiracion(nuevo, codigoEmail);
 
         Usuario usuarioGuardado = usuarioRepository.save(nuevo);
         emailService.enviarCodigoVerificacion(email, codigoEmail);
@@ -194,9 +216,12 @@ public class UsuarioService {
 
     public boolean verificarCodigo(String username, String codigoIngresado) {
         return usuarioRepository.findByUsername(username).map(u -> {
-            if (u.getCodigoVerificacion() != null && u.getCodigoVerificacion().equals(codigoIngresado)) {
+            if (u.getCodigoVerificacion() != null
+                    && constantTimeEquals(u.getCodigoVerificacion(), codigoIngresado)
+                    && !codigoExpirado(u)) {
                 u.setVerificado(true);
                 u.setCodigoVerificacion(null);
+                u.setCodigoExpiracion(null);
                 usuarioRepository.save(u);
                 return true;
             }
@@ -214,7 +239,7 @@ public class UsuarioService {
         }
 
         String codigo = generarCodigoEmail();
-        u.setCodigoVerificacion(codigo);
+        setCodigoConExpiracion(u, codigo);
         usuarioRepository.save(u);
         emailService.enviarCodigoVerificacion(u.getEmail(), codigo);
     }
@@ -229,7 +254,7 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RegistroException("No existe una cuenta con ese email."));
         String codigo = generarCodigoEmail();
-        usuario.setCodigoVerificacion(codigo);
+        setCodigoConExpiracion(usuario, codigo);
         usuarioRepository.save(usuario);
 
         emailService.enviarCodigoRecuperacion(email, codigo);
@@ -245,12 +270,15 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new RegistroException("No existe una cuenta con ese email."));
 
-        if (usuario.getCodigoVerificacion() == null || !usuario.getCodigoVerificacion().equals(codigo)) {
+        if (usuario.getCodigoVerificacion() == null
+                || !constantTimeEquals(usuario.getCodigoVerificacion(), codigo)
+                || codigoExpirado(usuario)) {
             throw new RegistroException("El código de recuperación es incorrecto o ha expirado.");
         }
 
         usuario.setPassword(passwordEncoder.encode(nuevaPassword));
         usuario.setCodigoVerificacion(null);
+        usuario.setCodigoExpiracion(null);
         usuarioRepository.save(usuario);
 
         log.info("Contraseña restablecida para: {}", email);
@@ -314,27 +342,6 @@ public class UsuarioService {
             usuarioRepository.save(usuario);
             solicitud.setEstado(SolicitudUnionEquipo.EstadoSolicitud.APROBADA);
             enviarNotificacionNuevoMiembro(usuario);
-        } else {
-            solicitud.setEstado(SolicitudUnionEquipo.EstadoSolicitud.RECHAZADA);
-        }
-        solicitudUnionEquipoRepository.save(solicitud);
-    }
-
-    @Transactional
-    public void gestionarSolicitud(@NonNull Long solicitudId, boolean aprobar) {
-        SolicitudUnionEquipo solicitud = solicitudUnionEquipoRepository.findById(solicitudId)
-                .orElseThrow(() -> new RegistroException("Solicitud no encontrada."));
-
-        if (solicitud.getEstado() != SolicitudUnionEquipo.EstadoSolicitud.PENDIENTE) {
-            throw new RegistroException("Solicitud ya gestionada.");
-        }
-        if (aprobar) {
-            Usuario u = solicitud.getUsuarioSolicitante();
-            u.setAgencia(solicitud.getAgenciaDestino());
-            u.setRol(ROLE_USER);
-            usuarioRepository.save(u);
-            solicitud.setEstado(SolicitudUnionEquipo.EstadoSolicitud.APROBADA);
-            enviarNotificacionNuevoMiembro(u);
         } else {
             solicitud.setEstado(SolicitudUnionEquipo.EstadoSolicitud.RECHAZADA);
         }
