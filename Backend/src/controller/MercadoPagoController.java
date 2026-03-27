@@ -1,6 +1,7 @@
 package controller;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -147,14 +148,14 @@ public class MercadoPagoController {
             log.info("WEBHOOK MP - type: {} - id: {}", type, dataId);
             if (dataId == null || type == null) return ResponseEntity.ok("OK");
 
-            // Verificar firma HMAC-SHA256 si el secret está configurado
-            if (mpWebhookSecret != null && !mpWebhookSecret.isBlank()) {
-                if (!verificarFirmaMercadoPago(xSignature, xRequestId, dataId)) {
-                    log.warn("Webhook MercadoPago con firma inválida rechazado");
-                    return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
-                }
-            } else {
-                log.warn("MERCADOPAGO_WEBHOOK_SECRET no configurado — omitiendo verificación de firma");
+            // Verificar firma HMAC-SHA256 (fail-closed: rechazar si el secret no está configurado)
+            if (mpWebhookSecret == null || mpWebhookSecret.isBlank()) {
+                log.error("MERCADOPAGO_WEBHOOK_SECRET no configurado — rechazando webhook por seguridad");
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+            }
+            if (!verificarFirmaMercadoPago(xSignature, xRequestId, dataId)) {
+                log.warn("Webhook MercadoPago con firma inválida rechazado");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
             // Idempotencia: si ya procesamos este evento, responder OK sin reprocesar
@@ -276,10 +277,12 @@ public class MercadoPagoController {
             mac.init(new javax.crypto.spec.SecretKeySpec(mpWebhookSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             byte[] computed = mac.doFinal(manifest.getBytes(StandardCharsets.UTF_8));
 
-            // Convertir a hex y comparar
+            // Convertir a hex y comparar en tiempo constante
             StringBuilder sb = new StringBuilder();
             for (byte b : computed) sb.append(String.format("%02x", b));
-            return sb.toString().equals(v1);
+            return MessageDigest.isEqual(
+                    sb.toString().getBytes(StandardCharsets.UTF_8),
+                    v1.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             log.error("Error verificando firma MercadoPago: {}", e.getMessage());
             return false;

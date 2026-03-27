@@ -69,14 +69,19 @@ public class PayPalWebhookController {
             @RequestHeader(value = "PAYPAL-TRANSMISSION-SIG", required = false) String transmissionSig,
             @RequestBody String payload) {
         try {
-            // Verificar firma PayPal antes de procesar
-            if (paypalWebhookId != null && !paypalWebhookId.isBlank()) {
-                if (!verificarFirmaPayPal(transmissionId, transmissionTime, certUrl, authAlgo, transmissionSig, payload)) {
-                    log.warn("Webhook PayPal con firma inválida rechazado");
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-                }
-            } else {
-                log.warn("PAYPAL_WEBHOOK_ID no configurado — omitiendo verificación de firma");
+            // Verificar firma PayPal (fail-closed: rechazar si el webhook ID no está configurado)
+            if (paypalWebhookId == null || paypalWebhookId.isBlank()) {
+                log.error("PAYPAL_WEBHOOK_ID no configurado — rechazando webhook por seguridad");
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+            }
+            // Rechazar si faltan headers de firma (evita enviar nulls a la API de PayPal)
+            if (!headersPresentes(transmissionId, transmissionTime, certUrl, authAlgo, transmissionSig)) {
+                log.warn("Webhook PayPal sin headers de firma — rechazado");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            if (!verificarFirmaPayPal(transmissionId, transmissionTime, certUrl, authAlgo, transmissionSig, payload)) {
+                log.warn("Webhook PayPal con firma inválida rechazado");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
             ObjectMapper mapper = new ObjectMapper();
@@ -184,5 +189,12 @@ public class PayPalWebhookController {
             log.error("Error verificando firma PayPal: {}", e.getMessage());
             return false;
         }
+    }
+
+    private boolean headersPresentes(String... headers) {
+        for (String h : headers) {
+            if (h == null || h.isBlank()) return false;
+        }
+        return true;
     }
 }
