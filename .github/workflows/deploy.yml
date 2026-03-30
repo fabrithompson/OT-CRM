@@ -54,10 +54,13 @@ jobs:
       - name: Correr tests
         run: mvn test --no-transfer-progress
         env:
+          # Testcontainers arranca su propio PostgreSQL — estas vars son ignoradas
+          # por @DynamicPropertySource en BaseIntegrationTest, pero se necesitan
+          # para que el contexto Spring arranque antes de que Testcontainers tome el control.
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/crm_test
           SPRING_DATASOURCE_USERNAME: test
           SPRING_DATASOURCE_PASSWORD: test
-          SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+          # NO definir SPRING_JPA_HIBERNATE_DDL_AUTO: Flyway + ddl-auto=validate lo maneja
           JWT_SECRET: dGVzdEp3dFNlY3JldEtleVF1ZVRpZW5lUXVlU2VyTGFyZ2FQYXJhSG1hYw==
           BOT_SECRET_KEY: test-bot-key
           NODE_BOT_URL: http://localhost:3000
@@ -69,11 +72,14 @@ jobs:
           RESEND_API_KEY: test
           APP_EMAIL_ENABLED: "false"
           MERCADOPAGO_ACCESS_TOKEN: TEST-fake-token
+          MERCADOPAGO_WEBHOOK_SECRET: test-webhook-secret-32chars-long!
           PAYPAL_CLIENT_ID: test
           PAYPAL_CLIENT_SECRET: test
           PAYPAL_MODE: sandbox
+          PAYPAL_WEBHOOK_ID: test-webhook-id
           TELEGRAM_API_ID: "12345"
           TELEGRAM_API_HASH: fakehash
+          APP_CORS_ORIGINS: http://localhost:5173
 
       - name: Build JAR de producción
         run: mvn package -DskipTests --no-transfer-progress -q
