@@ -42,17 +42,32 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 // Security headers — protección contra clickjacking, XSS, sniffing
-                .headers(headers -> headers
-                        .frameOptions(frame -> frame.deny())
-                        .contentTypeOptions(content -> {})
-                        .httpStrictTransportSecurity(hsts -> hsts
+                .headers(headers -> {
+                        headers.frameOptions(frame -> frame.deny());
+                        headers.contentTypeOptions(content -> {});
+                        headers.httpStrictTransportSecurity(hsts -> hsts
                                 .includeSubDomains(true)
-                                .maxAgeInSeconds(31536000))
-                        .referrerPolicy(referrer -> referrer
-                                .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                        .permissionsPolicy(permissions -> permissions
-                                .policy("camera=(), microphone=(), geolocation=()"))
-                )
+                                .maxAgeInSeconds(31536000)
+                                .preload(true));
+                        headers.referrerPolicy(referrer -> referrer
+                                .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+                        headers.permissionsPolicy(permissions -> permissions
+                                .policy("camera=(), microphone=(), geolocation=()"));
+                        headers.addHeaderWriter(
+                                new org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter(
+                                        "default-src 'self'; " +
+                                        "script-src 'self'; " +
+                                        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                                        "font-src 'self' https://fonts.gstatic.com; " +
+                                        "img-src 'self' data: blob: https:; " +
+                                        "connect-src 'self' wss://ot-crm.com https://ot-crm.com; " +
+                                        "frame-src 'none'; " +
+                                        "object-src 'none'; " +
+                                        "base-uri 'self'; " +
+                                        "form-action 'self'; " +
+                                        "upgrade-insecure-requests"
+                                ));
+                })
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/webhook/**", "/api/telegram/**", "/api/mp/webhook", "/api/paypal/webhook").permitAll()

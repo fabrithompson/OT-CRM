@@ -1,0 +1,70 @@
+name: OT CRM — Backup diario de BD
+
+on:
+  schedule:
+    # 03:00 UTC todos los días (00:00 ART)
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    # Permite lanzar el backup manualmente desde la UI de GitHub Actions
+
+jobs:
+  backup:
+    name: pg_dump → Railway
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Instalar cliente PostgreSQL
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q postgresql-client
+
+      - name: Verificar conexión a Railway
+        env:
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+        run: |
+          echo "Verificando acceso a la base de datos..."
+          psql "$DATABASE_URL" -c "SELECT version();" -t -q
+          echo "Conexión OK"
+
+      - name: Ejecutar pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+        run: |
+          TIMESTAMP=$(date +"%Y-%m-%d_%H-%M")
+          FILENAME="crm_${TIMESTAMP}.dump"
+
+          pg_dump \
+            --format=custom \
+            --no-acl \
+            --no-owner \
+            --compress=6 \
+            "$DATABASE_URL" \
+            --file="$FILENAME"
+
+          SIZE=$(du -sh "$FILENAME" | cut -f1)
+          echo "Backup completado: $FILENAME ($SIZE)"
+          echo "BACKUP_FILE=$FILENAME" >> "$GITHUB_ENV"
+
+      - name: Verificar integridad del dump
+        run: |
+          # pg_restore --list verifica que el archivo sea un dump válido
+          pg_restore --list "$BACKUP_FILE" > /dev/null
+          echo "Integridad del dump verificada"
+
+      - name: Subir backup como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 30
+
+      - name: Resumen
+        run: |
+          echo "### Backup completado" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Campo | Valor |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Archivo | \`$BACKUP_FILE\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tamaño | $(du -sh "$BACKUP_FILE" | cut -f1) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Retención | 30 días |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Próximo backup | mañana 03:00 UTC |" >> "$GITHUB_STEP_SUMMARY"
