@@ -1,0 +1,4 @@
+Contact: mailto:admin@ot-crm.com
+Expires: 2027-04-05T00:00:00.000Z
+Preferred-Languages: es, en
+Canonical: https://ot-crm.com/.well-known/security.txt

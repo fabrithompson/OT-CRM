@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "skills": {
+    "accessibility": {
+      "source": "addyosmani/web-quality-skills",
+      "sourceType": "github",
+      "computedHash": "494d59fffe67c87b485f4ee2fb1abd73fc9d0d508c4c8bd9c43a9edd3242f730"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
+    "java-coding-standards": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "12a3449a8209f3d8a007f925cc0ffddcd977f7e5ba3e92e5588e7d5a29ede1da"
+    },
+    "java-docs": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "76cf49efcd6e99d95031c78e56615dbaf641a756e852acf7e87f9197dfab43e0"
+    },
+    "java-springboot": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "computedHash": "f1b9c6b1277178fc33e5a612761c1cd1cf6ab5f946d05d69d52026d142c0a0c1"
+    },
+    "nodejs-backend-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "3d6cbc12f720d8f02e1936c3e7fab78245eaa69500edbceea93d493d4ece6094"
+    },
+    "nodejs-best-practices": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "9f8d3f268624c4757f4039617942d3e8ddcf420b9295cb943bea3bf9feb37e9d"
+    },
+    "seo": {
+      "source": "addyosmani/web-quality-skills",
+      "sourceType": "github",
+      "computedHash": "680cc12a17e9308b4592a2751db51615c618993f75362cb8e64207f6355a8c63"
+    }
+  }
+}

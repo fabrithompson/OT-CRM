@@ -29,8 +29,10 @@ public class MvcConfig implements WebMvcConfigurer {
         // React static assets
         registry.addResourceHandler("/assets/**")
                 .addResourceLocations("file:/app/static/assets/");
-        registry.addResourceHandler("/*.js", "/*.css", "/*.ico", "/*.png", "/*.svg")
+        registry.addResourceHandler("/*.js", "/*.css", "/*.ico", "/*.png", "/*.svg", "/*.txt")
                 .addResourceLocations("file:/app/static/");
+        registry.addResourceHandler("/.well-known/**")
+                .addResourceLocations("file:/app/static/.well-known/");
     }
 
     @SuppressWarnings("null")
