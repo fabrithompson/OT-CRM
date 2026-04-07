@@ -9,7 +9,7 @@ import { useUser } from '../context/UserContext';
 
 export default function MainLayout() {
     const token = localStorage.getItem('token');
-    const { agenciaId } = useUser();
+    const { agenciaId, loading } = useUser();
     const { playConnect, playDisconnect } = useAudio();
 
     // Cache sessionId → alias para mostrar el nombre real del dispositivo
@@ -129,6 +129,7 @@ export default function MainLayout() {
     });
 
     if (!token) return <Navigate to="/login" replace />;
+    if (loading) return <div className="app-loading" />;
 
     return (
         <>

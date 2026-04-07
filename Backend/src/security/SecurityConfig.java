@@ -56,7 +56,7 @@ public class SecurityConfig {
                         headers.addHeaderWriter(
                                 new org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter(
                                         "default-src 'self'; " +
-                                        "script-src 'self'; " +
+                                        "script-src 'self' https://static.cloudflareinsights.com; " +
                                         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                                         "font-src 'self' https://fonts.gstatic.com; " +
                                         "img-src 'self' data: blob: https:; " +
