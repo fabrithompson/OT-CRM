@@ -20,6 +20,15 @@ export default function Landing() {
     return () => root.removeEventListener('scroll', handler);
   }, []);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    );
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   const scrollTo = (id) => {
     const root = scrollRootRef.current;
     const el = document.getElementById(id);
@@ -163,7 +172,7 @@ export default function Landing() {
       {/* ── How it works ── */}
       <section id="como-funciona" className="landing-section">
         <div className="landing-container">
-          <div className="section-header">
+          <div className="section-header reveal">
             <span className="section-tag">Cómo funciona</span>
             <h2 className="section-title">Tres pasos para empezar</h2>
             <p className="section-sub">
@@ -177,19 +186,22 @@ export default function Landing() {
                 num: '01', icon: 'fa-plug',
                 title: 'Conectá tus canales',
                 desc: 'Vinculá tu WhatsApp y Telegram con un simple escaneo de QR. Sin complicaciones técnicas, en menos de un minuto.',
+                delay: 'reveal-delay-1',
               },
               {
                 num: '02', icon: 'fa-filter',
                 title: 'Organizá tu embudo',
                 desc: 'Arrastrá y soltá tus leads en el Kanban. Asigná agentes, personalizá etapas y seguí cada oportunidad.',
+                delay: 'reveal-delay-2',
               },
               {
                 num: '03', icon: 'fa-chart-line',
                 title: 'Cerrá más ventas',
                 desc: 'Respondé en tiempo real desde el chat unificado, usá plantillas rápidas y nunca pierdas un lead.',
+                delay: 'reveal-delay-3',
               },
             ].map(step => (
-              <div key={step.num} className="step-card">
+              <div key={step.num} className={`step-card reveal reveal-scale ${step.delay}`}>
                 <div className="step-num">{step.num}</div>
                 <div className="step-icon-wrap">
                   <i className={`fas ${step.icon}`} />
@@ -205,7 +217,7 @@ export default function Landing() {
       {/* ── Features ── */}
       <section className="landing-section features-section">
         <div className="landing-container">
-          <div className="section-header">
+          <div className="section-header reveal">
             <span className="section-tag">Funcionalidades</span>
             <h2 className="section-title">Todo lo que necesitás en un lugar</h2>
             <p className="section-sub">
@@ -215,38 +227,14 @@ export default function Landing() {
 
           <div className="features-grid">
             {[
-              {
-                icon: 'fa-columns',
-                title: 'Embudo de Ventas',
-                desc: 'Kanban drag-and-drop para visualizar y mover leads entre etapas. Personalizá cada columna según tu proceso.',
-              },
-              {
-                icon: 'fa-comments',
-                title: 'Chat Unificado',
-                desc: 'Respondé mensajes de WhatsApp y Telegram desde un único panel, sin cambiar de app ni perder contexto.',
-              },
-              {
-                icon: 'fa-address-book',
-                title: 'Gestión de Contactos',
-                desc: 'Base de datos centralizada con historial completo de cada cliente. Buscá, filtrá y segmentá en segundos.',
-              },
-              {
-                icon: 'fa-chart-bar',
-                title: 'Dashboard de Métricas',
-                desc: 'Visualizá en tiempo real el estado de tu equipo, leads nuevos, conversiones y conexiones activas.',
-              },
-              {
-                icon: 'fa-bolt',
-                title: 'Respuestas Rápidas',
-                desc: 'Plantillas de mensajes predefinidas para responder más rápido, con consistencia en todo tu equipo.',
-              },
-              {
-                icon: 'fa-users',
-                title: 'Multi-Agente',
-                desc: 'Tu equipo completo trabajando en simultáneo. Cada agente ve sus conversaciones asignadas en tiempo real.',
-              },
+              { icon: 'fa-columns', title: 'Embudo de Ventas', delay: 'reveal-delay-1', desc: 'Kanban drag-and-drop para visualizar y mover leads entre etapas. Personalizá cada columna según tu proceso.' },
+              { icon: 'fa-comments', title: 'Chat Unificado', delay: 'reveal-delay-2', desc: 'Respondé mensajes de WhatsApp y Telegram desde un único panel, sin cambiar de app ni perder contexto.' },
+              { icon: 'fa-address-book', title: 'Gestión de Contactos', delay: 'reveal-delay-3', desc: 'Base de datos centralizada con historial completo de cada cliente. Buscá, filtrá y segmentá en segundos.' },
+              { icon: 'fa-chart-bar', title: 'Dashboard de Métricas', delay: 'reveal-delay-4', desc: 'Visualizá en tiempo real el estado de tu equipo, leads nuevos, conversiones y conexiones activas.' },
+              { icon: 'fa-bolt', title: 'Respuestas Rápidas', delay: 'reveal-delay-5', desc: 'Plantillas de mensajes predefinidas para responder más rápido, con consistencia en todo tu equipo.' },
+              { icon: 'fa-users', title: 'Multi-Agente', delay: 'reveal-delay-6', desc: 'Tu equipo completo trabajando en simultáneo. Cada agente ve sus conversaciones asignadas en tiempo real.' },
             ].map(feat => (
-              <div key={feat.title} className="feature-card">
+              <div key={feat.title} className={`feature-card reveal ${feat.delay}`}>
                 <div className="feature-icon">
                   <i className={`fas ${feat.icon}`} />
                 </div>
@@ -261,7 +249,7 @@ export default function Landing() {
       {/* ── Pricing ── */}
       <section id="precios" className="landing-section pricing-section">
         <div className="landing-container">
-          <div className="section-header">
+          <div className="section-header reveal">
             <span className="section-tag">Precios</span>
             <h2 className="section-title">Planes para cada negocio</h2>
             <p className="section-sub">
@@ -275,16 +263,17 @@ export default function Landing() {
                 key: 'FREE',
                 icon: 'fa-seedling',
                 name: 'Free',
-                tagline: 'Empezá sin costo, ideal para explorar.',
+                tagline: 'Empezá sin costo, ideal para probar.',
+                precio: null,
                 dispositivos: '1 línea conectada',
                 badge: null,
                 beneficios: [
-                  'Hasta 25 contactos nuevos',
+                  'Hasta 20 contactos nuevos',
                   'Contactos guardados sin límite',
                   'CRM básico con Kanban',
                   'Dashboard con métricas',
                 ],
-                cta: 'Empezar gratis',
+                cta: 'Usar plan gratis',
                 ctaClass: 'btn-outline',
               },
               {
@@ -292,6 +281,7 @@ export default function Landing() {
                 icon: 'fa-bolt',
                 name: 'Pro',
                 tagline: 'Para equipos de ventas en crecimiento.',
+                precio: '15.000',
                 dispositivos: '5 líneas conectadas',
                 badge: 'popular',
                 beneficios: [
@@ -300,30 +290,32 @@ export default function Landing() {
                   'Múltiples operadores simultáneos',
                   'Todo lo del plan Free',
                 ],
-                cta: 'Elegir Pro',
-                ctaClass: 'btn-green',
+                cta: 'Suscribirse al Plan Pro',
+                ctaClass: 'btn-blue',
               },
               {
                 key: 'BUSINESS',
                 icon: 'fa-building',
                 name: 'Business',
                 tagline: 'Volumen alto y agencias consolidadas.',
+                precio: '30.000',
                 dispositivos: '10 líneas conectadas',
-                badge: null,
+                badge: 'business',
                 beneficios: [
                   'Hasta 250 contactos nuevos',
                   'Espacio de trabajo ampliado',
                   'Reportes avanzados',
                   'Todo lo del plan Pro',
                 ],
-                cta: 'Elegir Business',
-                ctaClass: 'btn-outline',
+                cta: 'Suscribirse al Plan Business',
+                ctaClass: 'btn-violet',
               },
               {
                 key: 'ENTERPRISE',
                 icon: 'fa-gem',
                 name: 'Enterprise',
                 tagline: 'Libertad absoluta, sin ningún límite.',
+                precio: '60.000',
                 dispositivos: 'Conexiones ilimitadas',
                 badge: 'vip',
                 beneficios: [
@@ -332,17 +324,17 @@ export default function Landing() {
                   'Soporte dedicado 24/7',
                   'Todo lo del plan Business',
                 ],
-                cta: 'Contactar',
+                cta: 'Plan actual',
                 ctaClass: 'btn-gold',
               },
             ].map(plan => (
               <div
                 key={plan.key}
-                className={`pricing-card ${plan.badge === 'popular' ? 'popular' : ''} ${plan.badge === 'vip' ? 'vip' : ''}`}
+                className={`pricing-card reveal reveal-scale reveal-delay-${['FREE','PRO','BUSINESS','ENTERPRISE'].indexOf(plan.key) + 1} ${plan.badge === 'popular' ? 'popular' : ''} ${plan.badge === 'business' ? 'business' : ''} ${plan.badge === 'vip' ? 'vip' : ''}`}
               >
                 {plan.badge && (
                   <div className={`plan-badge ${plan.badge}`}>
-                    {plan.badge === 'popular' ? '⭐ Popular' : '💎 VIP'}
+                    {plan.badge === 'popular' ? '⭐ Más Popular' : plan.badge === 'business' ? '🚀 Recomendado' : '💎 VIP'}
                   </div>
                 )}
                 <div className="plan-icon">
@@ -350,6 +342,17 @@ export default function Landing() {
                 </div>
                 <h3 className="plan-name">{plan.name}</h3>
                 <p className="plan-tagline">{plan.tagline}</p>
+                {plan.precio ? (
+                  <div className="plan-price">
+                    <span className="plan-price-currency">$</span>
+                    <span className="plan-price-amount">{plan.precio}</span>
+                    <span className="plan-price-period">/mes</span>
+                  </div>
+                ) : (
+                  <div className="plan-price">
+                    <span className="plan-price-free">Gratis</span>
+                  </div>
+                )}
                 <div className="plan-device">
                   <i className="fas fa-mobile-alt" />
                   {plan.dispositivos}
@@ -378,7 +381,7 @@ export default function Landing() {
       <section id="nosotros" className="landing-section about-section">
         <div className="landing-container">
           <div className="about-grid">
-            <div className="about-content">
+            <div className="about-content reveal reveal-left">
               <span className="section-tag">Nosotros</span>
               <h2 className="section-title left">
                 Construido por vendedores,<br />para vendedores
@@ -410,7 +413,7 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="about-visual">
+            <div className="about-visual reveal reveal-right">
               <div className="about-card-stack">
                 <div className="acard acard-1">
                   <i className="fas fa-users" />
@@ -442,7 +445,7 @@ export default function Landing() {
       {/* ── Soporte ── */}
       <section id="soporte" className="landing-section support-section">
         <div className="landing-container">
-          <div className="section-header">
+          <div className="section-header reveal">
             <span className="section-tag">Soporte</span>
             <h2 className="section-title">¿Necesitás ayuda?</h2>
             <p className="section-sub">
@@ -451,7 +454,7 @@ export default function Landing() {
           </div>
 
           <div className="support-grid">
-            <div className="support-info">
+            <div className="support-info reveal reveal-left">
               <div className="support-item">
                 <div className="support-icon"><i className="fas fa-envelope" /></div>
                 <div>
@@ -482,7 +485,7 @@ export default function Landing() {
               </div>
             </div>
 
-            <form className="support-form" onSubmit={handleSubmit}>
+            <form className="support-form reveal reveal-right" onSubmit={handleSubmit}>
               <div className="sf-row">
                 <div className="sf-field">
                   <label>Tu nombre</label>
@@ -521,10 +524,9 @@ export default function Landing() {
                 <label>Mensaje</label>
                 <textarea
                   name="mensaje"
-                  rows={5}
                   placeholder="Describí tu consulta o problema con el mayor detalle posible..."
                   value={form.mensaje}
-                  onChange={handleChange}
+                  onChange={e => { handleChange(e); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                   required
                 />
               </div>
@@ -561,6 +563,39 @@ export default function Landing() {
               <button onClick={() => navigate('/login')}>Iniciar sesión</button>
               <button onClick={() => navigate('/login')}>Registrarse</button>
             </div>
+          </div>
+          <div className="footer-team">
+            <div className="footer-team-members">
+              {[
+                {
+                  name: 'Fabricio Thompson',
+                  linkedin: 'https://www.linkedin.com/in/fabriciothompson/',
+                  github: 'https://github.com/fabrithompson',
+                },
+                {
+                  name: "Ivan O'Connor",
+                  linkedin: 'https://www.linkedin.com/in/ivan-o-connor-b63010400/',
+                  github: 'https://github.com/IvanOCNN',
+                },
+              ].map(m => (
+                <div key={m.name} className="footer-member">
+                  <span className="footer-member-name">{m.name}</span>
+                  <div className="footer-member-links">
+                    <a href={m.linkedin} target="_blank" rel="noopener noreferrer">
+                      <i className="fab fa-linkedin" /> LinkedIn
+                    </a>
+                    <span className="footer-dot">·</span>
+                    <a href={m.github} target="_blank" rel="noopener noreferrer">
+                      <i className="fab fa-github" /> GitHub
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <a href={`mailto:${COMPANY_EMAIL}`} className="footer-email-badge">
+              <i className="fas fa-envelope" />
+              {COMPANY_EMAIL}
+            </a>
           </div>
           <div className="footer-bottom">
             <span>© {new Date().getFullYear()} OT CRM. Todos los derechos reservados.</span>
