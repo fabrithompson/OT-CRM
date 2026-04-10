@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import LogoOrb from './LogoOrb';
 
 export default function Sidebar() {
     const navigate = useNavigate();
@@ -23,8 +24,7 @@ export default function Sidebar() {
     return (
         <div className="sidebar">
             <div className="sidebar-header">
-                <div className="logo-circle">O'T</div>
-                <span className="brand-text">CRM</span>
+                <LogoOrb size={40} onClick={() => navigate('/dashboard')} />
             </div>
 
             <ul className="menu-list">

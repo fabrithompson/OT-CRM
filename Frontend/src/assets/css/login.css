@@ -45,8 +45,6 @@
    }
    
    .brand-mini { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 30px; }
-   .brand-symbol { width: 45px; height: 45px; border-radius: 50%; background: radial-gradient(circle at 30% 20%, #fff, #999 50%, #111 100%); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 800; color: #000; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
-   .brand-name { font-size: 1.2rem; letter-spacing: 0.1em; text-transform: uppercase; color: white; font-weight: 700; }
    
    .auth-content { text-align: center; }
    .auth-content h1 { font-size: 1.8rem; margin: 0 0 8px; font-weight: 700; }

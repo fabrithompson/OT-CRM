@@ -2,7 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { useEffect, lazy, Suspense } from 'react';
 
 const PAGE_TITLES = {
-  '/login':             'OT CRM',
+  '/':                  'OT CRM — CRM para WhatsApp y Telegram',
+  '/login':             'OT CRM — Iniciar sesión',
   '/dashboard':         'Dashboard',
   '/kanban':            'Embudo',
   '/contactos':         'Contactos',
@@ -26,6 +27,8 @@ import MainLayout from './components/MainLayout';
 import { ToastProvider } from './context/ToastContext';
 import { UserProvider } from './context/UserContext';
 
+const Landing = lazy(() => import('./pages/Landing'));
+
 // Lazy loading: cada página se descarga solo cuando el usuario navega a ella
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Kanban = lazy(() => import('./pages/Kanban'));
@@ -46,7 +49,7 @@ function App() {
         <TitleUpdater />
         <Suspense fallback={<div className="app-loading" />}>
           <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />
 
             <Route element={<MainLayout />}>

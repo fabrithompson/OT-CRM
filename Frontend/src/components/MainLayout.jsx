@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import useWebSocket from '../hooks/useWebSocket';
@@ -6,6 +6,88 @@ import useAudio from '../hooks/useAudio';
 import api from '../utils/api';
 import { requestNotifPermission, pushBrowserNotif } from '../utils/notifications';
 import { useUser } from '../context/UserContext';
+import '../assets/css/landing.css';
+
+const COMPANY_EMAIL = 'contacto@otcrm.com';
+
+function HelpButton() {
+    const [open, setOpen] = useState(false);
+    const [sent, setSent] = useState(false);
+    const [form, setForm] = useState({ nombre: '', email: '', mensaje: '' });
+
+    const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const subject = encodeURIComponent('Consulta de soporte — OT CRM');
+        const body = encodeURIComponent(
+            `Nombre: ${form.nombre}\nEmail: ${form.email}\n\nMensaje:\n${form.mensaje}`
+        );
+        window.open(`mailto:${COMPANY_EMAIL}?subject=${subject}&body=${body}`);
+        setSent(true);
+        setTimeout(() => { setSent(false); setOpen(false); setForm({ nombre: '', email: '', mensaje: '' }); }, 3500);
+    };
+
+    return (
+        <>
+            {open && (
+                <div className="help-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+                    <div className="help-modal">
+                        <div className="help-modal-header">
+                            <div className="help-modal-title">
+                                <i className="fas fa-headset" />
+                                <strong>Centro de ayuda</strong>
+                            </div>
+                            <button className="help-modal-close" onClick={() => setOpen(false)}>
+                                <i className="fas fa-times" />
+                            </button>
+                        </div>
+                        {sent ? (
+                            <div className="help-modal-sent">
+                                <i className="fas fa-check-circle" />
+                                <h4>¡Consulta enviada!</h4>
+                                <p>Te respondemos en menos de 24 horas. Revisá tu bandeja de correo.</p>
+                            </div>
+                        ) : (
+                            <>
+                                <p>Completá el formulario y te respondemos a la brevedad.</p>
+                                <form onSubmit={handleSubmit}>
+                                    <div className="sf-field">
+                                        <label>Tu nombre</label>
+                                        <input type="text" name="nombre" placeholder="Juan García"
+                                            value={form.nombre} onChange={handleChange} required />
+                                    </div>
+                                    <div className="sf-field">
+                                        <label>Tu email</label>
+                                        <input type="email" name="email" placeholder="juan@empresa.com"
+                                            value={form.email} onChange={handleChange} required />
+                                    </div>
+                                    <div className="sf-field">
+                                        <label>Mensaje</label>
+                                        <textarea name="mensaje" rows={4}
+                                            placeholder="Describí tu consulta o problema..."
+                                            value={form.mensaje} onChange={handleChange} required />
+                                    </div>
+                                    <button type="submit" className="sf-submit">
+                                        <i className="fas fa-paper-plane" /> Enviar consulta
+                                    </button>
+                                </form>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+            <button
+                className="help-float-btn"
+                onClick={() => setOpen(v => !v)}
+                title="Centro de ayuda"
+                aria-label="Abrir centro de ayuda"
+            >
+                <i className={`fas fa-${open ? 'times' : 'question'}`} />
+            </button>
+        </>
+    );
+}
 
 export default function MainLayout() {
     const token = localStorage.getItem('token');
@@ -157,6 +239,7 @@ export default function MainLayout() {
                     <Outlet />
                 </div>
             </div>
+            <HelpButton />
         </>
     );
 }
