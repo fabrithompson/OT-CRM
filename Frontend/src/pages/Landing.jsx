@@ -5,6 +5,186 @@ import LogoOrb from '../components/LogoOrb';
 
 const COMPANY_EMAIL = 'contacto@otcrm.com';
 
+/* ── CRM Screenshot Showcase ── */
+const SCREENS = [
+  { key: 'dashboard',  label: 'Dashboard',          icon: 'fa-chart-bar',    src: '/screenshots/dashboard.png'        },
+  { key: 'embudo',     label: 'Embudo de Ventas',   icon: 'fa-filter',       src: '/screenshots/embudo.png'           },
+  { key: 'contactos',  label: 'Contactos',          icon: 'fa-address-book', src: '/screenshots/contactos.png'        },
+  { key: 'respuestas', label: 'Respuestas Rápidas', icon: 'fa-bolt',         src: '/screenshots/respuestasrapidas.png'},
+  { key: 'perfil',     label: 'Mi Perfil',          icon: 'fa-user',         src: '/screenshots/perfil.png'           },
+];
+
+function CRMShowcase() {
+  const [active, setActive]   = useState(0);
+  const [paused, setPaused]   = useState(false);
+  const [progKey, setProgKey] = useState(0);   // remounts progress bar to restart anim
+  const INTERVAL = 4000;
+
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => {
+      setActive(a => (a + 1) % SCREENS.length);
+      setProgKey(k => k + 1);
+    }, INTERVAL);
+    return () => clearInterval(t);
+  }, [paused]);
+
+  const go = (i) => {
+    setActive(i);
+    setProgKey(k => k + 1);
+  };
+
+  return (
+    <div
+      className="crm-showcase"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {/* Browser-style frame */}
+      <div className="crm-frame">
+        <div className="crm-frame-bar">
+          <div className="crm-frame-dots">
+            <span /><span /><span />
+          </div>
+          <div className="crm-frame-url">
+            <i className="fas fa-lock" />
+            otcrm.com &nbsp;·&nbsp; {SCREENS[active].label}
+          </div>
+          <div className="crm-frame-live">
+            <span className="crm-live-dot" />
+            Live
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="crm-progress">
+          {!paused && (
+            <div key={progKey} className="crm-progress-fill" style={{ animationDuration: `${INTERVAL}ms` }} />
+          )}
+        </div>
+
+        {/* Screens */}
+        <div className="crm-screens">
+          {SCREENS.map((s, i) => (
+            <img
+              key={s.key}
+              src={s.src}
+              alt={s.label}
+              className={`crm-screen-img ${i === active ? 'active' : ''}`}
+              draggable={false}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Tab selectors */}
+      <div className="crm-tabs">
+        {SCREENS.map((s, i) => (
+          <button
+            key={s.key}
+            className={`crm-tab ${i === active ? 'active' : ''}`}
+            onClick={() => go(i)}
+          >
+            <i className={`fas ${s.icon}`} />
+            <span>{s.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Animated wave canvas background ── */
+function WaveCanvas() {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animId;
+    let t = 0;
+    let lastTime = 0;
+    const TARGET_MS = 1000 / 30; // ~30 fps cap for performance
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Build line configs once — random seed baked in at mount
+    const LINE_COUNT = 38;
+    const lines = Array.from({ length: LINE_COUNT }, (_, i) => {
+      const rand = () => Math.random();
+      const lighter = rand() > 0.65;
+      return {
+        baseY:   i / (LINE_COUNT - 1),          // 0..1 vertical spread
+        phase:   (i / LINE_COUNT) * Math.PI * 5 + rand() * Math.PI,
+        freq1:   0.55 + rand() * 0.9,
+        freq2:   1.1  + rand() * 1.1,
+        amp1:    0.045 + rand() * 0.11,          // relative to canvas height
+        amp2:    0.018 + rand() * 0.055,
+        speed:   0.00035 + rand() * 0.00055,
+        opacity: 0.035 + rand() * 0.20,
+        // Two-tone green palette: emerald vs lighter mint
+        r: lighter ? 52  : 16,
+        g: lighter ? 211 : 185,
+        b: lighter ? 153 : 129,
+      };
+    });
+
+    const draw = (timestamp) => {
+      animId = requestAnimationFrame(draw);
+      if (timestamp - lastTime < TARGET_MS) return;
+      lastTime = timestamp;
+
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      lines.forEach(line => {
+        ctx.beginPath();
+        const STEPS = 110;
+        for (let j = 0; j <= STEPS; j++) {
+          const nx = j / STEPS;
+          const y =
+            H * line.baseY +
+            H * line.amp1 * Math.sin(nx * Math.PI * 2 * line.freq1 + t * line.speed * 100 + line.phase) +
+            H * line.amp2 * Math.sin(nx * Math.PI * 3 * line.freq2 + t * line.speed * 65  + line.phase * 1.5);
+          if (j === 0) ctx.moveTo(0, y);
+          else ctx.lineTo(nx * W, y);
+        }
+
+        // Horizontal gradient: fade in → bright center → fade out
+        const grad = ctx.createLinearGradient(0, 0, W, 0);
+        const { r, g, b, opacity: op } = line;
+        grad.addColorStop(0,    `rgba(${r},${g},${b},0)`);
+        grad.addColorStop(0.12, `rgba(${r},${g},${b},${op})`);
+        grad.addColorStop(0.50, `rgba(${r},${g},${b},${(op * 1.15).toFixed(3)})`);
+        grad.addColorStop(0.88, `rgba(${r},${g},${b},${(op * 0.65).toFixed(3)})`);
+        grad.addColorStop(1,    `rgba(${r},${g},${b},0)`);
+
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 0.85;
+        ctx.stroke();
+      });
+
+      t++;
+    };
+
+    animId = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="landing-wave-canvas" aria-hidden="true" />;
+}
+
 export default function Landing() {
   const navigate = useNavigate();
   const scrollRootRef = useRef(null);
@@ -53,12 +233,8 @@ export default function Landing() {
   return (
     <div id="landing-scroll-root" className="landing-root" ref={scrollRootRef}>
 
-      {/* ── Ambient Background ── */}
-      <div className="landing-ambient" aria-hidden="true">
-        <div className="l-orb l-orb-1" />
-        <div className="l-orb l-orb-2" />
-        <div className="l-orb l-orb-3" />
-      </div>
+      {/* ── Animated Wave Background ── */}
+      <WaveCanvas />
       <div className="landing-noise" aria-hidden="true" />
 
       {/* ── Navbar ── */}
@@ -139,32 +315,9 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Mock Kanban preview */}
+          {/* CRM Showcase */}
           <div className="hero-preview">
-            <div className="hero-preview-card">
-              <div className="hpc-header">
-                <div className="hpc-dot green" />
-                <div className="hpc-dot yellow" />
-                <div className="hpc-dot red" />
-                <span>Embudo de Ventas — OT CRM</span>
-              </div>
-              <div className="hpc-columns">
-                {['Nuevos Leads', 'En Seguimiento', 'Cerrados'].map(col => (
-                  <div key={col} className="hpc-col">
-                    <div className="hpc-col-title">{col}</div>
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="hpc-item">
-                        <div className="hpc-avatar" />
-                        <div className="hpc-text">
-                          <div className="hpc-line long" />
-                          <div className="hpc-line short" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CRMShowcase />
           </div>
         </div>
       </section>
@@ -227,12 +380,12 @@ export default function Landing() {
 
           <div className="features-grid">
             {[
-              { icon: 'fa-columns', title: 'Embudo de Ventas', delay: 'reveal-delay-1', desc: 'Kanban drag-and-drop para visualizar y mover leads entre etapas. Personalizá cada columna según tu proceso.' },
-              { icon: 'fa-comments', title: 'Chat Unificado', delay: 'reveal-delay-2', desc: 'Respondé mensajes de WhatsApp y Telegram desde un único panel, sin cambiar de app ni perder contexto.' },
-              { icon: 'fa-address-book', title: 'Gestión de Contactos', delay: 'reveal-delay-3', desc: 'Base de datos centralizada con historial completo de cada cliente. Buscá, filtrá y segmentá en segundos.' },
-              { icon: 'fa-chart-bar', title: 'Dashboard de Métricas', delay: 'reveal-delay-4', desc: 'Visualizá en tiempo real el estado de tu equipo, leads nuevos, conversiones y conexiones activas.' },
-              { icon: 'fa-bolt', title: 'Respuestas Rápidas', delay: 'reveal-delay-5', desc: 'Plantillas de mensajes predefinidas para responder más rápido, con consistencia en todo tu equipo.' },
-              { icon: 'fa-users', title: 'Multi-Agente', delay: 'reveal-delay-6', desc: 'Tu equipo completo trabajando en simultáneo. Cada agente ve sus conversaciones asignadas en tiempo real.' },
+              { icon: 'fa-columns',      title: 'Embudo de Ventas',       delay: 'reveal-delay-1', desc: 'Kanban drag-and-drop para visualizar y mover leads entre etapas. Personalizá cada columna según tu proceso.' },
+              { icon: 'fa-comments',     title: 'Chat Unificado',         delay: 'reveal-delay-2', desc: 'Respondé mensajes de WhatsApp y Telegram desde un único panel, sin cambiar de app ni perder contexto.' },
+              { icon: 'fa-address-book', title: 'Gestión de Contactos',   delay: 'reveal-delay-3', desc: 'Base de datos centralizada con historial completo de cada cliente. Buscá, filtrá y segmentá en segundos.' },
+              { icon: 'fa-chart-bar',    title: 'Dashboard de Métricas',  delay: 'reveal-delay-4', desc: 'Visualizá en tiempo real el estado de tu equipo, leads nuevos, conversiones y conexiones activas.' },
+              { icon: 'fa-bolt',         title: 'Respuestas Rápidas',     delay: 'reveal-delay-5', desc: 'Plantillas de mensajes predefinidas para responder más rápido, con consistencia en todo tu equipo.' },
+              { icon: 'fa-users',        title: 'Multi-Agente',           delay: 'reveal-delay-6', desc: 'Tu equipo completo trabajando en simultáneo. Cada agente ve sus conversaciones asignadas en tiempo real.' },
             ].map(feat => (
               <div key={feat.title} className={`feature-card reveal ${feat.delay}`}>
                 <div className="feature-icon">
@@ -324,7 +477,7 @@ export default function Landing() {
                   'Soporte dedicado 24/7',
                   'Todo lo del plan Business',
                 ],
-                cta: 'Plan actual',
+                cta: 'Contactar',
                 ctaClass: 'btn-gold',
               },
             ].map(plan => (
@@ -454,38 +607,7 @@ export default function Landing() {
           </div>
 
           <div className="support-grid">
-            <div className="support-info reveal reveal-left">
-              <div className="support-item">
-                <div className="support-icon"><i className="fas fa-envelope" /></div>
-                <div>
-                  <strong>Email</strong>
-                  <a href={`mailto:${COMPANY_EMAIL}`}>{COMPANY_EMAIL}</a>
-                </div>
-              </div>
-              <div className="support-item">
-                <div className="support-icon"><i className="fab fa-whatsapp" /></div>
-                <div>
-                  <strong>WhatsApp</strong>
-                  <span>Consultanos directamente por WhatsApp</span>
-                </div>
-              </div>
-              <div className="support-item">
-                <div className="support-icon"><i className="fas fa-clock" /></div>
-                <div>
-                  <strong>Horario de atención</strong>
-                  <span>Lunes a Viernes, 9:00 – 18:00 hs</span>
-                </div>
-              </div>
-              <div className="support-item">
-                <div className="support-icon"><i className="fas fa-comments" /></div>
-                <div>
-                  <strong>Tiempo de respuesta</strong>
-                  <span>Respondemos en menos de 24 horas</span>
-                </div>
-              </div>
-            </div>
-
-            <form className="support-form reveal reveal-right" onSubmit={handleSubmit}>
+            <form className="support-form reveal" onSubmit={handleSubmit}>
               <div className="sf-row">
                 <div className="sf-field">
                   <label>Tu nombre</label>
