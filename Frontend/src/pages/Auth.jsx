@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 // ¡CAMBIO CRÍTICO 1! Usamos tu api.js en lugar de axios puro
-import api from '../utils/api'; 
+import api from '../utils/api';
 import '../assets/css/login.css';
+import LogoOrb from '../components/LogoOrb';
 
 export default function Auth() {
     const [activePanel, setActivePanel] = useState('login');
@@ -155,8 +156,7 @@ export default function Auth() {
             <div className="auth-container">
                 <div className="auth-card">
                     <div className="brand-mini brand-fixed">
-                        <div className="brand-symbol">O'T</div>
-                        <span className="brand-name">O'T CRM</span>
+                        <LogoOrb size={42} />
                     </div>
 
                     <div className="auth-slider-wrapper" ref={wrapperRef}>

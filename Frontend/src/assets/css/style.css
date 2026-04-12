@@ -72,17 +72,17 @@ body {
 
 .ambient-bg::before {
     width: 80vw; height: 80vw;
-    background: radial-gradient(circle, #ffffff 0%, transparent 50%);
+    background: radial-gradient(circle, var(--brand-green) 0%, transparent 50%);
     top: -30%; left: -20%;
-    opacity: 0.12;
-    filter: blur(120px); 
+    opacity: 0.18;
+    filter: blur(120px);
 }
 
 .ambient-bg::after {
     width: 70vw; height: 70vw;
     background: radial-gradient(circle, var(--brand-green) 0%, transparent 60%);
     bottom: -30%; right: -10%;
-    animation-duration: 25s; opacity: 0.08; filter: blur(120px);
+    animation-duration: 25s; opacity: 0.14; filter: blur(120px);
 }
 
 .glass-overlay {
@@ -94,6 +94,75 @@ body {
 @keyframes moveAmbient {
     0% { transform: translate(0, 0) scale(1); }
     100% { transform: translate(5%, 2%) scale(1.05); }
+}
+
+/* ════════════════════════════════════════
+   Logo Orb — 3D spinning sphere + float
+   Used in: Sidebar, Landing, Auth
+   ════════════════════════════════════════ */
+.logo-orb-wrap {
+    perspective: 600px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    animation: orb-float 4s ease-in-out infinite;
+    text-decoration: none;
+}
+
+.logo-orb {
+    animation: orb-spin 20s linear infinite;
+    will-change: transform;
+    flex-shrink: 0;
+}
+
+.logo-orb-sphere {
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 20%, #fff, #999 50%, #111 100%);
+    box-shadow:
+        0 0 0 1.5px rgba(255, 255, 255, 0.15),
+        0 0 20px rgba(255, 255, 255, 0.15),
+        inset 0 2px 4px rgba(255, 255, 255, 0.30);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.logo-orb-text {
+    font-weight: 900;
+    color: #000;
+    letter-spacing: 0.04em;
+    user-select: none;
+    line-height: 1;
+    animation: orb-text-counter 20s linear infinite;
+    will-change: transform;
+    pointer-events: none;
+}
+
+.logo-sa {
+    font-size: 0.9rem;
+    font-weight: 900;
+    letter-spacing: 0.2em;
+    color: #fff;
+    text-transform: uppercase;
+    user-select: none;
+    line-height: 1;
+}
+
+@keyframes orb-spin {
+    from { transform: rotateY(0deg); }
+    to   { transform: rotateY(360deg); }
+}
+
+@keyframes orb-text-counter {
+    from { transform: rotateY(0deg); }
+    to   { transform: rotateY(-360deg); }
+}
+
+@keyframes orb-float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-3px); }
 }
 .content-card, .metric-card, .sidebar, .column {
     background: var(--bg-glass) !important;
@@ -164,21 +233,21 @@ body {
     overflow: hidden;
     width: 100%;
 }
-.logo-circle {
-    width: 42px; height: 42px; border-radius: 50%;
-    background: linear-gradient(135deg, #e4e4e7 0%, #9ca3af 100%);
-    color: #000; display: flex; align-items: center; justify-content: center;
-    font-weight: 900; font-size: 1rem; flex-shrink: 0;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
+/* Sidebar logo orb — text hidden when collapsed */
+.sidebar-header .logo-orb-wrap { gap: 12px; }
+.sidebar-header .logo-sa {
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    font-size: 1.1rem;
+    letter-spacing: 0.18em;
+    transition-delay: 0s;
 }
-.sidebar:hover .logo-circle { transform: rotate(360deg); }
-.brand-text {
-    font-size: 1.2rem; font-weight: 800; color: #fff; letter-spacing: 2px;
-    opacity: 0; transition: opacity 0.3s ease; transform: translateX(-20px);
+.sidebar:hover .sidebar-header .logo-sa {
+    opacity: 1;
+    transform: translateX(0);
+    transition-delay: 0.08s;
 }
-.sidebar:hover .brand-text { opacity: 1; transform: translateX(0); transition-delay: 0.1s; }
 
 .menu-bottom {
     margin-top: auto;
@@ -764,9 +833,9 @@ button:focus-visible {
 @media (max-width: 992px) {
     .app-container { flex-direction: row !important; }
     .sidebar { width: 70px; flex: 0 0 70px; min-width: 70px; border-right: 1px solid var(--border-glass); border-bottom: none; }
-    .sidebar .link-text, .sidebar .brand-text, .sidebar .user-info, .sidebar .logout-btn .link-text { display: none !important; }
-    .sidebar:hover { width: 260px; position: absolute; height: 100%; box-shadow: 10px 0 30px rgba#111b21; }
-    .sidebar:hover .link-text, .sidebar:hover .brand-text, .sidebar:hover .user-info, .sidebar:hover .logout-btn .link-text { display: block !important; opacity: 1; }
+    .sidebar .link-text, .sidebar .logo-sa, .sidebar .user-info, .sidebar .logout-btn .link-text { display: none !important; }
+    .sidebar:hover { width: 260px; position: absolute; height: 100%; box-shadow: 10px 0 30px rgba(17,27,33,0.8); }
+    .sidebar:hover .link-text, .sidebar:hover .logo-sa, .sidebar:hover .user-info, .sidebar:hover .logout-btn .link-text { display: block !important; opacity: 1; }
     .dashboard-content { padding: 15px; }
     .metrics-grid { grid-template-columns: 1fr; }
 }
@@ -3146,7 +3215,7 @@ display: flex;
     .sidebar .sidebar-footer,
     .sidebar .menu-bottom,
     .sidebar .link-text,
-    .sidebar .brand-text,
+    .sidebar .logo-sa,
     .sidebar .user-info { display: none !important; }
     .sidebar .menu-list {
         display: flex !important;
