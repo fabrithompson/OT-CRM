@@ -111,9 +111,9 @@
   gap: 32px;
 }
 
-/* logo-orb-wrap en navbar — tamaño y gap específico */
+/* logo-orb-wrap en navbar — gap ajustado */
 .landing-nav-inner .logo-orb-wrap {
-  gap: 10px;
+  gap: 4px;
 }
 
 .landing-nav-inner .logo-sa {
@@ -270,6 +270,8 @@
   display: flex;
   align-items: center;
   padding-top: 72px;
+  position: relative;
+  overflow: hidden;
 }
 
 .landing-hero .landing-container {
@@ -581,6 +583,8 @@
   border-radius: 18px;
   padding: 36px 30px;
   transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+  position: relative;
+  overflow: hidden;
 }
 
 .step-card:hover {
@@ -1095,8 +1099,10 @@
 }
 
 .support-grid {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr 1.65fr;
+  gap: 64px;
+  align-items: start;
 }
 
 .support-info {
@@ -1235,7 +1241,7 @@
 
 /* ── Footer ───────────────────────────── */
 .landing-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: none;
   padding: 60px 0 30px;
 }
 
@@ -1624,5 +1630,207 @@
   }
   .help-modal {
     width: calc(100vw - 40px);
+  }
+}
+
+/* ════════════════════════════════════════
+   REDESIGN ADDITIONS
+   ════════════════════════════════════════ */
+
+/* ── Hero radial glow ─────────────────── */
+.hero-glow {
+  position: absolute;
+  width: 1000px;
+  height: 1000px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.07) 0%, transparent 62%);
+  top: 42%;
+  left: 28%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(30px);
+}
+
+.landing-hero .landing-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Hero two-column layout ───────────── */
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* ── Hero visual (right column) ──────── */
+.hero-visual {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Soft green glow behind the image */
+.hero-img-glow {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.13) 0%, transparent 68%);
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  filter: blur(36px);
+}
+
+.hero-img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.55))
+          drop-shadow(0 0 60px rgba(16, 185, 129, 0.08));
+  animation: heroImgFloat 7s ease-in-out infinite;
+  display: block;
+  margin: 0 auto;
+}
+
+@keyframes heroImgFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+
+/* ── Hero responsive ──────────────────── */
+@media (max-width: 860px) {
+  .hero-inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .hero-visual {
+    order: -1;
+    max-height: 320px;
+    overflow: hidden;
+  }
+  .hero-img {
+    max-width: 300px;
+    animation: none;
+  }
+}
+
+/* ── Step card — gradient top accent ──── */
+.step-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.70), transparent);
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.step-card:hover::before { opacity: 1; }
+
+/* ── Feature card icon — stronger glow ── */
+.feature-card:hover .feature-icon {
+  background: rgba(16, 185, 129, 0.22);
+  box-shadow: 0 0 28px rgba(16, 185, 129, 0.28), 0 0 60px rgba(16, 185, 129, 0.10);
+}
+
+/* ── Popular pricing card — slight lift ─ */
+@media (min-width: 1081px) {
+  .pricing-card.popular {
+    transform: scale(1.035) translateY(-6px);
+  }
+  .pricing-card.popular:hover {
+    transform: scale(1.035) translateY(-12px);
+    box-shadow: 0 0 70px rgba(59, 130, 246, 0.28);
+  }
+}
+
+/* ── Support section — info column ───── */
+.support-info {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-top: 4px;
+}
+
+.si-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.si-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  background: rgba(16, 185, 129, 0.10);
+  border: 1px solid rgba(16, 185, 129, 0.20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  font-size: 1.1rem;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.si-item:hover .si-icon {
+  background: rgba(16, 185, 129, 0.18);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.22);
+}
+
+.si-text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 5px;
+}
+
+.si-text strong {
+  font-size: 0.93rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.si-text span {
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.5;
+}
+
+/* ── Footer glow separator ───────────── */
+.footer-glow-sep {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 5%,
+    rgba(16, 185, 129, 0.28) 35%,
+    rgba(16, 185, 129, 0.28) 65%,
+    transparent 95%
+  );
+  margin-bottom: 52px;
+}
+
+/* ── Support grid responsive ─────────── */
+@media (max-width: 900px) {
+  .support-grid {
+    grid-template-columns: 1fr;
+    gap: 44px;
   }
 }

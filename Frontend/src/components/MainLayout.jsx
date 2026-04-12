@@ -8,7 +8,7 @@ import { requestNotifPermission, pushBrowserNotif } from '../utils/notifications
 import { useUser } from '../context/UserContext';
 import '../assets/css/landing.css';
 
-const COMPANY_EMAIL = 'contacto@otcrm.com';
+const COMPANY_EMAIL = 'otempresa@otempresa.com';
 
 function HelpButton() {
     const [open, setOpen] = useState(false);

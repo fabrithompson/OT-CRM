@@ -2,188 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../assets/css/landing.css';
 import LogoOrb from '../components/LogoOrb';
+import WaveCanvas from '../components/WaveCanvas';
 
-const COMPANY_EMAIL = 'contacto@otcrm.com';
+const COMPANY_EMAIL = 'otempresa@otempresa.com';
 
-/* ── CRM Screenshot Showcase ── */
-const SCREENS = [
-  { key: 'dashboard',  label: 'Dashboard',          icon: 'fa-chart-bar',    src: '/screenshots/dashboard.png'        },
-  { key: 'embudo',     label: 'Embudo de Ventas',   icon: 'fa-filter',       src: '/screenshots/embudo.png'           },
-  { key: 'contactos',  label: 'Contactos',          icon: 'fa-address-book', src: '/screenshots/contactos.png'        },
-  { key: 'respuestas', label: 'Respuestas Rápidas', icon: 'fa-bolt',         src: '/screenshots/respuestasrapidas.png'},
-  { key: 'perfil',     label: 'Mi Perfil',          icon: 'fa-user',         src: '/screenshots/perfil.png'           },
-];
-
-function CRMShowcase() {
-  const [active, setActive]   = useState(0);
-  const [paused, setPaused]   = useState(false);
-  const [progKey, setProgKey] = useState(0);   // remounts progress bar to restart anim
-  const INTERVAL = 4000;
-
-  useEffect(() => {
-    if (paused) return;
-    const t = setInterval(() => {
-      setActive(a => (a + 1) % SCREENS.length);
-      setProgKey(k => k + 1);
-    }, INTERVAL);
-    return () => clearInterval(t);
-  }, [paused]);
-
-  const go = (i) => {
-    setActive(i);
-    setProgKey(k => k + 1);
-  };
-
-  return (
-    <div
-      className="crm-showcase"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
-      {/* Browser-style frame */}
-      <div className="crm-frame">
-        <div className="crm-frame-bar">
-          <div className="crm-frame-dots">
-            <span /><span /><span />
-          </div>
-          <div className="crm-frame-url">
-            <i className="fas fa-lock" />
-            otcrm.com &nbsp;·&nbsp; {SCREENS[active].label}
-          </div>
-          <div className="crm-frame-live">
-            <span className="crm-live-dot" />
-            Live
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div className="crm-progress">
-          {!paused && (
-            <div key={progKey} className="crm-progress-fill" style={{ animationDuration: `${INTERVAL}ms` }} />
-          )}
-        </div>
-
-        {/* Screens */}
-        <div className="crm-screens">
-          {SCREENS.map((s, i) => (
-            <img
-              key={s.key}
-              src={s.src}
-              alt={s.label}
-              className={`crm-screen-img ${i === active ? 'active' : ''}`}
-              draggable={false}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Tab selectors */}
-      <div className="crm-tabs">
-        {SCREENS.map((s, i) => (
-          <button
-            key={s.key}
-            className={`crm-tab ${i === active ? 'active' : ''}`}
-            onClick={() => go(i)}
-          >
-            <i className={`fas ${s.icon}`} />
-            <span>{s.label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── Animated wave canvas background ── */
-function WaveCanvas() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let animId;
-    let t = 0;
-    let lastTime = 0;
-    const TARGET_MS = 1000 / 30; // ~30 fps cap for performance
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    // Build line configs once — random seed baked in at mount
-    const LINE_COUNT = 38;
-    const lines = Array.from({ length: LINE_COUNT }, (_, i) => {
-      const rand = () => Math.random();
-      const lighter = rand() > 0.65;
-      return {
-        baseY:   i / (LINE_COUNT - 1),          // 0..1 vertical spread
-        phase:   (i / LINE_COUNT) * Math.PI * 5 + rand() * Math.PI,
-        freq1:   0.55 + rand() * 0.9,
-        freq2:   1.1  + rand() * 1.1,
-        amp1:    0.045 + rand() * 0.11,          // relative to canvas height
-        amp2:    0.018 + rand() * 0.055,
-        speed:   0.00035 + rand() * 0.00055,
-        opacity: 0.035 + rand() * 0.20,
-        // Two-tone green palette: emerald vs lighter mint
-        r: lighter ? 52  : 16,
-        g: lighter ? 211 : 185,
-        b: lighter ? 153 : 129,
-      };
-    });
-
-    const draw = (timestamp) => {
-      animId = requestAnimationFrame(draw);
-      if (timestamp - lastTime < TARGET_MS) return;
-      lastTime = timestamp;
-
-      const W = canvas.width;
-      const H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-
-      lines.forEach(line => {
-        ctx.beginPath();
-        const STEPS = 110;
-        for (let j = 0; j <= STEPS; j++) {
-          const nx = j / STEPS;
-          const y =
-            H * line.baseY +
-            H * line.amp1 * Math.sin(nx * Math.PI * 2 * line.freq1 + t * line.speed * 100 + line.phase) +
-            H * line.amp2 * Math.sin(nx * Math.PI * 3 * line.freq2 + t * line.speed * 65  + line.phase * 1.5);
-          if (j === 0) ctx.moveTo(0, y);
-          else ctx.lineTo(nx * W, y);
-        }
-
-        // Horizontal gradient: fade in → bright center → fade out
-        const grad = ctx.createLinearGradient(0, 0, W, 0);
-        const { r, g, b, opacity: op } = line;
-        grad.addColorStop(0,    `rgba(${r},${g},${b},0)`);
-        grad.addColorStop(0.12, `rgba(${r},${g},${b},${op})`);
-        grad.addColorStop(0.50, `rgba(${r},${g},${b},${(op * 1.15).toFixed(3)})`);
-        grad.addColorStop(0.88, `rgba(${r},${g},${b},${(op * 0.65).toFixed(3)})`);
-        grad.addColorStop(1,    `rgba(${r},${g},${b},0)`);
-
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 0.85;
-        ctx.stroke();
-      });
-
-      t++;
-    };
-
-    animId = requestAnimationFrame(draw);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="landing-wave-canvas" aria-hidden="true" />;
-}
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -217,9 +39,7 @@ export default function Landing() {
     setMobileOpen(false);
   };
 
-  const handleChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -240,7 +60,7 @@ export default function Landing() {
       {/* ── Navbar ── */}
       <nav className={`landing-nav ${navScrolled ? 'scrolled' : ''}`}>
         <div className="landing-nav-inner">
-          <LogoOrb size={40} onClick={() => scrollTo('inicio')} />
+          <LogoOrb size={62} onClick={() => scrollTo('inicio')} />
 
           <div className={`landing-nav-links ${mobileOpen ? 'open' : ''}`}>
             <button onClick={() => scrollTo('inicio')}>Inicio</button>
@@ -266,58 +86,74 @@ export default function Landing() {
 
       {/* ── Hero ── */}
       <section id="inicio" className="landing-hero">
+        {/* Radial glow behind the headline */}
+        <div className="hero-glow" aria-hidden="true" />
+
         <div className="landing-container">
-          <div className="hero-badge">
-            <span className="hero-badge-dot" />
-            CRM para WhatsApp, Telegram y más
-          </div>
+          <div className="hero-inner">
 
-          <h1 className="hero-title">
-            Centralizá y convertí
-            <span className="hero-title-green"> tus leads en ventas</span>
-          </h1>
+            {/* ── Left: text content ── */}
+            <div className="hero-content">
+              <div className="hero-badge">
+                <span className="hero-badge-dot" />
+                CRM para WhatsApp y Telegram.
+              </div>
 
-          <p className="hero-subtitle">
-            Gestioná todos tus contactos, conversaciones y tu equipo desde un solo lugar.
-            Conectá WhatsApp y Telegram, y cerrá más negocios en tiempo real.
-          </p>
+              <h1 className="hero-title">
+                Centralizá y convertí
+                <span className="hero-title-green"> tus leads en ventas</span>
+              </h1>
 
-          <div className="hero-actions">
-            <button className="landing-btn-primary large" onClick={() => navigate('/login')}>
-              <i className="fas fa-rocket" />
-              Empezar gratis
-            </button>
-            <button className="landing-btn-ghost large" onClick={() => scrollTo('como-funciona')}>
-              Ver cómo funciona
-              <i className="fas fa-arrow-down" />
-            </button>
-          </div>
+              <p className="hero-subtitle">
+                Gestioná todos tus contactos, conversaciones y tu equipo desde un solo lugar.
+                Conectá WhatsApp y Telegram, y cerrá más negocios en tiempo real.
+              </p>
 
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <span className="hero-stat-num">100%</span>
-              <span className="hero-stat-label">Tiempo real</span>
+              <div className="hero-actions">
+                <button className="landing-btn-primary large" onClick={() => navigate('/login')}>
+                  <i className="fas fa-rocket" />
+                  Empezar gratis
+                </button>
+                <button className="landing-btn-ghost large" onClick={() => scrollTo('como-funciona')}>
+                  Ver cómo funciona
+                  <i className="fas fa-arrow-down" />
+                </button>
+              </div>
+
+              <div className="hero-stats">
+                <div className="hero-stat">
+                  <span className="hero-stat-num">100%</span>
+                  <span className="hero-stat-label">Tiempo real</span>
+                </div>
+                <div className="hero-stat-divider" />
+                <div className="hero-stat">
+                  <span className="hero-stat-num">Multi</span>
+                  <span className="hero-stat-label">Agente</span>
+                </div>
+                <div className="hero-stat-divider" />
+                <div className="hero-stat">
+                  <span className="hero-stat-num">WhatsApp</span>
+                  <span className="hero-stat-label">+ Telegram</span>
+                </div>
+                <div className="hero-stat-divider" />
+                <div className="hero-stat">
+                  <span className="hero-stat-num">Gratis</span>
+                  <span className="hero-stat-label">Para empezar</span>
+                </div>
+              </div>
             </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-num">Multi</span>
-              <span className="hero-stat-label">Agente</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-num">WhatsApp</span>
-              <span className="hero-stat-label">+ Telegram</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-num">Gratis</span>
-              <span className="hero-stat-label">Para empezar</span>
-            </div>
-          </div>
 
-          {/* CRM Showcase */}
-          <div className="hero-preview">
-            <CRMShowcase />
+            {/* ── Right: hero image ── */}
+            <div className="hero-visual">
+              <div className="hero-img-glow" aria-hidden="true" />
+              <img
+                src="/chicaconpc.PNG"
+                alt="Profesional usando OT CRM"
+                className="hero-img"
+                draggable={false}
+              />
+            </div>
+
           </div>
         </div>
       </section>
@@ -551,9 +387,9 @@ export default function Landing() {
               </p>
               <div className="about-values">
                 {[
-                  { icon: 'fa-rocket', title: 'Velocidad', desc: 'Respuestas y actualizaciones en tiempo real' },
-                  { icon: 'fa-shield-alt', title: 'Confianza', desc: 'Tu data es tuya, siempre segura' },
-                  { icon: 'fa-headset', title: 'Soporte', desc: 'Te acompañamos en cada paso del camino' },
+                  { icon: 'fa-rocket',     title: 'Velocidad',  desc: 'Respuestas y actualizaciones en tiempo real' },
+                  { icon: 'fa-shield-alt', title: 'Confianza',  desc: 'Tu data es tuya, siempre segura' },
+                  { icon: 'fa-headset',    title: 'Soporte',    desc: 'Te acompañamos en cada paso del camino' },
                 ].map(v => (
                   <div key={v.title} className="about-value">
                     <i className={`fas ${v.icon}`} />
@@ -607,6 +443,39 @@ export default function Landing() {
           </div>
 
           <div className="support-grid">
+            {/* Info column */}
+            <div className="support-info reveal reveal-left">
+              <div className="si-item">
+                <div className="si-icon"><i className="fas fa-envelope" /></div>
+                <div className="si-text">
+                  <strong>Email directo</strong>
+                  <span>{COMPANY_EMAIL}</span>
+                </div>
+              </div>
+              <div className="si-item">
+                <div className="si-icon"><i className="fas fa-clock" /></div>
+                <div className="si-text">
+                  <strong>Tiempo de respuesta</strong>
+                  <span>Menos de 24 horas</span>
+                </div>
+              </div>
+              <div className="si-item">
+                <div className="si-icon"><i className="fas fa-headset" /></div>
+                <div className="si-text">
+                  <strong>Soporte incluido</strong>
+                  <span>Para todos los planes activos</span>
+                </div>
+              </div>
+              <div className="si-item">
+                <div className="si-icon"><i className="fas fa-shield-alt" /></div>
+                <div className="si-text">
+                  <strong>Privacidad garantizada</strong>
+                  <span>Tus datos nunca se comparten</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Form */}
             <form className="support-form reveal" onSubmit={handleSubmit}>
               <div className="sf-row">
                 <div className="sf-field">
@@ -663,10 +532,11 @@ export default function Landing() {
 
       {/* ── Footer ── */}
       <footer className="landing-footer">
+        <div className="footer-glow-sep" aria-hidden="true" />
         <div className="landing-container">
           <div className="footer-grid">
             <div className="footer-brand">
-              <LogoOrb size={40} onClick={() => scrollTo('inicio')} />
+              <LogoOrb size={56} onClick={() => scrollTo('inicio')} />
               <p>
                 Tu CRM para WhatsApp y Telegram. Gestión de leads
                 simple, efectiva y en tiempo real.
