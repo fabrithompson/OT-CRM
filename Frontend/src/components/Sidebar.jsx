@@ -24,7 +24,7 @@ export default function Sidebar() {
     return (
         <div className="sidebar">
             <div className="sidebar-header">
-                <LogoOrb size={40} onClick={() => navigate('/dashboard')} />
+                <LogoOrb size={58} onClick={() => navigate('/dashboard')} />
             </div>
 
             <ul className="menu-list">

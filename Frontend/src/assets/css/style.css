@@ -97,67 +97,36 @@ body {
 }
 
 /* ════════════════════════════════════════
-   Logo Orb — 3D spinning sphere + float
+   Logo — Image-based brand mark
    Used in: Sidebar, Landing, Auth
    ════════════════════════════════════════ */
 .logo-orb-wrap {
-    perspective: 600px;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 4px;
     flex-shrink: 0;
-    animation: orb-float 4s ease-in-out infinite;
     text-decoration: none;
 }
 
-.logo-orb {
-    animation: orb-spin 20s linear infinite;
-    will-change: transform;
+/* The PNG logo — inverted so the dark mark appears white.
+   mix-blend-mode: screen makes the inverted black background
+   invisible on dark pages, leaving only the white marks visible. */
+.logo-img {
+    display: block;
     flex-shrink: 0;
-}
-
-.logo-orb-sphere {
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 20%, #fff, #999 50%, #111 100%);
-    box-shadow:
-        0 0 0 1.5px rgba(255, 255, 255, 0.15),
-        0 0 20px rgba(255, 255, 255, 0.15),
-        inset 0 2px 4px rgba(255, 255, 255, 0.30);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.logo-orb-text {
-    font-weight: 900;
-    color: #000;
-    letter-spacing: 0.04em;
     user-select: none;
-    line-height: 1;
-    animation: orb-text-counter 20s linear infinite;
-    will-change: transform;
-    pointer-events: none;
+    filter: invert(1) brightness(1.1);
+    mix-blend-mode: screen;
 }
 
 .logo-sa {
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: 900;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.22em;
     color: #fff;
     text-transform: uppercase;
     user-select: none;
     line-height: 1;
-}
-
-@keyframes orb-spin {
-    from { transform: rotateY(0deg); }
-    to   { transform: rotateY(360deg); }
-}
-
-@keyframes orb-text-counter {
-    from { transform: rotateY(0deg); }
-    to   { transform: rotateY(-360deg); }
 }
 
 @keyframes orb-float {
@@ -234,7 +203,7 @@ body {
     width: 100%;
 }
 /* Sidebar logo orb — text hidden when collapsed */
-.sidebar-header .logo-orb-wrap { gap: 12px; }
+.sidebar-header .logo-orb-wrap { gap: 5px; }
 .sidebar-header .logo-sa {
     opacity: 0;
     transform: translateX(-10px);

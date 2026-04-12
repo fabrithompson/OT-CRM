@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// ¡CAMBIO CRÍTICO 1! Usamos tu api.js en lugar de axios puro
 import api from '../utils/api';
 import '../assets/css/login.css';
 import LogoOrb from '../components/LogoOrb';
+import WaveCanvas from '../components/WaveCanvas';
 
 export default function Auth() {
     const [activePanel, setActivePanel] = useState('login');
@@ -47,12 +47,9 @@ export default function Auth() {
     const handleLogin = async (e) => {
         e.preventDefault(); setError(null); setLoading(true);
         try {
-            // ¡CAMBIO CRÍTICO 2! Rutas limpias
             const res = await api.post('/auth/login', {
                 username: formData.username, password: formData.password,
             });
-            
-            // ¡CAMBIO CRÍTICO 3! La barrera de seguridad
             if (res.data && res.data.token && res.data.token !== 'undefined') {
                 localStorage.setItem('token', res.data.token);
                 localStorage.removeItem('crm_theme');
@@ -150,204 +147,222 @@ export default function Auth() {
 
     return (
         <>
-            <div className="ambient-bg"><div className="orb"></div></div>
-            <div className="glass-overlay"></div>
+            {/* ── Animated wave background (shared with Landing) ── */}
+            <WaveCanvas />
+            <div className="landing-noise" aria-hidden="true" />
 
-            <div className="auth-container">
-                <div className="auth-card">
-                    <div className="brand-mini brand-fixed">
-                        <LogoOrb size={42} />
-                    </div>
+            {/* ── Back to landing — fixed top-left ── */}
+            <button
+                type="button"
+                className="auth-back-btn"
+                onClick={() => navigate('/')}
+            >
+                <i className="fas fa-arrow-left" />
+                Volver al inicio
+            </button>
 
-                    <div className="auth-slider-wrapper" ref={wrapperRef}>
-                        <div className="auth-slider" ref={sliderRef} style={{ transform: getSliderTransform(), width: '500%' }}>
+            {/* ── Centered layout ── */}
+            <div className="auth-layout">
 
-                            {/* ── 0: RESET PASSWORD ── */}
-                            <div className="auth-panel" id="panel-reset">
-                                <div className="auth-content">
-                                    <div className="back-link">
-                                        <button type="button" className="switch-btn" onClick={() => slideTo('forgot')} style={{ color: 'var(--text-muted)' }}>
-                                            <i className="fas fa-arrow-left"></i> Volver a Email
-                                        </button>
+                {/* ── Form panel ── */}
+                <div className="auth-form-side">
+                    <div className="auth-card">
+
+                        {/* Logo inside card */}
+                        <div className="brand-mini brand-fixed">
+                            <LogoOrb size={62} />
+                        </div>
+
+                        <div className="auth-slider-wrapper" ref={wrapperRef}>
+                            <div className="auth-slider" ref={sliderRef} style={{ transform: getSliderTransform(), width: '500%' }}>
+
+                                {/* ── 0: RESET PASSWORD ── */}
+                                <div className="auth-panel" id="panel-reset">
+                                    <div className="auth-content">
+                                        <div className="back-link">
+                                            <button type="button" className="switch-btn" onClick={() => slideTo('forgot')} style={{ color: 'var(--text-muted)' }}>
+                                                <i className="fas fa-arrow-left"></i> Volver a Email
+                                            </button>
+                                        </div>
+                                        <h1>Nueva Contraseña</h1>
+                                        <p className="subtitle">Ingresá el código que enviamos a tu email.</p>
+                                        {error && activePanel === 'reset' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
+                                        <form onSubmit={handleResetPassword}>
+                                            <div className="field">
+                                                <label htmlFor="reset-code">Código de Seguridad</label>
+                                                <input id="reset-code" name="code" type="text" placeholder="Ej: 123456" required value={formData.code} onChange={handleInputChange} />
+                                            </div>
+                                            <div className="field">
+                                                <label htmlFor="reset-new-password">Nueva Contraseña</label>
+                                                <div className="password-wrapper">
+                                                    <input id="reset-new-password" name="newPassword" type={showPassword.new ? 'text' : 'password'} placeholder="••••••••" required value={formData.newPassword} onChange={handleInputChange} />
+                                                    <button type="button" className="password-toggle-icon toggle-btn" style={{ background: 'none', border: 'none', padding: 0 }} onClick={() => togglePassword('new')}>
+                                                        <i className={`fas ${showPassword.new ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="field">
+                                                <label htmlFor="reset-confirm-password">Confirmar Contraseña</label>
+                                                <div className="password-wrapper">
+                                                    <input id="reset-confirm-password" name="confirmPassword" type={showPassword.confirm ? 'text' : 'password'} placeholder="••••••••" required value={formData.confirmPassword} onChange={handleInputChange} />
+                                                    <button type="button" className="password-toggle-icon toggle-btn" style={{ background: 'none', border: 'none', padding: 0 }} onClick={() => togglePassword('confirm')}>
+                                                        <i className={`fas ${showPassword.confirm ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <Btn>Cambiar Contraseña</Btn>
+                                        </form>
                                     </div>
-                                    <h1>Nueva Contraseña</h1>
-                                    <p className="subtitle">Ingresá el código que enviamos a tu email.</p>
-                                    {error && activePanel === 'reset' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
-                                    <form onSubmit={handleResetPassword}>
-                                        <div className="field">
-                                            <label htmlFor="reset-code">Código de Seguridad</label>
-                                            <input id="reset-code" name="code" type="text" placeholder="Ej: 123456" required value={formData.code} onChange={handleInputChange} />
-                                        </div>
-                                        <div className="field">
-                                            <label htmlFor="reset-new-password">Nueva Contraseña</label>
-                                            <div className="password-wrapper">
-                                                <input id="reset-new-password" name="newPassword" type={showPassword.new ? 'text' : 'password'} placeholder="••••••••" required value={formData.newPassword} onChange={handleInputChange} />
-                                                <button type="button" className="password-toggle-icon toggle-btn" style={{ background: 'none', border: 'none', padding: 0 }} onClick={() => togglePassword('new')}>
-                                                    <i className={`fas ${showPassword.new ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="field">
-                                            <label htmlFor="reset-confirm-password">Confirmar Contraseña</label>
-                                            <div className="password-wrapper">
-                                                <input id="reset-confirm-password" name="confirmPassword" type={showPassword.confirm ? 'text' : 'password'} placeholder="••••••••" required value={formData.confirmPassword} onChange={handleInputChange} />
-                                                <button type="button" className="password-toggle-icon toggle-btn" style={{ background: 'none', border: 'none', padding: 0 }} onClick={() => togglePassword('confirm')}>
-                                                    <i className={`fas ${showPassword.confirm ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <Btn>Cambiar Contraseña</Btn>
-                                    </form>
                                 </div>
-                            </div>
 
-                            {/* ── 1: FORGOT PASSWORD ── */}
-                            <div className="auth-panel" id="panel-forgot">
-                                <div className="auth-content">
-                                    <div className="back-link">
-                                        <button type="button" className="switch-btn" onClick={() => slideTo('login')} style={{ color: 'var(--text-muted)' }}>
-                                            <i className="fas fa-arrow-left"></i> Volver al login
-                                        </button>
+                                {/* ── 1: FORGOT PASSWORD ── */}
+                                <div className="auth-panel" id="panel-forgot">
+                                    <div className="auth-content">
+                                        <div className="back-link">
+                                            <button type="button" className="switch-btn" onClick={() => slideTo('login')} style={{ color: 'var(--text-muted)' }}>
+                                                <i className="fas fa-arrow-left"></i> Volver al login
+                                            </button>
+                                        </div>
+                                        <h1>Recuperar</h1>
+                                        <p className="subtitle">Te enviaremos un código de recuperación.</p>
+                                        {error   && activePanel === 'forgot' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
+                                        {success && activePanel === 'forgot' && <div className="alert-box alert-success"><i className="fas fa-check-circle"></i> {success}</div>}
+                                        <form onSubmit={handleForgotPassword}>
+                                            <div className="field">
+                                                <label htmlFor="forgot-email">Email registrado</label>
+                                                <input id="forgot-email" name="email" type="email" placeholder="tu@empresa.com" required value={formData.email} onChange={handleInputChange} />
+                                            </div>
+                                            <Btn>Enviar Código</Btn>
+                                        </form>
                                     </div>
-                                    <h1>Recuperar</h1>
-                                    <p className="subtitle">Te enviaremos un código de recuperación.</p>
-                                    {error   && activePanel === 'forgot' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
-                                    {success && activePanel === 'forgot' && <div className="alert-box alert-success"><i className="fas fa-check-circle"></i> {success}</div>}
-                                    <form onSubmit={handleForgotPassword}>
-                                        <div className="field">
-                                            <label htmlFor="forgot-email">Email registrado</label>
-                                            <input id="forgot-email" name="email" type="email" placeholder="tu@empresa.com" required value={formData.email} onChange={handleInputChange} />
-                                        </div>
-                                        <Btn>Enviar Código</Btn>
-                                    </form>
                                 </div>
-                            </div>
 
-                            {/* ── 2: LOGIN ── */}
-                            <div className="auth-panel" id="panel-login">
-                                <div className="auth-content">
-                                    <h1>Bienvenido</h1>
-                                    <p className="subtitle">Iniciá sesión para gestionar tu imperio.</p>
-                                    {error   && activePanel === 'login' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
-                                    {success && activePanel === 'login' && <div className="alert-box alert-success"><i className="fas fa-check-circle"></i> {success}</div>}
-                                    <form onSubmit={handleLogin}>
-                                        <div className="field">
-                                            <label htmlFor="username">Usuario</label>
-                                            <input id="username" name="username" type="text" placeholder="Ej: admin" required value={formData.username} onChange={handleInputChange} />
-                                        </div>
-                                        <div className="field">
-                                            <label htmlFor="password-login">Contraseña</label>
-                                            <div className="password-wrapper">
-                                                <input id="password-login" name="password" type={showPassword.login ? 'text' : 'password'} placeholder="••••••••" required value={formData.password} onChange={handleInputChange} />
-                                                <button type="button" className="password-toggle-icon toggle-btn" style={{ background: 'none', border: 'none', padding: 0 }} onClick={() => togglePassword('login')}>
-                                                    <i className={`fas ${showPassword.login ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                                </button>
+                                {/* ── 2: LOGIN ── */}
+                                <div className="auth-panel" id="panel-login">
+                                    <div className="auth-content">
+                                        <h1>Bienvenido</h1>
+                                        <p className="subtitle">Iniciá sesión para gestionar tu imperio.</p>
+                                        {error   && activePanel === 'login' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
+                                        {success && activePanel === 'login' && <div className="alert-box alert-success"><i className="fas fa-check-circle"></i> {success}</div>}
+                                        <form onSubmit={handleLogin}>
+                                            <div className="field">
+                                                <label htmlFor="username">Usuario</label>
+                                                <input id="username" name="username" type="text" placeholder="Ej: admin" required value={formData.username} onChange={handleInputChange} />
                                             </div>
+                                            <div className="field">
+                                                <label htmlFor="password-login">Contraseña</label>
+                                                <div className="password-wrapper">
+                                                    <input id="password-login" name="password" type={showPassword.login ? 'text' : 'password'} placeholder="••••••••" required value={formData.password} onChange={handleInputChange} />
+                                                    <button type="button" className="password-toggle-icon toggle-btn" style={{ background: 'none', border: 'none', padding: 0 }} onClick={() => togglePassword('login')}>
+                                                        <i className={`fas ${showPassword.login ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <Btn>Ingresar</Btn>
+                                            <p className="switch-text">
+                                                ¿Nuevo en OT?{' '}
+                                                <button type="button" className="switch-btn" onClick={() => slideTo('register')}>Crear cuenta</button>
+                                            </p>
+                                            <div className="forgot-password-link">
+                                                <button type="button" className="switch-btn" onClick={() => slideTo('forgot')}>¿Olvidaste tu contraseña?</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                {/* ── 3: REGISTER ── */}
+                                <div className="auth-panel" id="panel-register">
+                                    <div className="auth-content">
+                                        <h1>Crear Cuenta</h1>
+                                        <p className="subtitle">Únete a OT y potenciá tus operaciones.</p>
+                                        {error && activePanel === 'register' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
+                                        <form onSubmit={handleRegister}>
+                                            <div className="field">
+                                                <label htmlFor="reg-username">Usuario</label>
+                                                <input id="reg-username" name="username" type="text" placeholder="Ej: usuario_pro" required value={formData.username} onChange={handleInputChange} />
+                                            </div>
+                                            <div className="field">
+                                                <label htmlFor="reg-email">Email</label>
+                                                <input id="reg-email" name="email" type="email" placeholder="tu@empresa.com" required value={formData.email} onChange={handleInputChange} />
+                                            </div>
+                                            <div className="field">
+                                                <label htmlFor="password-register">Contraseña</label>
+                                                <div className="password-wrapper">
+                                                    <input id="password-register" name="password" type={showPassword.register ? 'text' : 'password'} placeholder="••••••••" required value={formData.password} onChange={handleInputChange} />
+                                                    <button type="button" className="password-toggle-icon toggle-btn" style={{ background: 'none', border: 'none', padding: 0 }} onClick={() => togglePassword('register')}>
+                                                        <i className={`fas ${showPassword.register ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="field">
+                                                <label htmlFor="codigoInvitacion">Código (Opcional)</label>
+                                                <input id="codigoInvitacion" name="codigoInvitacion" type="text" placeholder="Si tenés un código, pegalo aquí" value={formData.codigoInvitacion} onChange={handleInputChange} />
+                                            </div>
+                                            <Btn>Registrarse</Btn>
+                                            <p className="switch-text">
+                                                ¿Ya tenés acceso?{' '}
+                                                <button type="button" className="switch-btn" onClick={() => slideTo('login')}>Iniciá Sesión</button>
+                                            </p>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                {/* ── 4: VERIFY ── */}
+                                <div className="auth-panel" id="panel-verify">
+                                    <div className="auth-content">
+                                        <div className="back-link">
+                                            <button type="button" className="switch-btn" onClick={() => slideTo('login')} style={{ color: 'var(--text-muted)' }}>
+                                                <i className="fas fa-arrow-left"></i> Volver al login
+                                            </button>
                                         </div>
-                                        <Btn>Ingresar</Btn>
-                                        <p className="switch-text">
-                                            ¿Nuevo en O'T?{' '}
-                                            <button type="button" className="switch-btn" onClick={() => slideTo('register')}>Crear cuenta</button>
+
+                                        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                                            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '1.5rem', color: '#10b981' }}>
+                                                <i className="fas fa-shield-alt"></i>
+                                            </div>
+                                            <h1>Verificación</h1>
+                                            <p className="subtitle">Ingresá el código de 6 dígitos enviado a tu correo.</p>
+                                        </div>
+
+                                        {error   && activePanel === 'verify' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
+                                        {success && activePanel === 'verify' && <div className="alert-box alert-success"><i className="fas fa-check-circle"></i> {success}</div>}
+
+                                        <form onSubmit={handleVerify}>
+                                            <div className="field">
+                                                <label htmlFor="verify-code">Código de Verificación</label>
+                                                <input
+                                                    id="verify-code"
+                                                    name="verifyCode"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    placeholder="123456"
+                                                    maxLength={6}
+                                                    required
+                                                    autoComplete="one-time-code"
+                                                    value={formData.verifyCode}
+                                                    onChange={handleInputChange}
+                                                    style={{ letterSpacing: '0.35em', textAlign: 'center', fontSize: '1.4rem' }}
+                                                />
+                                            </div>
+                                            <Btn>Verificar Cuenta</Btn>
+                                        </form>
+
+                                        <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            ¿No te llegó el código?{' '}
+                                            <button
+                                                type="button"
+                                                className="switch-btn"
+                                                onClick={handleResendCode}
+                                                disabled={resendCooldown > 0}
+                                                style={{ opacity: resendCooldown > 0 ? 0.5 : 1 }}
+                                            >
+                                                {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : 'Reenviar código'}
+                                            </button>
                                         </p>
-                                        <div className="forgot-password-link">
-                                            <button type="button" className="switch-btn" onClick={() => slideTo('forgot')}>¿Olvidaste tu contraseña?</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
-                            {/* ── 3: REGISTER ── */}
-                            <div className="auth-panel" id="panel-register">
-                                <div className="auth-content">
-                                    <h1>Crear Cuenta</h1>
-                                    <p className="subtitle">Únete a O'T y potenciá tus operaciones.</p>
-                                    {error && activePanel === 'register' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
-                                    <form onSubmit={handleRegister}>
-                                        <div className="field">
-                                            <label htmlFor="reg-username">Usuario</label>
-                                            <input id="reg-username" name="username" type="text" placeholder="Ej: usuario_pro" required value={formData.username} onChange={handleInputChange} />
-                                        </div>
-                                        <div className="field">
-                                            <label htmlFor="reg-email">Email</label>
-                                            <input id="reg-email" name="email" type="email" placeholder="tu@empresa.com" required value={formData.email} onChange={handleInputChange} />
-                                        </div>
-                                        <div className="field">
-                                            <label htmlFor="password-register">Contraseña</label>
-                                            <div className="password-wrapper">
-                                                <input id="password-register" name="password" type={showPassword.register ? 'text' : 'password'} placeholder="••••••••" required value={formData.password} onChange={handleInputChange} />
-                                                <button type="button" className="password-toggle-icon toggle-btn" style={{ background: 'none', border: 'none', padding: 0 }} onClick={() => togglePassword('register')}>
-                                                    <i className={`fas ${showPassword.register ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="field">
-                                            <label htmlFor="codigoInvitacion">Código (Opcional)</label>
-                                            <input id="codigoInvitacion" name="codigoInvitacion" type="text" placeholder="Si tenés un código, pegalo aquí" value={formData.codigoInvitacion} onChange={handleInputChange} />
-                                        </div>
-                                        <Btn>Registrarse</Btn>
-                                        <p className="switch-text">
-                                            ¿Ya tenés acceso?{' '}
-                                            <button type="button" className="switch-btn" onClick={() => slideTo('login')}>Iniciá Sesión</button>
-                                        </p>
-                                    </form>
-                                </div>
-                            </div>
-
-                            {/* ── 4: VERIFY ── */}
-                            <div className="auth-panel" id="panel-verify">
-                                <div className="auth-content">
-                                    <div className="back-link">
-                                        <button type="button" className="switch-btn" onClick={() => slideTo('login')} style={{ color: 'var(--text-muted)' }}>
-                                            <i className="fas fa-arrow-left"></i> Volver al login
-                                        </button>
                                     </div>
-
-                                    <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                                        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '1.5rem', color: '#10b981' }}>
-                                            <i className="fas fa-shield-alt"></i>
-                                        </div>
-                                        <h1>Verificación</h1>
-                                        <p className="subtitle">Ingresá el código de 6 dígitos enviado a tu correo.</p>
-                                    </div>
-
-                                    {error   && activePanel === 'verify' && <div className="alert-box alert-error"><i className="fas fa-exclamation-triangle"></i> {error}</div>}
-                                    {success && activePanel === 'verify' && <div className="alert-box alert-success"><i className="fas fa-check-circle"></i> {success}</div>}
-
-                                    <form onSubmit={handleVerify}>
-                                        <div className="field">
-                                            <label htmlFor="verify-code">Código de Verificación</label>
-                                            <input
-                                                id="verify-code"
-                                                name="verifyCode"
-                                                type="text"
-                                                inputMode="numeric"
-                                                placeholder="123456"
-                                                maxLength={6}
-                                                required
-                                                autoComplete="one-time-code"
-                                                value={formData.verifyCode}
-                                                onChange={handleInputChange}
-                                                style={{ letterSpacing: '0.35em', textAlign: 'center', fontSize: '1.4rem' }}
-                                            />
-                                        </div>
-                                        <Btn>Verificar Cuenta</Btn>
-                                    </form>
-
-                                    <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                        ¿No te llegó el código?{' '}
-                                        <button
-                                            type="button"
-                                            className="switch-btn"
-                                            onClick={handleResendCode}
-                                            disabled={resendCooldown > 0}
-                                            style={{ opacity: resendCooldown > 0 ? 0.5 : 1 }}
-                                        >
-                                            {resendCooldown > 0 ? `Reenviar en ${resendCooldown}s` : 'Reenviar código'}
-                                        </button>
-                                    </p>
                                 </div>
-                            </div>
 
+                            </div>
                         </div>
                     </div>
                 </div>
