@@ -60,7 +60,7 @@ export default function Landing() {
       {/* ── Navbar ── */}
       <nav className={`landing-nav ${navScrolled ? 'scrolled' : ''}`}>
         <div className="landing-nav-inner">
-          <LogoOrb size={62} onClick={() => scrollTo('inicio')} />
+          <LogoOrb size={62} showText={false} onClick={() => scrollTo('inicio')} />
 
           <div className={`landing-nav-links ${mobileOpen ? 'open' : ''}`}>
             <button onClick={() => scrollTo('inicio')}>Inicio</button>
@@ -536,7 +536,7 @@ export default function Landing() {
         <div className="landing-container">
           <div className="footer-grid">
             <div className="footer-brand">
-              <LogoOrb size={56} onClick={() => scrollTo('inicio')} />
+              <LogoOrb size={56} showText={false} onClick={() => scrollTo('inicio')} />
               <p>
                 Tu CRM para WhatsApp y Telegram. Gestión de leads
                 simple, efectiva y en tiempo real.

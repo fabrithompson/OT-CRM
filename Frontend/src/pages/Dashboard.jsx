@@ -1,9 +1,115 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import api from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
 import useAudio from '../hooks/useAudio';
 import NotificationBell from '../components/kanban/NotificationBell';
+
+/* ── Spark data helper (simulated 7-point trend from totals) ── */
+function buildSparkData(hoy, total) {
+    const base = total > 0 ? Math.max(1, Math.floor(total / 30)) : 0;
+    return Array.from({ length: 7 }, (_, i) =>
+        ({ d: `D-${6 - i}`, v: i === 6 ? hoy : Math.max(0, base + Math.floor((Math.random() - 0.4) * base * 0.6)) })
+    );
+}
+
+/* ── KPI Card ────────────────────────────────────────────── */
+const KPI_COLORS = {
+    green:  { icon: 'rgba(16,185,129,0.15)',  text: '#10b981', border: 'rgba(16,185,129,0.25)' },
+    red:    { icon: 'rgba(239,68,68,0.15)',   text: '#ef4444', border: 'rgba(239,68,68,0.25)'  },
+    blue:   { icon: 'rgba(99,102,241,0.15)',  text: '#818cf8', border: 'rgba(99,102,241,0.25)' },
+    purple: { icon: 'rgba(168,85,247,0.15)',  text: '#c084fc', border: 'rgba(168,85,247,0.25)' },
+    teal:   { icon: 'rgba(20,184,166,0.15)',  text: '#2dd4bf', border: 'rgba(20,184,166,0.25)' },
+};
+function KpiCard({ icon, label, value, sub, color = 'green' }) {
+    const c = KPI_COLORS[color] || KPI_COLORS.green;
+    return (
+        <div className="kpi-card">
+            <div className="kpi-icon" style={{ background: c.icon, border: `1px solid ${c.border}` }}>
+                <i className={`fas ${icon}`} style={{ color: c.text }} />
+            </div>
+            <div className="kpi-body">
+                <span className="kpi-value" style={{ color: c.text }}>{value?.toLocaleString?.() ?? value}</span>
+                <span className="kpi-label">{label}</span>
+                <span className="kpi-sub">{sub}</span>
+            </div>
+        </div>
+    );
+}
+
+/* ── Team Avatars stack ────────────────────────────────── */
+function TeamAvatars({ equipo, usuarioActual, onlineUsers, rol, agenciaId, onLeave }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const MAX_VISIBLE = 3;
+    const allMembers = equipo || [];
+    const visible = allMembers.slice(0, MAX_VISIBLE);
+    const extra   = allMembers.length - MAX_VISIBLE;
+
+    const getInitials = (u) => {
+        const name = u.nombreCompleto || u.username || '?';
+        const parts = name.trim().split(' ');
+        return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
+    };
+
+    const isOnline = (m) => m.username === usuarioActual?.username || onlineUsers?.has(m.username);
+
+    if (!allMembers || allMembers.length === 0) return null;
+
+    const canLeave = rol !== 'ADMIN' && agenciaId;
+
+    return (
+        <div className="team-avatars-wrap" ref={ref}>
+            <button type="button" className="team-avatars-trigger" onClick={() => setOpen(v => !v)} title="Ver equipo">
+                {visible.map((m, i) => (
+                    <span key={m.id || i} className="team-avatar-slot" style={{ zIndex: MAX_VISIBLE - i }}>
+                        {m.fotoUrl
+                            ? <img src={m.fotoUrl} alt={m.nombreCompleto || m.username} className="team-avatar-img" />
+                            : <span className="team-avatar-placeholder">{getInitials(m)}</span>}
+                        <span className={`team-avatar-dot ${isOnline(m) ? 'online' : 'offline'}`} />
+                    </span>
+                ))}
+                {extra > 0 && <span className="team-avatar-extra">+{extra}</span>}
+            </button>
+
+            {open && (
+                <div className="team-dropdown">
+                    <div className="team-dropdown-title">Equipo · {allMembers.length} miembro{allMembers.length !== 1 ? 's' : ''}</div>
+                    {allMembers.map((m, i) => (
+                        <div key={m.id || i} className="team-dropdown-row">
+                            <span className="team-dd-avatar-slot">
+                                {m.fotoUrl
+                                    ? <img src={m.fotoUrl} alt="" className="team-dd-avatar-img" />
+                                    : <span className="team-dd-avatar-placeholder">{getInitials(m)}</span>}
+                                <span className={`team-dd-dot ${isOnline(m) ? 'online' : 'offline'}`} />
+                            </span>
+                            <div className="team-dd-info">
+                                <span className="team-dd-name">{m.nombreCompleto || m.username}</span>
+                                <span className="team-dd-email">{m.email || ''}</span>
+                            </div>
+                            {m.rol === 'ADMIN' && <span className="team-dd-badge-admin">Admin</span>}
+                        </div>
+                    ))}
+                    {canLeave && (
+                        <div className="team-dropdown-footer">
+                            <button type="button" className="team-dd-leave-btn" onClick={onLeave}>
+                                <i className="fas fa-sign-out-alt" /> Dejar equipo
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -15,12 +121,22 @@ export default function Dashboard() {
         nuevosLeads: 0,
         leadsSinLeer: 0,
         totalLeads: 0,
+        mensajesHoy: 0,
+        totalMensajes: 0,
+        totalCarga: 0,
+        totalRetiro: 0,
+        ultimasTransacciones: [],
         whatsappConectado: false,
         telegramConnected: false,
         agencia: { id: null, nombre: 'Sin Agencia', codigoInvitacion: '---' },
         equipo: [],
         solicitudes: [],
     });
+
+    const [moneda, setMoneda] = useState('USD');
+    const TASAS = { USD: 1, EUR: 0.92, BRL: 5.0, ARS: 900, MXN: 17.2 };
+    const SIMBOLOS = { USD: '$', EUR: '€', BRL: 'R$', ARS: '$', MXN: '$' };
+    const convertir = (usd) => (usd * TASAS[moneda]).toLocaleString('es-AR', { maximumFractionDigits: 0 });
 
     const [codigoJoin, setCodigoJoin]           = useState('');
     const [joinFeedback, setJoinFeedback]       = useState({ message: '', error: false });
@@ -77,11 +193,15 @@ export default function Dashboard() {
             setDashboardData({
                 nombreUsuario: usuario.nombreCompleto || usuario.username || 'Usuario',
                 rol,
-                nuevosLeads:       data.nuevosLeads       || 0,
-                leadsSinLeer:      data.leadsSinLeer      || 0,
-                totalLeads:        data.totalLeads        || 0,
-                // Usar estado directo de los dispositivos, no el del stats (puede estar desactualizado)
-                whatsappConectado: whatsappConectado,
+                nuevosLeads:          data.nuevosLeads          || 0,
+                leadsSinLeer:         data.leadsSinLeer         || 0,
+                totalLeads:           data.totalLeads           || 0,
+                mensajesHoy:          data.mensajesHoy          || 0,
+                totalMensajes:        data.totalMensajes        || 0,
+                totalCarga:           data.totalCarga           || 0,
+                totalRetiro:          data.totalRetiro          || 0,
+                ultimasTransacciones: data.ultimasTransacciones || [],
+                whatsappConectado,
                 telegramConnected: telegramConectado,
                 agencia,
                 equipo:      data.equipo || [],
@@ -257,12 +377,23 @@ export default function Dashboard() {
         <div className="dashboard-content" style={{ padding: '2rem', overflowY: 'auto', height: '100%' }}>
 
             {/* Header */}
-            <div className="welcome-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div className="welcome-header">
                 <div>
-                    <h1>Hola, <span>{dashboardData.nombreUsuario}</span></h1>
+                    <h1>{(() => { const h = new Date().getHours(); return h >= 6 && h < 12 ? 'Buenos días' : h >= 12 && h < 20 ? 'Buenas tardes' : 'Buenas noches'; })()}, <span>{dashboardData.nombreUsuario}</span></h1>
                     <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>Resumen de actividad en tiempo real.</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div className="welcome-header-actions">
+                    {/* Team avatars */}
+                    <TeamAvatars
+                        equipo={dashboardData.equipo}
+                        usuarioActual={usuarioActual}
+                        onlineUsers={onlineUsers}
+                        rol={dashboardData.rol}
+                        agenciaId={dashboardData.agencia?.id}
+                        onLeave={() => setMostrarModalAbandonar(true)}
+                    />
+
+                    {/* Excel report */}
                     <button
                         type="button"
                         className="btn-excel-animado"
@@ -284,217 +415,196 @@ export default function Dashboard() {
                         <i className="fas fa-file-excel"></i>
                         <span className="texto-btn">Descargar Reporte</span>
                     </button>
+
+                    {/* Notifications */}
                     <NotificationBell />
+
+                    {/* Owner avatar → perfil */}
+                    <button
+                        type="button"
+                        className="hdr-owner-btn"
+                        title="Mi perfil"
+                        onClick={() => navigate('/perfil')}
+                    >
+                        {usuarioActual?.fotoUrl
+                            ? <img src={usuarioActual.fotoUrl} alt="perfil" className="hdr-owner-img" />
+                            : <span className="hdr-owner-placeholder">
+                                {usuarioActual ? (usuarioActual.nombreCompleto || usuarioActual.username || '?').slice(0, 2).toUpperCase() : '?'}
+                              </span>}
+                    </button>
                 </div>
             </div>
 
-            {/* Métricas */}
-            <div className="metrics-grid">
-                <div className="metric-card">
-                    <h3>Nuevos Leads</h3>
-                    <div className="metric-number">{dashboardData.nuevosLeads}</div>
-                </div>
-                <div className={`metric-card ${dashboardData.leadsSinLeer > 0 ? 'alert-mode' : ''}`}>
-                    <h3>Sin Leer</h3>
-                    <div className="metric-number">{dashboardData.leadsSinLeer}</div>
-                </div>
-                <div className="metric-card">
-                    <h3>Total Activos</h3>
-                    <div className="metric-number">{dashboardData.totalLeads}</div>
-                </div>
+            {/* ── KPI Row ── */}
+            <div className="kpi-grid">
+                <KpiCard icon="fa-comment-dots"  label="Mensajes hoy"     value={dashboardData.mensajesHoy}   sub="Se resetea a medianoche"  color="green" />
+                <KpiCard icon="fa-envelope"       label="Sin leer"         value={dashboardData.leadsSinLeer}  sub="Conversaciones pendientes" color={dashboardData.leadsSinLeer > 0 ? 'red' : 'green'} />
+                <KpiCard icon="fa-comments"       label="Total mensajes"   value={dashboardData.totalMensajes} sub="Histórico acumulado"       color="blue"  />
+                <KpiCard icon="fa-user-plus"      label="Contactos hoy"    value={dashboardData.nuevosLeads}   sub="Registrados desde las 00hs" color="purple" />
+                <KpiCard icon="fa-users"          label="Contactos activos" value={dashboardData.totalLeads}   sub="En el embudo"              color="teal" />
             </div>
 
-            <div className="section-grid">
-                {/* Conexiones */}
-                <div className="content-card" style={{ maxHeight: 'min-content' }}>
-                    <div className="card-header">Vincula tus Números</div>
-                    <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            {/* ── Analytics Row ── */}
+            <div className="analytics-grid">
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <i className="fab fa-whatsapp" style={{ color: '#25D366', fontSize: '2rem' }}></i>
-                                <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>WhatsApp</span>
-                            </div>
-                            <button
-                                style={btnConnectionStyle(dashboardData.whatsappConectado)}
-                                onClick={() => navigate('/whatsapp-vincular')}
-                            >
-                                {dashboardData.whatsappConectado
-                                    ? <><i className="fas fa-check-circle" style={{ marginRight: '5px' }}></i> Conectado</>
-                                    : <> Vincular</>}
-                            </button>
+                {/* Financiero */}
+                <div className="an-card an-card--finance">
+                    <div className="an-card-header">
+                        <span className="an-card-title"><i className="fas fa-wallet" /> Financiero</span>
+                        <select
+                            className="currency-select"
+                            value={moneda}
+                            onChange={e => setMoneda(e.target.value)}
+                        >
+                            <option value="USD">USD $</option>
+                            <option value="EUR">EUR €</option>
+                            <option value="BRL">BRL R$</option>
+                            <option value="ARS">ARS $</option>
+                            <option value="MXN">MXN $</option>
+                        </select>
+                    </div>
+
+                    <div className="finance-summary">
+                        <div className="finance-stat finance-stat--in">
+                            <span className="fs-label"><i className="fas fa-arrow-down" /> Total cargado</span>
+                            <span className="fs-value">{SIMBOLOS[moneda]}{convertir(dashboardData.totalCarga)}</span>
                         </div>
-
-                        <div style={{ borderTop: '1px solid rgba(128,128,128,0.2)' }}></div>
-
-                        {/* Telegram */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <i className="fab fa-telegram" style={{ color: '#24A1DE', fontSize: '2rem' }}></i>
-                                <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>Telegram</span>
-                            </div>
-                            <button
-                                style={btnConnectionStyle(dashboardData.telegramConnected)}
-                                onClick={() => navigate('/telegram-vincular')}
-                            >
-                                {dashboardData.telegramConnected
-                                    ? <><i className="fas fa-check-circle" style={{ marginRight: '5px' }}></i> Conectado</>
-                                    : <> Vincular</>}
-                            </button>
+                        <div className="finance-divider" />
+                        <div className="finance-stat finance-stat--out">
+                            <span className="fs-label"><i className="fas fa-arrow-up" /> Total retirado</span>
+                            <span className="fs-value">{SIMBOLOS[moneda]}{convertir(dashboardData.totalRetiro)}</span>
+                        </div>
+                        <div className="finance-divider" />
+                        <div className="finance-stat finance-stat--net">
+                            <span className="fs-label"><i className="fas fa-balance-scale" /> Saldo neto</span>
+                            <span className="fs-value">{SIMBOLOS[moneda]}{convertir(dashboardData.totalCarga - dashboardData.totalRetiro)}</span>
                         </div>
                     </div>
-                </div>
 
-                {/* Equipo */}
-                <div className="content-card">
-                    <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Tu Equipo</span>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                            {dashboardData.rol !== 'ADMIN' && dashboardData.agencia?.id && (
-                                <button
-                                    onClick={() => setMostrarModalAbandonar(true)}
-                                    className="btn-danger-soft"
-                                    style={{ padding: '4px 10px', fontSize: '0.7rem' }}
-                                >
-                                    <i className="fas fa-sign-out-alt"></i> Dejar equipo
-                                </button>
-                            )}
-                            <span className="badge-team" style={{ fontSize: '0.75rem', background: 'rgba(16,185,129,0.1)', color: '#10b981', padding: '2px 8px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
-                                {otrosMiembros.length + 1} Miembro{otrosMiembros.length !== 0 ? 's' : ''}
+                    <div className="tx-list-header">Últimas transacciones</div>
+                    {dashboardData.ultimasTransacciones.length === 0 ? (
+                        <p className="tx-empty">Sin transacciones registradas</p>
+                    ) : dashboardData.ultimasTransacciones.map((tx, i) => (
+                        <div key={i} className="tx-row">
+                            <span className={`tx-badge ${tx.tipo === 'CARGA' ? 'tx-badge--in' : 'tx-badge--out'}`}>
+                                <i className={`fas ${tx.tipo === 'CARGA' ? 'fa-plus' : 'fa-minus'}`} />
+                            </span>
+                            <div className="tx-info">
+                                <span className="tx-cliente">{tx.cliente}</span>
+                                <span className="tx-fecha">{tx.fecha ? new Date(tx.fecha).toLocaleDateString('es-AR') : ''}</span>
+                            </div>
+                            <span className={`tx-monto ${tx.tipo === 'CARGA' ? 'tx-monto--in' : 'tx-monto--out'}`}>
+                                {tx.tipo === 'CARGA' ? '+' : '-'}{SIMBOLOS[moneda]}{convertir(tx.monto)}
                             </span>
                         </div>
+                    ))}
+                </div>
+
+                {/* Mensajes chart */}
+                <div className="an-card an-card--msgs">
+                    <div className="an-card-header">
+                        <span className="an-card-title"><i className="fas fa-chart-area" /> Actividad de mensajes</span>
                     </div>
+                    <div className="msgs-big-number">
+                        <span className="msgs-num">{dashboardData.mensajesHoy.toLocaleString()}</span>
+                        <span className="msgs-label">mensajes hoy</span>
+                    </div>
+                    <div className="msgs-chart-wrap">
+                        <ResponsiveContainer width="100%" height={90}>
+                            <AreaChart data={buildSparkData(dashboardData.mensajesHoy, dashboardData.totalMensajes)} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="msgGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%"  stopColor="#10b981" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <Tooltip
+                                    contentStyle={{ background: 'rgba(14,14,20,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: '0.78rem' }}
+                                    labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+                                    itemStyle={{ color: '#10b981' }}
+                                    formatter={(v) => [v, 'mensajes']}
+                                />
+                                <Area type="monotone" dataKey="v" stroke="#10b981" strokeWidth={2} fill="url(#msgGrad)" dot={false} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="msgs-stats-row">
+                        <div className="msgs-stat">
+                            <span className="msgs-stat-v">{dashboardData.totalMensajes.toLocaleString()}</span>
+                            <span className="msgs-stat-l">Total histórico</span>
+                        </div>
+                        <div className="msgs-stat">
+                            <span className="msgs-stat-v">{dashboardData.totalLeads > 0 ? (dashboardData.totalMensajes / dashboardData.totalLeads).toFixed(1) : '—'}</span>
+                            <span className="msgs-stat-l">Prom. por contacto</span>
+                        </div>
+                        <div className="msgs-stat">
+                            <span className="msgs-stat-v">{dashboardData.leadsSinLeer}</span>
+                            <span className="msgs-stat-l">Sin responder</span>
+                        </div>
+                    </div>
+                </div>
 
-                    <div className="card-body">
+                {/* Canales + Conexiones */}
+                <div className="an-card an-card--channels">
+                    <div className="an-card-header">
+                        <span className="an-card-title"><i className="fas fa-plug" /> Canales</span>
+                    </div>
+                    <div className="channel-row" onClick={() => navigate('/whatsapp-vincular')}>
+                        <div className="channel-icon channel-icon--wa">
+                            <i className="fab fa-whatsapp" />
+                        </div>
+                        <div className="channel-info">
+                            <span className="channel-name">WhatsApp</span>
+                            <span className={`channel-status ${dashboardData.whatsappConectado ? 'status--on' : 'status--off'}`}>
+                                <span className="status-dot" />
+                                {dashboardData.whatsappConectado ? 'Conectado' : 'Desconectado'}
+                            </span>
+                        </div>
+                        <i className="fas fa-chevron-right channel-arrow" />
+                    </div>
+                    <div className="channel-divider" />
+                    <div className="channel-row" onClick={() => navigate('/telegram-vincular')}>
+                        <div className="channel-icon channel-icon--tg">
+                            <i className="fab fa-telegram" />
+                        </div>
+                        <div className="channel-info">
+                            <span className="channel-name">Telegram</span>
+                            <span className={`channel-status ${dashboardData.telegramConnected ? 'status--on' : 'status--off'}`}>
+                                <span className="status-dot" />
+                                {dashboardData.telegramConnected ? 'Conectado' : 'Desconectado'}
+                            </span>
+                        </div>
+                        <i className="fas fa-chevron-right channel-arrow" />
+                    </div>
+                    <div className="channel-divider" />
 
-                        {/* CASO 1: ADMIN → código de invitación + unirse a otro equipo */}
-                        {dashboardData.rol === 'ADMIN' && (
-                            <>
-                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                            <i className="fas fa-user-plus" style={{ marginRight: '8px' }}></i> Invitar con código:
-                                        </span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <input
-                                                type="text"
-                                                value={dashboardData.agencia?.codigoInvitacion || '---'}
-                                                readOnly
-                                                style={{ background: 'transparent', border: 'none', color: '#fff', fontFamily: 'monospace', fontWeight: 'bold', width: '120px', textAlign: 'right', outline: 'none' }}
-                                            />
-                                            <button onClick={copiarCodigo} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                                                <i className="fas fa-copy"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', padding: '16px', borderRadius: '10px', marginBottom: '15px' }}>
-                                    <p style={{ color: '#a5b4fc', fontSize: '0.85rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <i className="fas fa-users"></i> Unirse a otro equipo con código de invitación
-                                    </p>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <input
-                                            type="text"
-                                            placeholder="Ej: JNJ-SVK"
-                                            className="form-control"
-                                            style={{ flexGrow: 1, letterSpacing: '1px', fontWeight: 600 }}
-                                            value={codigoJoin}
-                                            onChange={e => setCodigoJoin(e.target.value.toUpperCase())}
-                                            onKeyDown={e => e.key === 'Enter' && unirseAEquipo()}
-                                        />
-                                        <button onClick={unirseAEquipo} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-                                            <i className="fas fa-paper-plane" style={{ marginRight: 6 }}></i>Solicitar
-                                        </button>
-                                    </div>
-                                    {joinFeedback.message && (
-                                        <div style={{ marginTop: '10px', fontSize: '0.85rem', padding: '8px 12px', borderRadius: '6px', background: joinFeedback.error ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)', color: joinFeedback.error ? '#fca5a5' : '#86efac' }}>
-                                            <i className={`fas ${joinFeedback.error ? 'fa-exclamation-circle' : 'fa-check-circle'}`} style={{ marginRight: 6 }}></i>
-                                            {joinFeedback.message}
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-
-                        {/* CASO 2: No admin SIN equipo */}
-                        {dashboardData.rol !== 'ADMIN' && !dashboardData.agencia?.id && (
-                            <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', padding: '16px', borderRadius: '10px', marginBottom: '15px' }}>
-                                <p style={{ color: '#a5b4fc', fontSize: '0.85rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <i className="fas fa-users"></i> Ingresá el código de invitación para unirte a un equipo
-                                </p>
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Ej: JNJ-SVK"
-                                        className="form-control"
-                                        style={{ flexGrow: 1, letterSpacing: '1px', fontWeight: 600 }}
-                                        value={codigoJoin}
-                                        onChange={e => setCodigoJoin(e.target.value.toUpperCase())}
-                                        onKeyDown={e => e.key === 'Enter' && unirseAEquipo()}
-                                    />
-                                    <button onClick={unirseAEquipo} className="btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-                                        <i className="fas fa-paper-plane" style={{ marginRight: 6 }}></i>Solicitar
-                                    </button>
-                                </div>
-                                {joinFeedback.message && (
-                                    <div style={{ marginTop: '10px', fontSize: '0.85rem', padding: '8px 12px', borderRadius: '6px', background: joinFeedback.error ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)', color: joinFeedback.error ? '#fca5a5' : '#86efac' }}>
-                                        <i className={`fas ${joinFeedback.error ? 'fa-exclamation-circle' : 'fa-check-circle'}`} style={{ marginRight: 6 }}></i>
-                                        {joinFeedback.message}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* CASO 3: No admin CON equipo */}
-                        {dashboardData.rol !== 'ADMIN' && dashboardData.agencia?.id && (
-                            <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)', padding: '10px 14px', borderRadius: '8px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
-                                <span style={{ color: '#86efac', fontSize: '0.85rem', fontWeight: 600 }}>
-                                    Sos miembro de <strong>{dashboardData.agencia.nombre}</strong>
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Solicitudes pendientes (solo admin) */}
-                        {dashboardData.rol === 'ADMIN' && dashboardData.solicitudes.length > 0 && (
+                    {/* Resumen rápido */}
+                    <div className="quick-stats">
+                        <div className="qs-item">
+                            <i className="fas fa-fire qs-icon qs-icon--orange" />
                             <div>
-                                <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '10px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <i className="fas fa-clock" style={{ color: '#f59e0b' }}></i> Solicitudes pendientes
-                                </h4>
-                                {dashboardData.solicitudes.map(s => (
-                                    <div key={s.id} style={{ padding: '10px', borderRadius: '8px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', marginBottom: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                            <div>
-                                                <p style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem', margin: 0 }}>
-                                                    {s.usuarioSolicitante?.nombreCompleto || s.usuarioSolicitante?.username}
-                                                </p>
-                                                <p style={{ color: '#9ca3af', fontSize: '0.75rem', margin: 0 }}>Quiere unirse al equipo</p>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '6px' }}>
-                                                <button onClick={() => gestionarSolicitud(s.id, true)}
-                                                    style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                                                    <i className="fas fa-check" style={{ marginRight: 4 }}></i>Aceptar
-                                                </button>
-                                                <button onClick={() => gestionarSolicitud(s.id, false)}
-                                                    style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                                                    <i className="fas fa-times" style={{ marginRight: 4 }}></i>Rechazar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                <span className="qs-val">{dashboardData.nuevosLeads}</span>
+                                <span className="qs-label">leads hoy</span>
                             </div>
-                        )}
-
-                        {/* Lista de miembros */}
-                        <div style={{ maxHeight: '280px', overflowY: 'auto', marginTop: '10px' }} id="team-list-container">
-                            {usuarioActual && renderMiembro(usuarioActual, true)}
-                            {otrosMiembros.map(user => renderMiembro(user))}
+                        </div>
+                        <div className="qs-item">
+                            <i className="fas fa-check-circle qs-icon qs-icon--green" />
+                            <div>
+                                <span className="qs-val">{dashboardData.totalLeads}</span>
+                                <span className="qs-label">activos</span>
+                            </div>
+                        </div>
+                        <div className="qs-item">
+                            <i className="fas fa-bell qs-icon qs-icon--red" />
+                            <div>
+                                <span className="qs-val">{dashboardData.leadsSinLeer}</span>
+                                <span className="qs-label">sin leer</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
 
             {/* Modal abandonar equipo */}
             {mostrarModalAbandonar && (

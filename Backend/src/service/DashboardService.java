@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,8 @@ import model.Dispositivo;
 import model.Usuario;
 import repository.ClienteRepository;
 import repository.DispositivoRepository;
+import repository.MensajeRepository;
+import repository.TransaccionRepository;
 import repository.UsuarioRepository;
 
 @Service
@@ -22,12 +25,18 @@ public class DashboardService {
     private final ClienteRepository clienteRepository;
     private final UsuarioRepository usuarioRepository;
     private final DispositivoRepository dispositivoRepository;
+    private final MensajeRepository mensajeRepository;
+    private final TransaccionRepository transaccionRepository;
 
     public DashboardService(ClienteRepository clienteRepository, UsuarioRepository usuarioRepository,
-                            DispositivoRepository dispositivoRepository) {
+                            DispositivoRepository dispositivoRepository,
+                            MensajeRepository mensajeRepository,
+                            TransaccionRepository transaccionRepository) {
         this.clienteRepository = clienteRepository;
         this.usuarioRepository = usuarioRepository;
         this.dispositivoRepository = dispositivoRepository;
+        this.mensajeRepository = mensajeRepository;
+        this.transaccionRepository = transaccionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +70,35 @@ public class DashboardService {
             data.put("leadsSinLeer", leadsSinLeer);
             data.put("totalLeads", totalLeads);
 
+            // ── Mensajes analytics ──
+            long mensajesHoy   = mensajeRepository.countByClienteAgenciaIdAndFechaHoraAfter(agenciaId, inicioDelDia);
+            long totalMensajes = mensajeRepository.countByClienteAgenciaId(agenciaId);
+            data.put("mensajesHoy",   mensajesHoy);
+            data.put("totalMensajes", totalMensajes);
+
+            // ── Financiero ──
+            Double totalCarga   = transaccionRepository.sumMontoByAgenciaIdAndTipo(agenciaId, "CARGA");
+            Double totalRetiro  = transaccionRepository.sumMontoByAgenciaIdAndTipo(agenciaId, "RETIRO");
+            data.put("totalCarga",  totalCarga  != null ? totalCarga  : 0.0);
+            data.put("totalRetiro", totalRetiro != null ? totalRetiro : 0.0);
+
+            List<Map<String, Object>> ultimas = transaccionRepository
+                    .findTop5ByAgenciaId(agenciaId, PageRequest.of(0, 5))
+                    .stream()
+                    .map(t -> {
+                        Map<String, Object> tx = new HashMap<>();
+                        tx.put("id",     t.getId());
+                        tx.put("monto",  t.getMonto());
+                        tx.put("tipo",   t.getTipo());
+                        tx.put("fecha",  t.getFecha() != null ? t.getFecha().toString() : "");
+                        tx.put("cliente", t.getCliente() != null
+                                ? (t.getCliente().getNombre() != null ? t.getCliente().getNombre() : "Cliente")
+                                : "Cliente");
+                        return tx;
+                    })
+                    .toList();
+            data.put("ultimasTransacciones", ultimas);
+
             boolean waConectado = dispositivoRepository.findByAgenciaIdAndPlataforma(agenciaId, Dispositivo.Plataforma.WHATSAPP)
                     .stream().anyMatch(d -> "CONNECTED".equals(d.getEstado()));
             boolean tgConectado = dispositivoRepository.findByAgenciaIdAndPlataforma(agenciaId, Dispositivo.Plataforma.TELEGRAM)
@@ -87,6 +125,11 @@ public class DashboardService {
             data.put("nuevosLeads", 0);
             data.put("leadsSinLeer", 0);
             data.put("totalLeads", 0);
+            data.put("mensajesHoy", 0);
+            data.put("totalMensajes", 0);
+            data.put("totalCarga", 0.0);
+            data.put("totalRetiro", 0.0);
+            data.put("ultimasTransacciones", Collections.emptyList());
             data.put("whatsappConectado", false);
             data.put("telegramConnected", false);
             data.put("equipo", Collections.emptyList());
