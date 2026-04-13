@@ -134,9 +134,24 @@ export default function Dashboard() {
     });
 
     const [moneda, setMoneda] = useState('USD');
+    const [monedaOpen, setMonedaOpen] = useState(false);
+    const monedaRef = useRef(null);
     const TASAS = { USD: 1, EUR: 0.92, BRL: 5.0, ARS: 900, MXN: 17.2 };
     const SIMBOLOS = { USD: '$', EUR: '€', BRL: 'R$', ARS: '$', MXN: '$' };
+    const MONEDAS = [
+        { key: 'USD', label: 'USD $' },
+        { key: 'EUR', label: 'EUR €' },
+        { key: 'BRL', label: 'BRL R$' },
+        { key: 'ARS', label: 'ARS $' },
+        { key: 'MXN', label: 'MXN $' },
+    ];
     const convertir = (usd) => (usd * TASAS[moneda]).toLocaleString('es-AR', { maximumFractionDigits: 0 });
+
+    useEffect(() => {
+        const handler = (e) => { if (monedaRef.current && !monedaRef.current.contains(e.target)) setMonedaOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     const [codigoJoin, setCodigoJoin]           = useState('');
     const [joinFeedback, setJoinFeedback]       = useState({ message: '', error: false });
@@ -451,17 +466,28 @@ export default function Dashboard() {
                 <div className="an-card an-card--finance">
                     <div className="an-card-header">
                         <span className="an-card-title"><i className="fas fa-wallet" /> Financiero</span>
-                        <select
-                            className="currency-select"
-                            value={moneda}
-                            onChange={e => setMoneda(e.target.value)}
-                        >
-                            <option value="USD">USD $</option>
-                            <option value="EUR">EUR €</option>
-                            <option value="BRL">BRL R$</option>
-                            <option value="ARS">ARS $</option>
-                            <option value="MXN">MXN $</option>
-                        </select>
+                        <div className="currency-dropdown" ref={monedaRef}>
+                            <button
+                                className={`currency-select ${monedaOpen ? 'open' : ''}`}
+                                onClick={() => setMonedaOpen(v => !v)}
+                            >
+                                {MONEDAS.find(m => m.key === moneda)?.label}
+                                <i className="fas fa-chevron-down currency-chevron" />
+                            </button>
+                            {monedaOpen && (
+                                <ul className="currency-menu">
+                                    {MONEDAS.map(m => (
+                                        <li
+                                            key={m.key}
+                                            className={`currency-option ${m.key === moneda ? 'active' : ''}`}
+                                            onClick={() => { setMoneda(m.key); setMonedaOpen(false); }}
+                                        >
+                                            {m.label}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
                     </div>
 
                     <div className="finance-summary">

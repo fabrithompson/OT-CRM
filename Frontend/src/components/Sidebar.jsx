@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import LogoOrb from './LogoOrb';
 
-export default function Sidebar() {
+export default function Sidebar({ onHelpClick }) {
     const navigate = useNavigate();
     const { pathname } = useLocation();
 
@@ -15,7 +15,7 @@ export default function Sidebar() {
 
             {/* Logo — centered, no text */}
             <div className="sidebar-header">
-                <LogoOrb size={48} showText={false} onClick={() => navigate('/dashboard')} />
+                <LogoOrb width={75} height={77} showText={false} onClick={() => navigate('/dashboard')} />
             </div>
 
             {/* Main nav */}
@@ -50,15 +50,20 @@ export default function Sidebar() {
                         <span className="link-text">Suscripción</span>
                     </NavLink>
                 </li>
-            </ul>
-
-            {/* Bottom — Cuenta only */}
-            <ul className="menu-bottom">
                 <li className="menu-item">
                     <NavLink to="/perfil" className={({ isActive }) => isActive ? 'active' : ''}>
                         <i className="fa-solid fa-user" />
                         <span className="link-text">Cuenta</span>
                     </NavLink>
+                </li>
+            </ul>
+
+            {/* Bottom — Soporte */}
+            <ul className="menu-bottom">
+                <li className="menu-item">
+                    <button onClick={onHelpClick} className="sidebar-help-btn" title="Centro de ayuda">
+                        <i className="fas fa-question" />
+                    </button>
                 </li>
             </ul>
         </div>

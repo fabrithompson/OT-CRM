@@ -10,8 +10,7 @@ import '../assets/css/landing.css';
 
 const COMPANY_EMAIL = 'otempresa@otempresa.com';
 
-function HelpButton() {
-    const [open, setOpen] = useState(false);
+function HelpModal({ open, setOpen }) {
     const [sent, setSent] = useState(false);
     const [form, setForm] = useState({ nombre: '', email: '', mensaje: '' });
 
@@ -28,64 +27,54 @@ function HelpButton() {
         setTimeout(() => { setSent(false); setOpen(false); setForm({ nombre: '', email: '', mensaje: '' }); }, 3500);
     };
 
+    if (!open) return null;
+
     return (
-        <>
-            {open && (
-                <div className="help-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-                    <div className="help-modal">
-                        <div className="help-modal-header">
-                            <div className="help-modal-title">
-                                <i className="fas fa-headset" />
-                                <strong>Centro de ayuda</strong>
-                            </div>
-                            <button className="help-modal-close" onClick={() => setOpen(false)}>
-                                <i className="fas fa-times" />
-                            </button>
-                        </div>
-                        {sent ? (
-                            <div className="help-modal-sent">
-                                <i className="fas fa-check-circle" />
-                                <h4>¡Consulta enviada!</h4>
-                                <p>Te respondemos en menos de 24 horas. Revisá tu bandeja de correo.</p>
-                            </div>
-                        ) : (
-                            <>
-                                <p>Completá el formulario y te respondemos a la brevedad.</p>
-                                <form onSubmit={handleSubmit}>
-                                    <div className="sf-field">
-                                        <label>Tu nombre</label>
-                                        <input type="text" name="nombre" placeholder="Juan García"
-                                            value={form.nombre} onChange={handleChange} required />
-                                    </div>
-                                    <div className="sf-field">
-                                        <label>Tu email</label>
-                                        <input type="email" name="email" placeholder="juan@empresa.com"
-                                            value={form.email} onChange={handleChange} required />
-                                    </div>
-                                    <div className="sf-field">
-                                        <label>Mensaje</label>
-                                        <textarea name="mensaje" rows={4}
-                                            placeholder="Describí tu consulta o problema..."
-                                            value={form.mensaje} onChange={handleChange} required />
-                                    </div>
-                                    <button type="submit" className="sf-submit">
-                                        <i className="fas fa-paper-plane" /> Enviar consulta
-                                    </button>
-                                </form>
-                            </>
-                        )}
+        <div className="help-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+            <div className="help-modal">
+                <div className="help-modal-header">
+                    <div className="help-modal-title">
+                        <i className="fas fa-headset" />
+                        <strong>Centro de ayuda</strong>
                     </div>
+                    <button className="help-modal-close" onClick={() => setOpen(false)}>
+                        <i className="fas fa-times" />
+                    </button>
                 </div>
-            )}
-            <button
-                className="help-float-btn"
-                onClick={() => setOpen(v => !v)}
-                title="Centro de ayuda"
-                aria-label="Abrir centro de ayuda"
-            >
-                <i className={`fas fa-${open ? 'times' : 'question'}`} />
-            </button>
-        </>
+                {sent ? (
+                    <div className="help-modal-sent">
+                        <i className="fas fa-check-circle" />
+                        <h4>¡Consulta enviada!</h4>
+                        <p>Te respondemos en menos de 24 horas. Revisá tu bandeja de correo.</p>
+                    </div>
+                ) : (
+                    <>
+                        <p>Completá el formulario y te respondemos a la brevedad.</p>
+                        <form onSubmit={handleSubmit}>
+                            <div className="sf-field">
+                                <label>Tu nombre</label>
+                                <input type="text" name="nombre" placeholder="Juan García"
+                                    value={form.nombre} onChange={handleChange} required />
+                            </div>
+                            <div className="sf-field">
+                                <label>Tu email</label>
+                                <input type="email" name="email" placeholder="juan@empresa.com"
+                                    value={form.email} onChange={handleChange} required />
+                            </div>
+                            <div className="sf-field">
+                                <label>Mensaje</label>
+                                <textarea name="mensaje" rows={4}
+                                    placeholder="Describí tu consulta o problema..."
+                                    value={form.mensaje} onChange={handleChange} required />
+                            </div>
+                            <button type="submit" className="sf-submit">
+                                <i className="fas fa-paper-plane" /> Enviar consulta
+                            </button>
+                        </form>
+                    </>
+                )}
+            </div>
+        </div>
     );
 }
 
@@ -210,6 +199,8 @@ export default function MainLayout() {
         });
     });
 
+    const [helpOpen, setHelpOpen] = useState(false);
+
     if (!token) return <Navigate to="/login" replace />;
     if (loading) return <div className="app-loading" />;
 
@@ -217,6 +208,7 @@ export default function MainLayout() {
         <>
             <div className="ambient-bg"><div className="orb"></div></div>
             <div className="glass-overlay"></div>
+            <HelpModal open={helpOpen} setOpen={setHelpOpen} />
             {/* Badge de reconexión — se muestra solo cuando la conexión WebSocket se perdió */}
             {connectionStatus === 'reconnecting' && (
                 <div style={{
@@ -234,12 +226,11 @@ export default function MainLayout() {
                 </div>
             )}
             <div className="app-container">
-                <Sidebar />
+                <Sidebar onHelpClick={() => setHelpOpen(true)} />
                 <div className="content-area">
                     <Outlet />
                 </div>
             </div>
-            <HelpButton />
         </>
     );
 }

@@ -60,7 +60,7 @@ export default function Landing() {
       {/* ── Navbar ── */}
       <nav className={`landing-nav ${navScrolled ? 'scrolled' : ''}`}>
         <div className="landing-nav-inner">
-          <LogoOrb size={62} showText={false} onClick={() => scrollTo('inicio')} />
+          <LogoOrb width={84} height={85} showText={false} onClick={() => scrollTo('inicio')} />
 
           <div className={`landing-nav-links ${mobileOpen ? 'open' : ''}`}>
             <button onClick={() => scrollTo('inicio')}>Inicio</button>

@@ -234,6 +234,26 @@ body {
     z-index: 1;
 }
 
+.sidebar-help-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 37px;
+    height: 37px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.sidebar-help-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(16, 185, 129, 0.60);
+}
+
 .menu-list {
     list-style: none;
     padding: 8px 0;
@@ -261,7 +281,7 @@ body {
     align-items: center;
     justify-content: center;
     width: 46px; height: 46px;
-    border-radius: 14px;
+    border-radius: 24px;
     color: rgba(255, 255, 255, 0.38);
     text-decoration: none;
     transition: background 0.2s, color 0.2s, box-shadow 0.2s;
@@ -770,7 +790,7 @@ button:focus-visible {
 .btn-excel-animado {
     display: flex; align-items: center; justify-content: center;
     background-color: #1D6F42; color: white !important;
-    text-decoration: none; border-radius: 10px; height: 40px; width: 40px;
+    text-decoration: none; border-radius: 20px; height: 40px; width: 40px;
     overflow: hidden;
     transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.3s;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); white-space: nowrap; border: none;
@@ -2103,7 +2123,7 @@ display: flex;
     color: #a1a1aa;
     width: 42px;
     height: 42px;
-    border-radius: 12px;
+    border-radius: 20px;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
@@ -3474,18 +3494,45 @@ display: flex;
     display: flex; flex-direction: column; gap: 14px;
     min-height: 320px;
 }
-.an-card-header { display: flex; align-items: center; justify-content: space-between; }
+.an-card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .an-card-title  { font-size: 0.88rem; font-weight: 700; color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 8px; }
 .an-card-title i { color: #10b981; }
 
+.currency-dropdown { position: relative; }
+
 .currency-select {
+    display: flex; align-items: center; gap: 7px;
     background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
     border-radius: 8px; color: #fff; font-size: 0.78rem; font-weight: 700;
     padding: 5px 10px; cursor: pointer; outline: none;
-    font-family: 'Montserrat', sans-serif; transition: background 0.2s;
+    font-family: 'Montserrat', sans-serif; transition: background 0.2s, border-color 0.2s;
+    white-space: nowrap;
 }
 .currency-select:hover { background: rgba(255,255,255,0.12); }
-.currency-select option { background: #0f1214; color: #fff; }
+.currency-select.open { background: rgba(255,255,255,0.12); border-color: rgba(16,185,129,0.40); }
+
+.currency-chevron { font-size: 0.65rem; color: rgba(255,255,255,0.45); transition: transform 0.2s; }
+.currency-select.open .currency-chevron { transform: rotate(180deg); }
+
+.currency-menu {
+    position: absolute; top: calc(100% + 6px); right: 0; min-width: 120px;
+    background: rgba(15,18,22,0.97); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.10); border-radius: 10px;
+    padding: 5px; list-style: none; margin: 0; z-index: 200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: currencyFadeIn 0.15s ease;
+}
+@keyframes currencyFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.currency-option {
+    padding: 8px 12px; border-radius: 7px; font-size: 0.80rem; font-weight: 600;
+    color: rgba(255,255,255,0.65); cursor: pointer; transition: background 0.15s, color 0.15s;
+    font-family: 'Montserrat', sans-serif;
+}
+.currency-option:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.currency-option.active { background: rgba(16,185,129,0.15); color: #10b981; }
 
 .finance-summary {
     display: flex; background: rgba(255,255,255,0.025);
