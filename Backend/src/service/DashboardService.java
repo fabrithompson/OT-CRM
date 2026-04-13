@@ -87,13 +87,38 @@ public class DashboardService {
                     .stream()
                     .map(t -> {
                         Map<String, Object> tx = new HashMap<>();
-                        tx.put("id",     t.getId());
-                        tx.put("monto",  t.getMonto());
-                        tx.put("tipo",   t.getTipo());
-                        tx.put("fecha",  t.getFecha() != null ? t.getFecha().toString() : "");
-                        tx.put("cliente", t.getCliente() != null
-                                ? (t.getCliente().getNombre() != null ? t.getCliente().getNombre() : "Cliente")
-                                : "Cliente");
+                        tx.put("id",    t.getId());
+                        tx.put("monto", t.getMonto());
+                        tx.put("tipo",  t.getTipo());
+                        tx.put("fecha", t.getFecha() != null ? t.getFecha().toString() : "");
+                        // Cliente
+                        if (t.getCliente() != null) {
+                            tx.put("cliente", t.getCliente().getNombre() != null ? t.getCliente().getNombre() : "Cliente");
+                            // Dispositivo del cliente (canal)
+                            if (t.getCliente().getDispositivo() != null) {
+                                String alias = t.getCliente().getDispositivo().getAlias();
+                                String plat  = t.getCliente().getDispositivo().getPlataforma() != null
+                                        ? t.getCliente().getDispositivo().getPlataforma().name() : "";
+                                tx.put("dispositivo", alias != null ? alias : plat);
+                                tx.put("canal", plat);
+                            } else {
+                                tx.put("dispositivo", "—");
+                                tx.put("canal", "");
+                            }
+                        } else {
+                            tx.put("cliente", "Cliente");
+                            tx.put("dispositivo", "—");
+                            tx.put("canal", "");
+                        }
+                        // Usuario que realizó la transacción
+                        if (t.getUsuario() != null) {
+                            String nombre = t.getUsuario().getNombreCompleto() != null
+                                    ? t.getUsuario().getNombreCompleto()
+                                    : t.getUsuario().getUsername();
+                            tx.put("operador", nombre);
+                        } else {
+                            tx.put("operador", "—");
+                        }
                         return tx;
                     })
                     .toList();

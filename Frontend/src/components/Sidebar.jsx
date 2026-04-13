@@ -1,64 +1,69 @@
 import React from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import LogoOrb from './LogoOrb';
+import { useLanguage } from '../context/LangContext';
 
-export default function Sidebar() {
+const NAV_ITEMS = [
+    { to: '/dashboard',          icon: 'fa-house',          labelKey: 'nav.inicio',      accent: 'nav-green'  },
+    { to: '/kanban',             icon: 'fa-chart-gantt',    labelKey: 'nav.embudo',      accent: 'nav-orange' },
+    { to: '/respuestas-rapidas', icon: 'fa-bolt-lightning', labelKey: 'nav.respuestas',  accent: 'nav-blue'   },
+    { to: '/contactos',          icon: 'fa-user-group',     labelKey: 'nav.contactos',   accent: 'nav-purple' },
+    { to: '/planes',             icon: 'fa-crown',          labelKey: 'nav.suscripcion', accent: 'nav-gold',  suscripcion: true },
+    { to: '/perfil',             icon: 'fa-circle-user',    labelKey: 'nav.cuenta',      accent: 'nav-teal'   },
+];
+
+export default function Sidebar({ onHelpClick }) {
     const navigate = useNavigate();
     const { pathname } = useLocation();
+    const { lang, toggleLang, t } = useLanguage();
 
-    const isSuscripcionActive = pathname === '/planes' || pathname === '/mi-suscripcion' || pathname === '/checkout';
+    const isSuscripcionActive = ['/planes', '/mi-suscripcion', '/checkout'].includes(pathname);
 
     return (
         <div className="sidebar">
-            {/* Ambient green glow */}
             <div className="sidebar-glow" aria-hidden="true" />
 
-            {/* Logo — centered, no text */}
+            {/* Logo */}
             <div className="sidebar-header">
-                <LogoOrb size={48} showText={false} onClick={() => navigate('/dashboard')} />
+                <LogoOrb width={84} height={86} showText={false} onClick={() => navigate('/dashboard')} />
             </div>
 
-            {/* Main nav */}
+            {/* Nav */}
             <ul className="menu-list">
-                <li className="menu-item">
-                    <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'active' : ''}>
-                        <i className="fas fa-home" />
-                        <span className="link-text">Inicio</span>
-                    </NavLink>
-                </li>
-                <li className="menu-item">
-                    <NavLink to="/kanban" className={({ isActive }) => isActive ? 'active' : ''}>
-                        <i className="fa-solid fa-filter" />
-                        <span className="link-text">Embudo</span>
-                    </NavLink>
-                </li>
-                <li className="menu-item">
-                    <NavLink to="/respuestas-rapidas" className={({ isActive }) => isActive ? 'active' : ''}>
-                        <i className="fas fa-bolt" />
-                        <span className="link-text">Respuestas</span>
-                    </NavLink>
-                </li>
-                <li className="menu-item">
-                    <NavLink to="/contactos" className={({ isActive }) => isActive ? 'active' : ''}>
-                        <i className="fas fa-users" />
-                        <span className="link-text">Contactos</span>
-                    </NavLink>
-                </li>
-                <li className="menu-item">
-                    <NavLink to="/planes" className={() => isSuscripcionActive ? 'active' : ''}>
-                        <i className="fas fa-crown" />
-                        <span className="link-text">Suscripción</span>
-                    </NavLink>
-                </li>
+                {NAV_ITEMS.map(({ to, icon, labelKey, accent, suscripcion }) => (
+                    <li key={to} className="menu-item">
+                        <NavLink
+                            to={to}
+                            className={({ isActive }) =>
+                                `nav-pill ${accent}${(isActive || (suscripcion && isSuscripcionActive)) ? ' active' : ''}`
+                            }
+                        >
+                            <span className="nav-pill-icon">
+                                <i className={`fa-solid ${icon}`} />
+                            </span>
+                            <span className="link-text">{t(labelKey)}</span>
+                        </NavLink>
+                    </li>
+                ))}
             </ul>
 
-            {/* Bottom — Cuenta only */}
+            {/* Bottom: Soporte + Language toggle */}
             <ul className="menu-bottom">
                 <li className="menu-item">
-                    <NavLink to="/perfil" className={({ isActive }) => isActive ? 'active' : ''}>
-                        <i className="fa-solid fa-user" />
-                        <span className="link-text">Cuenta</span>
-                    </NavLink>
+                    <button onClick={onHelpClick} className="nav-pill nav-support" title={t('nav.soporte')}>
+                        <span className="nav-pill-icon">
+                            <i className="fa-solid fa-headset" />
+                        </span>
+                        <span className="link-text">{t('nav.soporte')}</span>
+                    </button>
+                </li>
+                <li className="menu-item">
+                    <button onClick={toggleLang} className="nav-pill nav-lang" title={t('lang.name')}>
+                        <span className="nav-pill-icon nav-pill-icon--lang">
+                            <i className="fa-solid fa-globe" />
+                        </span>
+                        <span className="link-text">{lang === 'es' ? 'EN' : 'ES'}</span>
+                    </button>
                 </li>
             </ul>
         </div>
