@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&display=swap');
+
 /* =========================================
    LANDING PAGE — OT CRM
    Dark theme with green ambient glow
@@ -309,18 +311,104 @@
 }
 
 .hero-title {
-  font-size: clamp(2.4rem, 5.5vw, 4rem);
+  font-size: clamp(2.6rem, 5.8vw, 4.4rem);
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1.08;
   margin: 0 0 22px;
   max-width: 680px;
+  letter-spacing: -0.01em;
 }
 
+/* Classic gradient green (kept for backward compat) */
 .hero-title-green {
   background: linear-gradient(135deg, #10b981, #6ee7b7);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ── Mixed typography — serif italic accent ── */
+/* Used in hero title: the "wow" word in italic serif */
+.ht-serif {
+  display: block;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  background: linear-gradient(135deg, #10b981 10%, #6ee7b7 90%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.0;
+  margin: 6px 0 4px;
+  font-size: 1.12em;
+}
+
+/* Used in section titles: italic serif colored word */
+.title-serif {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  color: #10b981;
+  display: inline;
+}
+
+/* ── Floating hero badges ─────────────────── */
+.hfb {
+  position: absolute;
+  background: rgba(8, 10, 14, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.80);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.40);
+  pointer-events: none;
+  animation: hfbFloat 3.8s ease-in-out infinite;
+  z-index: 3;
+}
+
+/* Green badge — top right area */
+.hfb--1 {
+  top: 18%; right: -4%;
+  color: #10b981;
+  border-color: rgba(16,185,129,0.30);
+  animation-delay: 0s;
+}
+/* Amber badge — mid right */
+.hfb--2 {
+  top: 52%; right: -8%;
+  color: #fbbf24;
+  border-color: rgba(251,191,36,0.25);
+  animation-delay: 1.0s;
+}
+/* Neutral badge — bottom right */
+.hfb--3 {
+  bottom: 16%; right: 2%;
+  animation-delay: 1.9s;
+}
+
+@keyframes hfbFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-9px); }
+}
+
+.hfb-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.hfb-dot--green {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16,185,129,0.70);
+  animation: heroPulse 2s ease-in-out infinite;
 }
 
 .hero-subtitle {

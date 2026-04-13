@@ -5,6 +5,7 @@ import api from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
 import useAudio from '../hooks/useAudio';
 import NotificationBell from '../components/kanban/NotificationBell';
+import { useLanguage } from '../context/LangContext';
 
 /* ── Spark data helper (simulated 7-point trend from totals) ── */
 function buildSparkData(hoy, total) {
@@ -16,16 +17,16 @@ function buildSparkData(hoy, total) {
 
 /* ── KPI Card ────────────────────────────────────────────── */
 const KPI_COLORS = {
-    green:  { icon: 'rgba(16,185,129,0.15)',  text: '#10b981', border: 'rgba(16,185,129,0.25)' },
-    red:    { icon: 'rgba(239,68,68,0.15)',   text: '#ef4444', border: 'rgba(239,68,68,0.25)'  },
-    blue:   { icon: 'rgba(99,102,241,0.15)',  text: '#818cf8', border: 'rgba(99,102,241,0.25)' },
-    purple: { icon: 'rgba(168,85,247,0.15)',  text: '#c084fc', border: 'rgba(168,85,247,0.25)' },
-    teal:   { icon: 'rgba(20,184,166,0.15)',  text: '#2dd4bf', border: 'rgba(20,184,166,0.25)' },
+    green:  { icon: 'rgba(16,185,129,0.15)',  text: '#10b981', border: 'rgba(16,185,129,0.25)', accent: '#10b981' },
+    red:    { icon: 'rgba(239,68,68,0.15)',   text: '#ef4444', border: 'rgba(239,68,68,0.25)',  accent: '#ef4444' },
+    blue:   { icon: 'rgba(99,102,241,0.15)',  text: '#818cf8', border: 'rgba(99,102,241,0.25)', accent: '#818cf8' },
+    purple: { icon: 'rgba(168,85,247,0.15)',  text: '#c084fc', border: 'rgba(168,85,247,0.25)', accent: '#c084fc' },
+    teal:   { icon: 'rgba(20,184,166,0.15)',  text: '#2dd4bf', border: 'rgba(20,184,166,0.25)', accent: '#2dd4bf' },
 };
 function KpiCard({ icon, label, value, sub, color = 'green' }) {
     const c = KPI_COLORS[color] || KPI_COLORS.green;
     return (
-        <div className="kpi-card">
+        <div className="kpi-card" style={{ '--kpi-accent': c.accent }}>
             <div className="kpi-icon" style={{ background: c.icon, border: `1px solid ${c.border}` }}>
                 <i className={`fas ${icon}`} style={{ color: c.text }} />
             </div>
@@ -113,6 +114,7 @@ function TeamAvatars({ equipo, usuarioActual, onlineUsers, rol, agenciaId, onLea
 
 export default function Dashboard() {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [loading, setLoading] = useState(true);
     const [usuarioActual, setUsuarioActual] = useState(null);
     const [dashboardData, setDashboardData] = useState({
@@ -133,18 +135,19 @@ export default function Dashboard() {
         solicitudes: [],
     });
 
-    const [moneda, setMoneda] = useState('USD');
+    const [moneda, setMoneda] = useState(() => localStorage.getItem('crm_moneda') || 'ARS');
     const [monedaOpen, setMonedaOpen] = useState(false);
     const monedaRef = useRef(null);
-    const TASAS = { USD: 1, EUR: 0.92, BRL: 5.0, ARS: 900, MXN: 17.2 };
-    const SIMBOLOS = { USD: '$', EUR: '€', BRL: 'R$', ARS: '$', MXN: '$' };
+    const TASAS   = { USD: 1, EUR: 0.92, BRL: 5.0, ARS: 900, MXN: 17.2 };
+    const SIMBOLOS = { USD: 'US$', EUR: '€', BRL: 'R$', ARS: '$', MXN: 'MX$' };
     const MONEDAS = [
-        { key: 'USD', label: 'USD $' },
-        { key: 'EUR', label: 'EUR €' },
-        { key: 'BRL', label: 'BRL R$' },
-        { key: 'ARS', label: 'ARS $' },
-        { key: 'MXN', label: 'MXN $' },
+        { key: 'ARS', label: 'ARS — Peso arg.',   flag: '🇦🇷' },
+        { key: 'USD', label: 'USD — Dólar',        flag: '🇺🇸' },
+        { key: 'EUR', label: 'EUR — Euro',          flag: '🇪🇺' },
+        { key: 'BRL', label: 'BRL — Real bras.',   flag: '🇧🇷' },
+        { key: 'MXN', label: 'MXN — Peso mex.',    flag: '🇲🇽' },
     ];
+    const cambiarMoneda = (key) => { setMoneda(key); localStorage.setItem('crm_moneda', key); setMonedaOpen(false); };
     const convertir = (usd) => (usd * TASAS[moneda]).toLocaleString('es-AR', { maximumFractionDigits: 0 });
 
     useEffect(() => {
@@ -394,8 +397,8 @@ export default function Dashboard() {
             {/* Header */}
             <div className="welcome-header">
                 <div>
-                    <h1>{(() => { const h = new Date().getHours(); return h >= 6 && h < 12 ? 'Buenos días' : h >= 12 && h < 20 ? 'Buenas tardes' : 'Buenas noches'; })()}, <span>{dashboardData.nombreUsuario}</span></h1>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>Resumen de actividad en tiempo real.</p>
+                    <h1>{(() => { const h = new Date().getHours(); return h >= 6 && h < 12 ? t('dashboard.greeting.morning') : h >= 12 && h < 20 ? t('dashboard.greeting.afternoon') : t('dashboard.greeting.evening'); })()}, <span>{dashboardData.nombreUsuario}</span></h1>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: 0 }}>{t('dashboard.subtitle')}</p>
                 </div>
                 <div className="welcome-header-actions">
                     {/* Team avatars */}
@@ -427,8 +430,8 @@ export default function Dashboard() {
                             }
                         }}
                     >
-                        <i className="fas fa-file-excel"></i>
-                        <span className="texto-btn">Descargar Reporte</span>
+                        <i className="fa-solid fa-file-arrow-down"></i>
+                        <span className="texto-btn">{t('dashboard.report')}</span>
                     </button>
 
                     {/* Notifications */}
@@ -452,11 +455,11 @@ export default function Dashboard() {
 
             {/* ── KPI Row ── */}
             <div className="kpi-grid">
-                <KpiCard icon="fa-comment-dots"  label="Mensajes hoy"     value={dashboardData.mensajesHoy}   sub="Se resetea a medianoche"  color="green" />
-                <KpiCard icon="fa-envelope"       label="Sin leer"         value={dashboardData.leadsSinLeer}  sub="Conversaciones pendientes" color={dashboardData.leadsSinLeer > 0 ? 'red' : 'green'} />
-                <KpiCard icon="fa-comments"       label="Total mensajes"   value={dashboardData.totalMensajes} sub="Histórico acumulado"       color="blue"  />
-                <KpiCard icon="fa-user-plus"      label="Contactos hoy"    value={dashboardData.nuevosLeads}   sub="Registrados desde las 00hs" color="purple" />
-                <KpiCard icon="fa-users"          label="Contactos activos" value={dashboardData.totalLeads}   sub="En el embudo"              color="teal" />
+                <KpiCard icon="fa-message-lines"    label={t('dashboard.kpi.mensajesHoy')}      value={dashboardData.mensajesHoy}   sub={t('dashboard.kpi.subReset')}   color="green"  />
+                <KpiCard icon="fa-inbox"            label={t('dashboard.kpi.sinLeer')}          value={dashboardData.leadsSinLeer}  sub={t('dashboard.kpi.subPending')} color={dashboardData.leadsSinLeer > 0 ? 'red' : 'green'} />
+                <KpiCard icon="fa-messages"         label={t('dashboard.kpi.totalMensajes')}    value={dashboardData.totalMensajes} sub={t('dashboard.kpi.subHistoric')} color="blue"   />
+                <KpiCard icon="fa-user-plus"        label={t('dashboard.kpi.contactosHoy')}     value={dashboardData.nuevosLeads}   sub={t('dashboard.kpi.subDesde')}   color="purple" />
+                <KpiCard icon="fa-users-viewfinder" label={t('dashboard.kpi.contactosActivos')} value={dashboardData.totalLeads}    sub={t('dashboard.kpi.subFunnel')}  color="teal"   />
             </div>
 
             {/* ── Analytics Row ── */}
@@ -465,14 +468,15 @@ export default function Dashboard() {
                 {/* Financiero */}
                 <div className="an-card an-card--finance">
                     <div className="an-card-header">
-                        <span className="an-card-title"><i className="fas fa-wallet" /> Financiero</span>
+                        <span className="an-card-title"><i className="fa-solid fa-coins" /> {t('dashboard.finance.title')}</span>
                         <div className="currency-dropdown" ref={monedaRef}>
                             <button
-                                className={`currency-select ${monedaOpen ? 'open' : ''}`}
+                                className={`currency-btn ${monedaOpen ? 'open' : ''}`}
                                 onClick={() => setMonedaOpen(v => !v)}
                             >
-                                {MONEDAS.find(m => m.key === moneda)?.label}
-                                <i className="fas fa-chevron-down currency-chevron" />
+                                <span className="currency-flag">{MONEDAS.find(m => m.key === moneda)?.flag}</span>
+                                <span className="currency-code">{moneda}</span>
+                                <i className="fa-solid fa-chevron-down currency-chevron" />
                             </button>
                             {monedaOpen && (
                                 <ul className="currency-menu">
@@ -480,9 +484,11 @@ export default function Dashboard() {
                                         <li
                                             key={m.key}
                                             className={`currency-option ${m.key === moneda ? 'active' : ''}`}
-                                            onClick={() => { setMoneda(m.key); setMonedaOpen(false); }}
+                                            onClick={() => cambiarMoneda(m.key)}
                                         >
-                                            {m.label}
+                                            <span className="currency-flag">{m.flag}</span>
+                                            <span>{m.label}</span>
+                                            {m.key === moneda && <i className="fa-solid fa-check currency-check" />}
                                         </li>
                                     ))}
                                 </ul>
@@ -492,32 +498,44 @@ export default function Dashboard() {
 
                     <div className="finance-summary">
                         <div className="finance-stat finance-stat--in">
-                            <span className="fs-label"><i className="fas fa-arrow-down" /> Total cargado</span>
+                            <span className="fs-label"><i className="fa-solid fa-circle-arrow-down" /> {t('dashboard.finance.loaded')}</span>
                             <span className="fs-value">{SIMBOLOS[moneda]}{convertir(dashboardData.totalCarga)}</span>
                         </div>
                         <div className="finance-divider" />
                         <div className="finance-stat finance-stat--out">
-                            <span className="fs-label"><i className="fas fa-arrow-up" /> Total retirado</span>
+                            <span className="fs-label"><i className="fa-solid fa-circle-arrow-up" /> {t('dashboard.finance.withdrawn')}</span>
                             <span className="fs-value">{SIMBOLOS[moneda]}{convertir(dashboardData.totalRetiro)}</span>
                         </div>
                         <div className="finance-divider" />
                         <div className="finance-stat finance-stat--net">
-                            <span className="fs-label"><i className="fas fa-balance-scale" /> Saldo neto</span>
+                            <span className="fs-label"><i className="fa-solid fa-scale-balanced" /> {t('dashboard.finance.net')}</span>
                             <span className="fs-value">{SIMBOLOS[moneda]}{convertir(dashboardData.totalCarga - dashboardData.totalRetiro)}</span>
                         </div>
                     </div>
 
-                    <div className="tx-list-header">Últimas transacciones</div>
+                    <div className="tx-list-header">{t('dashboard.finance.lastTx')}</div>
                     {dashboardData.ultimasTransacciones.length === 0 ? (
-                        <p className="tx-empty">Sin transacciones registradas</p>
+                        <p className="tx-empty">{t('dashboard.finance.empty')}</p>
                     ) : dashboardData.ultimasTransacciones.map((tx, i) => (
                         <div key={i} className="tx-row">
                             <span className={`tx-badge ${tx.tipo === 'CARGA' ? 'tx-badge--in' : 'tx-badge--out'}`}>
-                                <i className={`fas ${tx.tipo === 'CARGA' ? 'fa-plus' : 'fa-minus'}`} />
+                                <i className={`fa-solid ${tx.tipo === 'CARGA' ? 'fa-arrow-down-to-line' : 'fa-arrow-up-from-line'}`} />
                             </span>
                             <div className="tx-info">
                                 <span className="tx-cliente">{tx.cliente}</span>
-                                <span className="tx-fecha">{tx.fecha ? new Date(tx.fecha).toLocaleDateString('es-AR') : ''}</span>
+                                <span className="tx-meta">
+                                    <i className={`fa-solid ${tx.canal === 'TELEGRAM' ? 'fa-paper-plane' : 'fa-mobile-screen-button'} tx-meta-icon`} />
+                                    {tx.dispositivo}
+                                    <span className="tx-meta-sep">·</span>
+                                    <i className="fa-solid fa-user-shield tx-meta-icon" />
+                                    {tx.operador}
+                                    <span className="tx-meta-sep">·</span>
+                                    <i className="fa-regular fa-clock tx-meta-icon" />
+                                    {tx.fecha ? (() => {
+                                        const d = new Date(tx.fecha);
+                                        return `${d.toLocaleDateString('es-AR')} ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`;
+                                    })() : ''}
+                                </span>
                             </div>
                             <span className={`tx-monto ${tx.tipo === 'CARGA' ? 'tx-monto--in' : 'tx-monto--out'}`}>
                                 {tx.tipo === 'CARGA' ? '+' : '-'}{SIMBOLOS[moneda]}{convertir(tx.monto)}
@@ -529,11 +547,11 @@ export default function Dashboard() {
                 {/* Mensajes chart */}
                 <div className="an-card an-card--msgs">
                     <div className="an-card-header">
-                        <span className="an-card-title"><i className="fas fa-chart-area" /> Actividad de mensajes</span>
+                        <span className="an-card-title"><i className="fa-solid fa-waveform-lines" /> {t('dashboard.activity.title')}</span>
                     </div>
                     <div className="msgs-big-number">
                         <span className="msgs-num">{dashboardData.mensajesHoy.toLocaleString()}</span>
-                        <span className="msgs-label">mensajes hoy</span>
+                        <span className="msgs-label">{t('dashboard.activity.todayLabel')}</span>
                     </div>
                     <div className="msgs-chart-wrap">
                         <ResponsiveContainer width="100%" height={90}>
@@ -570,10 +588,10 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Canales + Conexiones */}
+                {/* Canales */}
                 <div className="an-card an-card--channels">
                     <div className="an-card-header">
-                        <span className="an-card-title"><i className="fas fa-plug" /> Canales</span>
+                        <span className="an-card-title"><i className="fa-solid fa-tower-broadcast" /> {t('dashboard.channels.title')}</span>
                     </div>
                     <div className="channel-row" onClick={() => navigate('/whatsapp-vincular')}>
                         <div className="channel-icon channel-icon--wa">
@@ -583,10 +601,10 @@ export default function Dashboard() {
                             <span className="channel-name">WhatsApp</span>
                             <span className={`channel-status ${dashboardData.whatsappConectado ? 'status--on' : 'status--off'}`}>
                                 <span className="status-dot" />
-                                {dashboardData.whatsappConectado ? 'Conectado' : 'Desconectado'}
+                                {dashboardData.whatsappConectado ? t('dashboard.channels.connected') : t('dashboard.channels.disconnected')}
                             </span>
                         </div>
-                        <i className="fas fa-chevron-right channel-arrow" />
+                        <i className="fa-solid fa-chevron-right channel-arrow" />
                     </div>
                     <div className="channel-divider" />
                     <div className="channel-row" onClick={() => navigate('/telegram-vincular')}>
@@ -597,34 +615,31 @@ export default function Dashboard() {
                             <span className="channel-name">Telegram</span>
                             <span className={`channel-status ${dashboardData.telegramConnected ? 'status--on' : 'status--off'}`}>
                                 <span className="status-dot" />
-                                {dashboardData.telegramConnected ? 'Conectado' : 'Desconectado'}
+                                {dashboardData.telegramConnected ? t('dashboard.channels.connected') : t('dashboard.channels.disconnected')}
                             </span>
                         </div>
-                        <i className="fas fa-chevron-right channel-arrow" />
+                        <i className="fa-solid fa-chevron-right channel-arrow" />
                     </div>
                     <div className="channel-divider" />
 
-                    {/* Resumen rápido */}
-                    <div className="quick-stats">
-                        <div className="qs-item">
-                            <i className="fas fa-fire qs-icon qs-icon--orange" />
+                    {/* Tasa de conversión: total mensajes / contactos activos */}
+                    <div className="channel-insight">
+                        <div className="ci-item">
+                            <i className="fa-solid fa-chart-line ci-icon" />
                             <div>
-                                <span className="qs-val">{dashboardData.nuevosLeads}</span>
-                                <span className="qs-label">leads hoy</span>
+                                <span className="ci-val">
+                                    {dashboardData.totalLeads > 0
+                                        ? `${((dashboardData.totalMensajes / dashboardData.totalLeads)).toFixed(1)}`
+                                        : '—'}
+                                </span>
+                                <span className="ci-label">msg / contacto</span>
                             </div>
                         </div>
-                        <div className="qs-item">
-                            <i className="fas fa-check-circle qs-icon qs-icon--green" />
+                        <div className="ci-item">
+                            <i className="fa-solid fa-clock-rotate-left ci-icon" />
                             <div>
-                                <span className="qs-val">{dashboardData.totalLeads}</span>
-                                <span className="qs-label">activos</span>
-                            </div>
-                        </div>
-                        <div className="qs-item">
-                            <i className="fas fa-bell qs-icon qs-icon--red" />
-                            <div>
-                                <span className="qs-val">{dashboardData.leadsSinLeer}</span>
-                                <span className="qs-label">sin leer</span>
+                                <span className="ci-val">{dashboardData.mensajesHoy}</span>
+                                <span className="ci-label">{t('dashboard.channels.todayLabel')}</span>
                             </div>
                         </div>
                     </div>

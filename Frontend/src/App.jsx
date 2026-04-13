@@ -26,6 +26,7 @@ import Auth from './pages/Auth';
 import MainLayout from './components/MainLayout';
 import { ToastProvider } from './context/ToastContext';
 import { UserProvider } from './context/UserContext';
+import { LangProvider } from './context/LangContext';
 
 const Landing = lazy(() => import('./pages/Landing'));
 
@@ -43,6 +44,7 @@ const MiSuscripcion = lazy(() => import('./pages/MiSuscripcion'));
 
 function App() {
   return (
+    <LangProvider>
     <UserProvider>
     <ToastProvider>
       <Router>
@@ -69,6 +71,7 @@ function App() {
       </Router>
     </ToastProvider>
     </UserProvider>
+    </LangProvider>
   );
 }
 

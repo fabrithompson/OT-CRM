@@ -101,7 +101,8 @@ export default function Landing() {
 
               <h1 className="hero-title">
                 Centralizá y convertí
-                <span className="hero-title-green"> tus leads en ventas</span>
+                <em className="ht-serif">tus leads</em>
+                en ventas
               </h1>
 
               <p className="hero-subtitle">
@@ -152,6 +153,16 @@ export default function Landing() {
                 className="hero-img"
                 draggable={false}
               />
+              <div className="hfb hfb--1" aria-hidden="true">
+                <span className="hfb-dot hfb-dot--green" />
+                +500 leads activos
+              </div>
+              <div className="hfb hfb--2" aria-hidden="true">
+                <i className="fa-solid fa-bolt" /> Tiempo real
+              </div>
+              <div className="hfb hfb--3" aria-hidden="true">
+                <i className="fa-brands fa-whatsapp" /> WhatsApp &amp; Telegram
+              </div>
             </div>
 
           </div>
@@ -163,7 +174,7 @@ export default function Landing() {
         <div className="landing-container">
           <div className="section-header reveal">
             <span className="section-tag">Cómo funciona</span>
-            <h2 className="section-title">Tres pasos para empezar</h2>
+            <h2 className="section-title">Tres pasos para <span className="title-serif">empezar</span></h2>
             <p className="section-sub">
               En minutos tenés tu CRM listo para operar con todo tu equipo.
             </p>
@@ -208,7 +219,7 @@ export default function Landing() {
         <div className="landing-container">
           <div className="section-header reveal">
             <span className="section-tag">Funcionalidades</span>
-            <h2 className="section-title">Todo lo que necesitás en un lugar</h2>
+            <h2 className="section-title">Todo lo que <span className="title-serif">necesitás</span> en un lugar</h2>
             <p className="section-sub">
               Herramientas diseñadas para equipos de ventas modernos y ágiles.
             </p>
@@ -240,7 +251,7 @@ export default function Landing() {
         <div className="landing-container">
           <div className="section-header reveal">
             <span className="section-tag">Precios</span>
-            <h2 className="section-title">Planes para cada negocio</h2>
+            <h2 className="section-title">Planes para cada <span className="title-serif">negocio</span></h2>
             <p className="section-sub">
               Empezá gratis y escalá según el crecimiento de tu equipo.
             </p>
@@ -373,7 +384,7 @@ export default function Landing() {
             <div className="about-content reveal reveal-left">
               <span className="section-tag">Nosotros</span>
               <h2 className="section-title left">
-                Construido por vendedores,<br />para vendedores
+                Construido por <span className="title-serif">vendedores</span>,<br />para vendedores
               </h2>
               <p className="about-text">
                 OT CRM nació de la necesidad real de gestionar cientos de conversaciones
@@ -436,7 +447,7 @@ export default function Landing() {
         <div className="landing-container">
           <div className="section-header reveal">
             <span className="section-tag">Soporte</span>
-            <h2 className="section-title">¿Necesitás ayuda?</h2>
+            <h2 className="section-title">¿Necesitás <span className="title-serif">ayuda</span>?</h2>
             <p className="section-sub">
               Estamos para ayudarte. Escribinos y te respondemos a la brevedad.
             </p>
@@ -536,7 +547,7 @@ export default function Landing() {
         <div className="landing-container">
           <div className="footer-grid">
             <div className="footer-brand">
-              <LogoOrb size={56} showText={false} onClick={() => scrollTo('inicio')} />
+              <LogoOrb width={84} height={85} showText={false} onClick={() => scrollTo('inicio')} />
               <p>
                 Tu CRM para WhatsApp y Telegram. Gestión de leads
                 simple, efectiva y en tiempo real.
