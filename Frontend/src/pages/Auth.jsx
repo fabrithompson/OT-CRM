@@ -6,6 +6,24 @@ import LogoOrb from '../components/LogoOrb';
 import WaveCanvas from '../components/WaveCanvas';
 import { useLanguage } from '../context/LangContext';
 
+function PwdField({ id, name, field, labelKey, placeholder, showPassword, formData, handleInput, togglePwd, t }) {
+    return (
+        <div className="auth-field">
+            <label htmlFor={id}>{t(labelKey)}</label>
+            <div className="auth-pwd-wrap">
+                <input
+                    id={id} name={name} placeholder={placeholder} required
+                    type={showPassword[field] ? 'text' : 'password'}
+                    value={formData[name]} onChange={handleInput}
+                />
+                <button type="button" className="auth-pwd-toggle" onClick={() => togglePwd(field)}>
+                    <i className={`fas ${showPassword[field] ? 'fa-eye-slash' : 'fa-eye'}`} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function Auth() {
     const [mode, setMode] = useState('login'); // login | register | forgot | reset | verify
     const [showPassword, setShowPassword] = useState({ login: false, register: false, new: false, confirm: false });
@@ -139,21 +157,7 @@ export default function Auth() {
         </div>
     ) : null;
 
-    const PwdField = ({ id, name, field, labelKey, placeholder }) => (
-        <div className="auth-field">
-            <label htmlFor={id}>{t(labelKey)}</label>
-            <div className="auth-pwd-wrap">
-                <input
-                    id={id} name={name} placeholder={placeholder} required
-                    type={showPassword[field] ? 'text' : 'password'}
-                    value={formData[name]} onChange={handleInput}
-                />
-                <button type="button" className="auth-pwd-toggle" onClick={() => togglePwd(field)}>
-                    <i className={`fas ${showPassword[field] ? 'fa-eye-slash' : 'fa-eye'}`} />
-                </button>
-            </div>
-        </div>
-    );
+    const pwdProps = { showPassword, formData, handleInput, togglePwd, t };
 
     const isMain   = mode === 'login' || mode === 'register';
     const isReg    = mode === 'register';
@@ -194,7 +198,7 @@ export default function Auth() {
                                     </div>
                                     <PwdField id="login-pwd" name="password" field="login"
                                         labelKey="auth.panels.login.password"
-                                        placeholder="••••••••" />
+                                        placeholder="••••••••" {...pwdProps} />
                                     <SubmitBtn>{t('auth.panels.login.submit')}</SubmitBtn>
                                     <div className="auth-forgot-link">
                                         <button type="button" className="auth-link-btn" onClick={() => switchTo('forgot')}>
@@ -226,7 +230,7 @@ export default function Auth() {
                                     </div>
                                     <PwdField id="reg-pwd" name="password" field="register"
                                         labelKey="auth.panels.register.password"
-                                        placeholder="••••••••" />
+                                        placeholder="••••••••" {...pwdProps} />
                                     <div className="auth-field">
                                         <label htmlFor="reg-code">{t('auth.panels.register.inviteCode')}</label>
                                         <input id="reg-code" name="codigoInvitacion" type="text"
@@ -315,8 +319,8 @@ export default function Auth() {
                                             placeholder={t('auth.panels.reset.codePlaceholder')}
                                             required value={formData.code} onChange={handleInput} />
                                     </div>
-                                    <PwdField id="reset-new"  name="newPassword"     field="new"     labelKey="auth.panels.reset.newPwd"     placeholder="••••••••" />
-                                    <PwdField id="reset-conf" name="confirmPassword" field="confirm" labelKey="auth.panels.reset.confirmPwd" placeholder="••••••••" />
+                                    <PwdField id="reset-new"  name="newPassword"     field="new"     labelKey="auth.panels.reset.newPwd"     placeholder="••••••••" {...pwdProps} />
+                                    <PwdField id="reset-conf" name="confirmPassword" field="confirm" labelKey="auth.panels.reset.confirmPwd" placeholder="••••••••" {...pwdProps} />
                                     <SubmitBtn>{t('auth.panels.reset.submit')}</SubmitBtn>
                                 </form>
                             </div>

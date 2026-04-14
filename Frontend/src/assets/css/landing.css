@@ -781,7 +781,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 22px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .pricing-card {
@@ -790,11 +790,14 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 28px 22px;
+  margin-top: 14px;
   position: relative;
   transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .pricing-card:hover {
@@ -1793,6 +1796,18 @@
   animation: heroImgFloat 7s ease-in-out infinite;
   display: block;
   margin: 0 auto;
+  -webkit-mask-image:
+    linear-gradient(to bottom, black 55%, transparent 95%),
+    linear-gradient(to right,  black 55%, transparent 95%),
+    linear-gradient(to left,   black 75%, transparent 100%),
+    linear-gradient(to top,    black 75%, transparent 100%);
+  -webkit-mask-composite: destination-in;
+  mask-image:
+    linear-gradient(to bottom, black 55%, transparent 95%),
+    linear-gradient(to right,  black 55%, transparent 95%),
+    linear-gradient(to left,   black 75%, transparent 100%),
+    linear-gradient(to top,    black 75%, transparent 100%);
+  mask-composite: intersect;
 }
 
 @keyframes heroImgFloat {
@@ -1840,11 +1855,8 @@
 
 /* ── Popular pricing card — slight lift ─ */
 @media (min-width: 1081px) {
-  .pricing-card.popular {
-    transform: scale(1.035) translateY(-6px);
-  }
   .pricing-card.popular:hover {
-    transform: scale(1.035) translateY(-12px);
+    transform: translateY(-10px);
     box-shadow: 0 0 70px rgba(59, 130, 246, 0.28);
   }
 }
