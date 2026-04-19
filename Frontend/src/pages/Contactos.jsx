@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
 import NotificationBell from '../components/kanban/NotificationBell';
+import { useLanguage } from '../context/LangContext';
 
 const FORMAT_BYTES = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -15,6 +16,7 @@ const FORMAT_BYTES = (bytes) => {
 
 
 function ConfirmDeleteModal({ active, onClose, onConfirm, deleting }) {
+    const { t } = useLanguage();
     useEffect(() => {
         const h = (e) => { if (e.key === 'Escape') onClose(); };
         if (active) document.addEventListener('keydown', h);
@@ -29,14 +31,12 @@ function ConfirmDeleteModal({ active, onClose, onConfirm, deleting }) {
                 <div className="icon-trash-bg" style={{ margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#ef4444' }}>
                     <i className="fas fa-trash-alt"></i>
                 </div>
-                <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>¿Eliminar contacto?</h3>
-                <p style={{ color: '#94a3b8', marginBottom: 20 }}>
-                    Esta acción es <strong style={{ color: '#fff' }}>irreversible</strong>. Se eliminará el contacto del sistema.
-                </p>
+                <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>{t('contactos.deleteTitle')}</h3>
+                <p style={{ color: '#94a3b8', marginBottom: 20 }}>{t('contactos.deleteMsg')}</p>
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={onClose}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm-danger" onClick={onConfirm} disabled={deleting}>
-                        {deleting ? <i className="fas fa-spinner fa-spin"></i> : 'Eliminar'}
+                        {deleting ? <i className="fas fa-spinner fa-spin"></i> : t('common.delete')}
                     </button>
                 </div>
             </div>
@@ -46,6 +46,7 @@ function ConfirmDeleteModal({ active, onClose, onConfirm, deleting }) {
 ConfirmDeleteModal.propTypes = { active: PropTypes.bool.isRequired, onClose: PropTypes.func.isRequired, onConfirm: PropTypes.func.isRequired, deleting: PropTypes.bool.isRequired };
 
 function ConfirmImportModal({ active, file, onClose, onConfirm, importing }) {
+    const { t } = useLanguage();
     if (!active || !file) return null;
     return (
         <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
@@ -54,12 +55,12 @@ function ConfirmImportModal({ active, file, onClose, onConfirm, importing }) {
                 <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px', fontSize: '1.8rem' }}>
                     <i className="fas fa-file-upload"></i>
                 </div>
-                <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>¿Confirmar importación?</h3>
+                <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>{t('contactos.importTitle')}</h3>
                 <p style={{ color: '#94a3b8', marginBottom: 20 }}>Archivo: <strong style={{ color: '#fff' }}>{file.name}</strong><br />Tamaño: {FORMAT_BYTES(file.size)}</p>
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={onClose} disabled={importing}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={onClose} disabled={importing}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm" onClick={onConfirm} disabled={importing}>
-                        {importing ? <><i className="fas fa-spinner fa-spin"></i>{' '}Importando...</> : 'Importar'}
+                        {importing ? <><i className="fas fa-spinner fa-spin"></i>{' '}{t('contactos.importing')}</> : t('contactos.importBtn')}
                     </button>
                 </div>
             </div>
@@ -98,6 +99,7 @@ function PlatformIcon({ origen }) {
 PlatformIcon.propTypes = { origen: PropTypes.string };
 
 export default function Contactos() {
+    const { t } = useLanguage();
     const toast    = useToast();
     const navigate = useNavigate();
 
@@ -314,20 +316,20 @@ export default function Contactos() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                     <i className="fas fa-users text-primary" style={{ fontSize: '1.4rem' }}></i>
                     <div>
-                        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', margin: 0 }}>Contactos</h2>
-                        <span className="text-muted" style={{ fontSize: '0.85rem' }}>{totalItems} Clientes</span>
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', margin: 0 }}>{t('contactos.title')}</h2>
+                        <span className="text-muted" style={{ fontSize: '0.85rem' }}>{totalItems} {t('contactos.clients')}</span>
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                     <div className="search-wrapper" style={{ margin: 0, height: 40, position: 'relative' }}>
                         <i className="fas fa-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#aaa' }}></i>
-                        <input type="text" placeholder="Buscar en toda la BD..." value={search} onChange={e => handleSearch(e.target.value)} autoComplete="off" style={{ height: '100%', width: 240, paddingLeft: 35, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', borderRadius: 8, color: 'white', outline: 'none' }} />
+                        <input type="text" placeholder={t('contactos.search')} value={search} onChange={e => handleSearch(e.target.value)} autoComplete="off" style={{ height: '100%', width: 240, paddingLeft: 35, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', borderRadius: 8, color: 'white', outline: 'none' }} />
                     </div>
                     <button type="button" className="btn-excel-animado" onClick={exportar} style={{ backgroundColor: '#1D6F42', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                        <i className="fas fa-file-download"></i><span className="texto-btn" style={{ marginLeft: 5 }}>Exportar Contactos</span>
+                        <i className="fas fa-file-download"></i><span className="texto-btn" style={{ marginLeft: 5 }}>{t('contactos.exportBtn')}</span>
                     </button>
                     <button type="button" className="btn-excel-animado" onClick={() => fileInputRef.current?.click()} style={{ backgroundColor: '#0061f2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <i className="fas fa-file-upload"></i><span className="texto-btn" style={{ marginLeft: 5 }}>Importar Contactos</span>
+                        <i className="fas fa-file-upload"></i><span className="texto-btn" style={{ marginLeft: 5 }}>{t('contactos.importBtn2')}</span>
                     </button>
                     <NotificationBell />
                     <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleFileSelect} />
@@ -340,14 +342,14 @@ export default function Contactos() {
                         <table className="table custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
                             <thead style={{ backgroundColor: '#0f1214' }}>
                                 <tr>
-                                    <th className="col-left ps-4 sticky-header" style={{ textAlign: 'left' }}>Nombre</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>Plataforma</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>Teléfono</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>Dispositivo</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>Etiquetas</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>Estado</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>Mensaje</th>
-                                    <th className="col-center pe-4 sticky-header" style={{ textAlign: 'center' }}>Acciones</th>
+                                    <th className="col-left ps-4 sticky-header" style={{ textAlign: 'left' }}>{t('contactos.colName')}</th>
+                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colPlatform')}</th>
+                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colPhone')}</th>
+                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colDevice')}</th>
+                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colLabels')}</th>
+                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colStatus')}</th>
+                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colMessage')}</th>
+                                    <th className="col-center pe-4 sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colActions')}</th>
                                 </tr>
                             </thead>
                             <tbody>{renderTableBody()}</tbody>
@@ -356,7 +358,7 @@ export default function Contactos() {
 
                     <div className="table-footer" style={{ padding: '15px 20px', borderTop: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', gap: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500 }}>Filas por página:</span>
+                            <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500 }}>{t('contactos.rowsPerPage')}:</span>
                             <select value={pageSize} onChange={handlePageSize} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', outline: 'none', cursor: 'pointer', backgroundColor: '#1e293b', color: 'white' }}>
                                 <option value={10}>10</option><option value={20}>20</option><option value={50}>50</option>
                             </select>

@@ -25,7 +25,7 @@ export default function Sidebar({ onHelpClick }) {
 
             {/* Logo */}
             <div className="sidebar-header">
-                <LogoOrb width={84} height={86} showText={false} onClick={() => navigate('/dashboard')} />
+                <LogoOrb width={48} height={49} showText={false} onClick={() => navigate('/dashboard')} />
             </div>
 
             {/* Nav */}
@@ -63,6 +63,18 @@ export default function Sidebar({ onHelpClick }) {
                             <i className="fa-solid fa-headset" />
                         </span>
                         <span className="link-text">{t('nav.soporte')}</span>
+                    </button>
+                </li>
+                <li className="menu-item">
+                    <button
+                        onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+                        className="nav-pill nav-logout"
+                        title={t('common.logout')}
+                    >
+                        <span className="nav-pill-icon">
+                            <i className="fa-solid fa-arrow-right-from-bracket" />
+                        </span>
+                        <span className="link-text">{t('common.logout')}</span>
                     </button>
                 </li>
             </ul>

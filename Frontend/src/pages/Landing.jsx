@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import '../assets/css/landing.css';
 import LogoOrb from '../components/LogoOrb';
 import WaveCanvas from '../components/WaveCanvas';
+import { useLanguage } from '../context/LangContext';
 
 const COMPANY_EMAIL = 'otempresa@otempresa.com';
 
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { lang, toggleLang } = useLanguage();
   const scrollRootRef = useRef(null);
   const [navScrolled, setNavScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -72,6 +74,15 @@ export default function Landing() {
           <div className="landing-nav-actions">
             <button className="landing-btn-primary" onClick={() => navigate('/login')}>
               Ingresar
+            </button>
+            <button
+              className="landing-lang-toggle"
+              onClick={toggleLang}
+              title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+              aria-label="Toggle language"
+            >
+              <i className="fas fa-globe" />
+              <span>{lang === 'es' ? 'EN' : 'ES'}</span>
             </button>
             <button
               className="landing-hamburger"

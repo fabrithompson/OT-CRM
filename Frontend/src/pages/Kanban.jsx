@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useLanguage } from '../context/LangContext';
 import api from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
 import { useToast } from '../context/ToastContext';
@@ -13,6 +14,7 @@ import { useUser } from '../context/UserContext';
 const PAGE_SIZE = 40;
 
 export default function Kanban() {
+    const { t } = useLanguage();
     const toast = useToast();
     const {playNotification } = useAudio();
     const [searchParams] = useSearchParams();
@@ -29,7 +31,7 @@ export default function Kanban() {
     const [loading, setLoading]     = useState(true);
 
     const [etiquetas, setEtiquetas]               = useState([]);
-    const [filterLabel, setFilterLabel]           = useState('Todas las etiquetas');
+    const [filterLabel, setFilterLabel]           = useState('');
     const [filterEtiquetaId, setFilterEtiquetaId] = useState('');
     const [showFilterMenu, setShowFilterMenu]     = useState(false);
     const [searchQuery, setSearchQuery]           = useState('');
@@ -295,7 +297,7 @@ export default function Kanban() {
         if (etapas.length === 0) return (
             <button className="ghost-column-placeholder" onClick={() => setCreateOpen(true)} style={{ width: 320 }}>
                 <div className="ghost-icon-circle"><i className="fas fa-plus"></i></div>
-                <span className="ghost-text">Nueva Etapa</span>
+                <span className="ghost-text">{t('kanban.newStage')}</span>
                 <span style={{ fontSize: '0.9rem', opacity: 0.7, marginTop: 5, fontWeight: 'normal' }}>Crea tu primera etapa para comenzar</span>
             </button>
         );
@@ -318,7 +320,7 @@ export default function Kanban() {
                 ))}
                 <button className="ghost-column-placeholder" onClick={() => setCreateOpen(true)} style={{ marginTop: 0, minWidth: 250, flexShrink: 0 }}>
                     <div className="ghost-icon-circle"><i className="fas fa-plus"></i></div>
-                    <span className="ghost-text">Nueva Etapa</span>
+                    <span className="ghost-text">{t('kanban.newStage')}</span>
                 </button>
             </>
         );
@@ -329,7 +331,7 @@ export default function Kanban() {
             <div className="header-top" style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass)', padding: '0 25px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <i className="fa-solid fa-filter" style={{ color: 'var(--brand-green)' }}></i> Embudo
+                        <i className="fa-solid fa-filter" style={{ color: 'var(--brand-green)' }}></i> {t('kanban.title')}
                     </div>
 
                     {/* FIX: filter dropdown with inline styles so it shows correctly without CSS class dependency */}
@@ -350,7 +352,7 @@ export default function Kanban() {
                                 transition: 'all 0.2s',
                             }}
                         >
-                            <span>{filterLabel}</span>
+                            <span>{filterLabel || t('kanban.allLabels')}</span>
                             <i className="fas fa-chevron-down" style={{ fontSize: '0.7rem', color: '#a6b3bd', transition: 'transform 0.2s', transform: showFilterMenu ? 'rotate(180deg)' : 'none' }}></i>
                         </button>
                         {showFilterMenu && (
@@ -370,12 +372,12 @@ export default function Kanban() {
                             >
                                 <button
                                     className="filter-item"
-                                    onClick={() => selectFilter('', 'Todas las etiquetas')}
+                                    onClick={() => selectFilter('', '')}
                                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', width: '100%', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', textAlign: 'left' }}
                                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                 >
-                                    <i className="fas fa-layer-group" style={{ color: '#a6b3bd', fontSize: '0.8rem' }}></i> Todas las etiquetas
+                                    <i className="fas fa-layer-group" style={{ color: '#a6b3bd', fontSize: '0.8rem' }}></i> {t('kanban.allLabels')}
                                 </button>
                                 {etiquetas.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '4px 0' }}></div>}
                                 {etiquetas.map(t => (

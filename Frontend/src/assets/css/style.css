@@ -315,6 +315,9 @@ body {
 .nav-pill.nav-lang:hover          { background: rgba(99,102,241,0.18); color: #818cf8; }
 .nav-pill-icon--lang              { font-size: 0.95rem; }
 
+.nav-pill.nav-logout              { color: rgba(255,255,255,0.30); }
+.nav-pill.nav-logout:hover        { background: rgba(239,68,68,0.18); color: #f87171; }
+
 /* ── Tooltip ─────────────────────────────────────── */
 .link-text {
     position: absolute;
@@ -803,7 +806,7 @@ button:focus-visible {
     background: rgba(29, 111, 66, 0.20);
     color: #4ade80 !important;
     border: 1px solid rgba(74, 222, 128, 0.22);
-    text-decoration: none; border-radius: 14px; height: 42px; width: 42px;
+    text-decoration: none; border-radius: 50%; height: 42px; width: 42px;
     overflow: hidden;
     transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
                 background 0.25s, border-color 0.25s, box-shadow 0.25s;
@@ -819,6 +822,7 @@ button:focus-visible {
 }
 .btn-excel-animado:hover {
     width: 184px;
+    border-radius: 999px;
     background: rgba(29, 111, 66, 0.35);
     border-color: rgba(74, 222, 128, 0.40);
     box-shadow: 0 0 18px rgba(74, 222, 128, 0.18);
@@ -2139,12 +2143,12 @@ display: flex;
 }
 
 .btn-header-notif {
-    background: rgba(251, 191, 36, 0.10);
-    border: 1px solid rgba(251, 191, 36, 0.18);
-    color: #fbbf24;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.13);
+    color: rgba(255,255,255,0.70);
     width: 42px;
     height: 42px;
-    border-radius: 14px;
+    border-radius: 50%;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
@@ -2156,11 +2160,11 @@ display: flex;
 }
 
 .btn-header-notif:hover, .btn-header-notif:focus {
-    background: rgba(251, 191, 36, 0.20);
-    color: #fde68a;
-    border-color: rgba(251, 191, 36, 0.38);
+    background: rgba(255,255,255,0.13);
+    color: #fff;
+    border-color: rgba(255,255,255,0.22);
     transform: translateY(-1px);
-    box-shadow: 0 0 18px rgba(251, 191, 36, 0.18);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.30);
 }
 
 .btn-header-notif:active {
@@ -3471,8 +3475,8 @@ display: flex;
 @media (max-width: 480px)  { .kpi-grid { grid-template-columns: 1fr; } }
 
 .kpi-card {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
     border-radius: 18px;
     padding: 16px 18px 14px 16px;
     display: flex;
@@ -3495,8 +3499,8 @@ display: flex;
     transition: opacity 0.22s;
 }
 .kpi-card:hover {
-    background: rgba(255,255,255,0.05);
-    border-color: rgba(255,255,255,0.13);
+    background: rgba(255,255,255,0.11);
+    border-color: rgba(255,255,255,0.18);
     transform: translateY(-3px);
     box-shadow: 0 8px 28px rgba(0,0,0,0.28);
 }
@@ -3538,8 +3542,8 @@ display: flex;
 @media (max-width: 768px)  { .analytics-grid { grid-template-columns: 1fr; } }
 
 .an-card {
-    background: linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(145deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0.06) 100%);
+    border: 1px solid rgba(255,255,255,0.12);
     border-radius: 20px;
     padding: 22px 22px 20px;
     display: flex; flex-direction: column; gap: 16px;
