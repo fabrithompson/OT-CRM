@@ -133,7 +133,7 @@ body {
     0%, 100% { transform: translateY(0px); }
     50%       { transform: translateY(-3px); }
 }
-.content-card, .metric-card, .sidebar, .column {
+.content-card, .metric-card, .column {
     background: var(--bg-glass) !important;
     backdrop-filter: blur(25px) !important;
     -webkit-backdrop-filter: blur(25px) !important;
@@ -214,11 +214,12 @@ body {
     width: 100%;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     flex-shrink: 0;
     position: relative;
     z-index: 1;
     padding-top: 6px;
+    padding-left: 10px;
 }
 .sidebar-header .logo-orb-wrap { gap: 0; }
 .sidebar-header .logo-sa       { display: none !important; }
@@ -230,6 +231,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     width: 100%;
     flex: 1;
@@ -262,12 +264,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px; height: 48px;
-    border-radius: 14px;
+    width: 46px; height: 46px;
+    border-radius: 50%;
     color: rgba(255,255,255,0.35);
     text-decoration: none;
     border: none;
-    background: transparent;
+    background: rgba(255,255,255,0.06);
     cursor: pointer;
     transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s;
     position: relative;
@@ -307,10 +309,10 @@ body {
 .nav-pill.nav-teal.active         { background: rgba(20,184,166,0.18); color: #2dd4bf; box-shadow: 0 0 20px rgba(20,184,166,0.22); }
 
 .nav-pill.nav-support             { color: rgba(255,255,255,0.30); }
-.nav-pill.nav-support:hover       { background: rgba(16,185,129,0.12); color: #10b981; }
+.nav-pill.nav-support:hover       { background: rgba(16,185,129,0.18); color: #10b981; }
 
-.nav-pill.nav-lang                { color: rgba(255,255,255,0.22); }
-.nav-pill.nav-lang:hover          { background: rgba(99,102,241,0.12); color: #818cf8; }
+.nav-pill.nav-lang                { color: rgba(255,255,255,0.30); }
+.nav-pill.nav-lang:hover          { background: rgba(99,102,241,0.18); color: #818cf8; }
 .nav-pill-icon--lang              { font-size: 0.95rem; }
 
 /* ── Tooltip ─────────────────────────────────────── */
