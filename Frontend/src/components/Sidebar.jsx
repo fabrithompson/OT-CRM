@@ -47,22 +47,22 @@ export default function Sidebar({ onHelpClick }) {
                 ))}
             </ul>
 
-            {/* Bottom: Soporte + Language toggle */}
+            {/* Bottom: Idioma + Soporte */}
             <ul className="menu-bottom">
-                <li className="menu-item">
-                    <button onClick={onHelpClick} className="nav-pill nav-support" title={t('nav.soporte')}>
-                        <span className="nav-pill-icon">
-                            <i className="fa-solid fa-headset" />
-                        </span>
-                        <span className="link-text">{t('nav.soporte')}</span>
-                    </button>
-                </li>
                 <li className="menu-item">
                     <button onClick={toggleLang} className="nav-pill nav-lang" title={t('lang.name')}>
                         <span className="nav-pill-icon nav-pill-icon--lang">
                             <i className="fa-solid fa-globe" />
                         </span>
                         <span className="link-text">{lang === 'es' ? 'EN' : 'ES'}</span>
+                    </button>
+                </li>
+                <li className="menu-item">
+                    <button onClick={onHelpClick} className="nav-pill nav-support" title={t('nav.soporte')}>
+                        <span className="nav-pill-icon">
+                            <i className="fa-solid fa-headset" />
+                        </span>
+                        <span className="link-text">{t('nav.soporte')}</span>
                     </button>
                 </li>
             </ul>
