@@ -189,6 +189,27 @@
   border-radius: 12px;
 }
 
+.landing-lang-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.70);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  letter-spacing: 0.04em;
+}
+.landing-lang-toggle:hover {
+  background: rgba(99, 102, 241, 0.18);
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.30);
+}
+
 .landing-btn-ghost {
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.80);

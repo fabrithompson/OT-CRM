@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../context/LangContext';
 
 export default function Perfil() {
+    const { t } = useLanguage();
     const { refresh: refreshGlobal } = useUser();
     const [usuario, setUsuario]         = useState({ nombreCompleto: '', email: '', fotoUrl: '', username: '' });
     const [newPassword, setNewPassword] = useState('');
@@ -71,7 +73,7 @@ export default function Perfil() {
     return (
         <div id="profile-wrapper" className="profile-wrapper" style={{ height: '100vh', overflowY: 'auto', padding: '2rem' }}>
             <div className="profile-content" style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <h2 style={{ marginBottom: '25px', fontSize: '2rem', color: '#fff' }}>Configurar Cuenta</h2>
+                <h2 style={{ marginBottom: '25px', fontSize: '2rem', color: '#fff' }}>{t('perfil.title')}</h2>
 
                 {mensaje.texto && (
                     <div style={{
@@ -99,7 +101,7 @@ export default function Perfil() {
                                 </div>
                             )}
                             <label style={{ cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 20px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none' }}>
-                                <i className="fas fa-camera"></i> Cambiar Foto
+                                <i className="fas fa-camera"></i> {t('perfil.changePhoto')}
                                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
                             </label>
                         </div>
@@ -107,7 +109,7 @@ export default function Perfil() {
                         {/* Campos */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                             <div>
-                                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af' }}>Nombre Completo</label>
+                                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af' }}>{t('perfil.fullName')}</label>
                                 <input
                                     type="text"
                                     className="form-control"
@@ -117,7 +119,7 @@ export default function Perfil() {
                                 />
                             </div>
                             <div>
-                                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af' }}>Correo Electrónico</label>
+                                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af' }}>{t('perfil.email')}</label>
                                 <input
                                     type="email"
                                     className="form-control"
@@ -131,12 +133,12 @@ export default function Perfil() {
                         {/* Contraseña */}
                         <div>
                             <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af' }}>
-                                Nueva Contraseña <span style={{ fontWeight: 'normal', opacity: 0.6 }}>(Opcional)</span>
+                                {t('perfil.newPwd')} <span style={{ fontWeight: 'normal', opacity: 0.6 }}>({t('common.optional')})</span>
                             </label>
                             <div style={{ position: 'relative' }}>
                                 <input
                                     type={showPassword ? 'text' : 'password'}
-                                    placeholder="Dejar vacío para no cambiar"
+                                    placeholder={t('perfil.pwdPlaceholder')}
                                     className="form-control"
                                     style={{ width: '100%', padding: '12px', paddingRight: '45px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', outline: 'none' }}
                                     value={newPassword}
@@ -158,7 +160,7 @@ export default function Perfil() {
                             disabled={saving}
                             style={{ padding: '15px', margin: '0 auto', width: '100%', maxWidth: '250px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                         >
-                            {saving ? <i className="fas fa-spinner fa-spin"></i> : 'Guardar Cambios'}
+                            {saving ? <i className="fas fa-spinner fa-spin"></i> : t('perfil.saveBtn')}
                         </button>
                     </form>
                 </div>

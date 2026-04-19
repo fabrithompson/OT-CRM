@@ -138,7 +138,7 @@ export default function Dashboard() {
     const [moneda, setMoneda] = useState(() => localStorage.getItem('crm_moneda') || 'ARS');
     const [monedaOpen, setMonedaOpen] = useState(false);
     const monedaRef = useRef(null);
-    const TASAS   = { USD: 1, EUR: 0.92, BRL: 5.0, ARS: 900, MXN: 17.2 };
+    const TASAS   = { ARS: 1, USD: 1/900, EUR: 0.92/900, BRL: 5.0/900, MXN: 17.2/900 };
     const SIMBOLOS = { USD: 'US$', EUR: '€', BRL: 'R$', ARS: '$', MXN: 'MX$' };
     const MONEDAS = [
         { key: 'ARS', label: 'ARS — Peso arg.',   flag: '🇦🇷' },
@@ -455,9 +455,9 @@ export default function Dashboard() {
 
             {/* ── KPI Row ── */}
             <div className="kpi-grid">
-                <KpiCard icon="fa-message-lines"    label={t('dashboard.kpi.mensajesHoy')}      value={dashboardData.mensajesHoy}   sub={t('dashboard.kpi.subReset')}   color="green"  />
+                <KpiCard icon="fa-comment-dots"      label={t('dashboard.kpi.mensajesHoy')}      value={dashboardData.mensajesHoy}   sub={t('dashboard.kpi.subReset')}   color="green"  />
                 <KpiCard icon="fa-inbox"            label={t('dashboard.kpi.sinLeer')}          value={dashboardData.leadsSinLeer}  sub={t('dashboard.kpi.subPending')} color={dashboardData.leadsSinLeer > 0 ? 'red' : 'green'} />
-                <KpiCard icon="fa-messages"         label={t('dashboard.kpi.totalMensajes')}    value={dashboardData.totalMensajes} sub={t('dashboard.kpi.subHistoric')} color="blue"   />
+                <KpiCard icon="fa-comments"         label={t('dashboard.kpi.totalMensajes')}    value={dashboardData.totalMensajes} sub={t('dashboard.kpi.subHistoric')} color="blue"   />
                 <KpiCard icon="fa-user-plus"        label={t('dashboard.kpi.contactosHoy')}     value={dashboardData.nuevosLeads}   sub={t('dashboard.kpi.subDesde')}   color="purple" />
                 <KpiCard icon="fa-users-viewfinder" label={t('dashboard.kpi.contactosActivos')} value={dashboardData.totalLeads}    sub={t('dashboard.kpi.subFunnel')}  color="teal"   />
             </div>
