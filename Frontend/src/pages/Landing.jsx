@@ -10,7 +10,7 @@ const COMPANY_EMAIL = 'otempresa@otempresa.com';
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { lang, toggleLang } = useLanguage();
+  const { lang, toggleLang, t } = useLanguage();
   const scrollRootRef = useRef(null);
   const [navScrolled, setNavScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -52,10 +52,69 @@ export default function Landing() {
     window.location.href = `mailto:${COMPANY_EMAIL}?subject=${subject}&body=${body}`;
   };
 
+  const steps = [
+    { num: '01', icon: 'fa-plug',       title: t('landing.how.step1Title'), desc: t('landing.how.step1Desc'), delay: 'reveal-delay-1' },
+    { num: '02', icon: 'fa-filter',     title: t('landing.how.step2Title'), desc: t('landing.how.step2Desc'), delay: 'reveal-delay-2' },
+    { num: '03', icon: 'fa-chart-line', title: t('landing.how.step3Title'), desc: t('landing.how.step3Desc'), delay: 'reveal-delay-3' },
+  ];
+
+  const features = [
+    { icon: 'fa-columns',      title: t('landing.features.f1Title'), delay: 'reveal-delay-1', desc: t('landing.features.f1Desc') },
+    { icon: 'fa-comments',     title: t('landing.features.f2Title'), delay: 'reveal-delay-2', desc: t('landing.features.f2Desc') },
+    { icon: 'fa-address-book', title: t('landing.features.f3Title'), delay: 'reveal-delay-3', desc: t('landing.features.f3Desc') },
+    { icon: 'fa-chart-bar',    title: t('landing.features.f4Title'), delay: 'reveal-delay-4', desc: t('landing.features.f4Desc') },
+    { icon: 'fa-bolt',         title: t('landing.features.f5Title'), delay: 'reveal-delay-5', desc: t('landing.features.f5Desc') },
+    { icon: 'fa-users',        title: t('landing.features.f6Title'), delay: 'reveal-delay-6', desc: t('landing.features.f6Desc') },
+  ];
+
+  const plans = [
+    {
+      key: 'FREE', icon: 'fa-seedling', name: 'Free',
+      tagline: t('landing.pricing.free.tagline'),
+      precio: null,
+      dispositivos: t('landing.pricing.free.dispositivos'),
+      badge: null,
+      beneficios: [t('landing.pricing.free.b1'), t('landing.pricing.free.b2'), t('landing.pricing.free.b3'), t('landing.pricing.free.b4')],
+      cta: t('landing.pricing.free.cta'), ctaClass: 'btn-outline',
+    },
+    {
+      key: 'PRO', icon: 'fa-bolt', name: 'Pro',
+      tagline: t('landing.pricing.pro.tagline'),
+      precio: '15.000',
+      dispositivos: t('landing.pricing.pro.dispositivos'),
+      badge: 'popular',
+      beneficios: [t('landing.pricing.pro.b1'), t('landing.pricing.pro.b2'), t('landing.pricing.pro.b3'), t('landing.pricing.pro.b4')],
+      cta: t('landing.pricing.pro.cta'), ctaClass: 'btn-blue',
+    },
+    {
+      key: 'BUSINESS', icon: 'fa-building', name: 'Business',
+      tagline: t('landing.pricing.business.tagline'),
+      precio: '30.000',
+      dispositivos: t('landing.pricing.business.dispositivos'),
+      badge: 'business',
+      beneficios: [t('landing.pricing.business.b1'), t('landing.pricing.business.b2'), t('landing.pricing.business.b3'), t('landing.pricing.business.b4')],
+      cta: t('landing.pricing.business.cta'), ctaClass: 'btn-violet',
+    },
+    {
+      key: 'ENTERPRISE', icon: 'fa-gem', name: 'Enterprise',
+      tagline: t('landing.pricing.enterprise.tagline'),
+      precio: '60.000',
+      dispositivos: t('landing.pricing.enterprise.dispositivos'),
+      badge: 'vip',
+      beneficios: [t('landing.pricing.enterprise.b1'), t('landing.pricing.enterprise.b2'), t('landing.pricing.enterprise.b3'), t('landing.pricing.enterprise.b4')],
+      cta: t('landing.pricing.enterprise.cta'), ctaClass: 'btn-gold',
+    },
+  ];
+
+  const values = [
+    { icon: 'fa-rocket',     title: t('landing.about.v1Title'), desc: t('landing.about.v1Desc') },
+    { icon: 'fa-shield-alt', title: t('landing.about.v2Title'), desc: t('landing.about.v2Desc') },
+    { icon: 'fa-headset',    title: t('landing.about.v3Title'), desc: t('landing.about.v3Desc') },
+  ];
+
   return (
     <div id="landing-scroll-root" className="landing-root" ref={scrollRootRef}>
 
-      {/* ── Animated Wave Background ── */}
       <WaveCanvas />
       <div className="landing-noise" aria-hidden="true" />
 
@@ -65,15 +124,15 @@ export default function Landing() {
           <LogoOrb width={84} height={85} showText={false} onClick={() => scrollTo('inicio')} />
 
           <div className={`landing-nav-links ${mobileOpen ? 'open' : ''}`}>
-            <button onClick={() => scrollTo('inicio')}>Inicio</button>
-            <button onClick={() => scrollTo('precios')}>Precios</button>
-            <button onClick={() => scrollTo('nosotros')}>Nosotros</button>
-            <button onClick={() => scrollTo('soporte')}>Soporte</button>
+            <button onClick={() => scrollTo('inicio')}>{t('landing.nav.inicio')}</button>
+            <button onClick={() => scrollTo('precios')}>{t('landing.nav.precios')}</button>
+            <button onClick={() => scrollTo('nosotros')}>{t('landing.nav.nosotros')}</button>
+            <button onClick={() => scrollTo('soporte')}>{t('landing.nav.soporte')}</button>
           </div>
 
           <div className="landing-nav-actions">
             <button className="landing-btn-primary" onClick={() => navigate('/login')}>
-              Ingresar
+              {t('landing.nav.ingresar')}
             </button>
             <button
               className="landing-lang-toggle"
@@ -97,79 +156,75 @@ export default function Landing() {
 
       {/* ── Hero ── */}
       <section id="inicio" className="landing-hero">
-        {/* Radial glow behind the headline */}
         <div className="hero-glow" aria-hidden="true" />
 
         <div className="landing-container">
           <div className="hero-inner">
 
-            {/* ── Left: text content ── */}
             <div className="hero-content">
               <div className="hero-badge">
                 <span className="hero-badge-dot" />
-                CRM para WhatsApp y Telegram.
+                {t('landing.hero.badge')}
               </div>
 
               <h1 className="hero-title">
-                Centralizá y convertí
-                <em className="ht-serif">tus leads</em>
-                en ventas
+                {t('landing.hero.titleA')}
+                <em className="ht-serif">{t('landing.hero.titleB')}</em>
+                {t('landing.hero.titleC')}
               </h1>
 
               <p className="hero-subtitle">
-                Gestioná todos tus contactos, conversaciones y tu equipo desde un solo lugar.
-                Conectá WhatsApp y Telegram, y cerrá más negocios en tiempo real.
+                {t('landing.hero.subtitle')}
               </p>
 
               <div className="hero-actions">
                 <button className="landing-btn-primary large" onClick={() => navigate('/login')}>
                   <i className="fas fa-rocket" />
-                  Empezar gratis
+                  {t('landing.hero.cta1')}
                 </button>
                 <button className="landing-btn-ghost large" onClick={() => scrollTo('como-funciona')}>
-                  Ver cómo funciona
+                  {t('landing.hero.cta2')}
                   <i className="fas fa-arrow-down" />
                 </button>
               </div>
 
               <div className="hero-stats">
                 <div className="hero-stat">
-                  <span className="hero-stat-num">100%</span>
-                  <span className="hero-stat-label">Tiempo real</span>
+                  <span className="hero-stat-num">{t('landing.hero.stat1Num')}</span>
+                  <span className="hero-stat-label">{t('landing.hero.stat1Label')}</span>
                 </div>
                 <div className="hero-stat-divider" />
                 <div className="hero-stat">
-                  <span className="hero-stat-num">Multi</span>
-                  <span className="hero-stat-label">Agente</span>
+                  <span className="hero-stat-num">{t('landing.hero.stat2Num')}</span>
+                  <span className="hero-stat-label">{t('landing.hero.stat2Label')}</span>
                 </div>
                 <div className="hero-stat-divider" />
                 <div className="hero-stat">
-                  <span className="hero-stat-num">WhatsApp</span>
-                  <span className="hero-stat-label">+ Telegram</span>
+                  <span className="hero-stat-num">{t('landing.hero.stat3Num')}</span>
+                  <span className="hero-stat-label">{t('landing.hero.stat3Label')}</span>
                 </div>
                 <div className="hero-stat-divider" />
                 <div className="hero-stat">
-                  <span className="hero-stat-num">Gratis</span>
-                  <span className="hero-stat-label">Para empezar</span>
+                  <span className="hero-stat-num">{t('landing.hero.stat4Num')}</span>
+                  <span className="hero-stat-label">{t('landing.hero.stat4Label')}</span>
                 </div>
               </div>
             </div>
 
-            {/* ── Right: hero image ── */}
             <div className="hero-visual">
               <div className="hero-img-glow" aria-hidden="true" />
               <img
                 src="/chicaconpc.PNG"
-                alt="Profesional usando OT CRM"
+                alt={t('landing.hero.imgAlt')}
                 className="hero-img"
                 draggable={false}
               />
               <div className="hfb hfb--1" aria-hidden="true">
                 <span className="hfb-dot hfb-dot--green" />
-                +500 leads activos
+                {t('landing.hero.float1')}
               </div>
               <div className="hfb hfb--2" aria-hidden="true">
-                <i className="fa-solid fa-bolt" /> Tiempo real
+                <i className="fa-solid fa-bolt" /> {t('landing.hero.float2')}
               </div>
               <div className="hfb hfb--3" aria-hidden="true">
                 <i className="fa-brands fa-whatsapp" /> WhatsApp &amp; Telegram
@@ -184,34 +239,13 @@ export default function Landing() {
       <section id="como-funciona" className="landing-section">
         <div className="landing-container">
           <div className="section-header reveal">
-            <span className="section-tag">Cómo funciona</span>
-            <h2 className="section-title">Tres pasos para <span className="title-serif">empezar</span></h2>
-            <p className="section-sub">
-              En minutos tenés tu CRM listo para operar con todo tu equipo.
-            </p>
+            <span className="section-tag">{t('landing.how.tag')}</span>
+            <h2 className="section-title">{t('landing.how.titleA')} <span className="title-serif">{t('landing.how.titleB')}</span></h2>
+            <p className="section-sub">{t('landing.how.subtitle')}</p>
           </div>
 
           <div className="steps-grid">
-            {[
-              {
-                num: '01', icon: 'fa-plug',
-                title: 'Conectá tus canales',
-                desc: 'Vinculá tu WhatsApp y Telegram con un simple escaneo de QR. Sin complicaciones técnicas, en menos de un minuto.',
-                delay: 'reveal-delay-1',
-              },
-              {
-                num: '02', icon: 'fa-filter',
-                title: 'Organizá tu embudo',
-                desc: 'Arrastrá y soltá tus leads en el Kanban. Asigná agentes, personalizá etapas y seguí cada oportunidad.',
-                delay: 'reveal-delay-2',
-              },
-              {
-                num: '03', icon: 'fa-chart-line',
-                title: 'Cerrá más ventas',
-                desc: 'Respondé en tiempo real desde el chat unificado, usá plantillas rápidas y nunca pierdas un lead.',
-                delay: 'reveal-delay-3',
-              },
-            ].map(step => (
+            {steps.map(step => (
               <div key={step.num} className={`step-card reveal reveal-scale ${step.delay}`}>
                 <div className="step-num">{step.num}</div>
                 <div className="step-icon-wrap">
@@ -229,22 +263,13 @@ export default function Landing() {
       <section className="landing-section features-section">
         <div className="landing-container">
           <div className="section-header reveal">
-            <span className="section-tag">Funcionalidades</span>
-            <h2 className="section-title">Todo lo que <span className="title-serif">necesitás</span> en un lugar</h2>
-            <p className="section-sub">
-              Herramientas diseñadas para equipos de ventas modernos y ágiles.
-            </p>
+            <span className="section-tag">{t('landing.features.tag')}</span>
+            <h2 className="section-title">{t('landing.features.titleA')} <span className="title-serif">{t('landing.features.titleB')}</span>{t('landing.features.titleC')}</h2>
+            <p className="section-sub">{t('landing.features.subtitle')}</p>
           </div>
 
           <div className="features-grid">
-            {[
-              { icon: 'fa-columns',      title: 'Embudo de Ventas',       delay: 'reveal-delay-1', desc: 'Kanban drag-and-drop para visualizar y mover leads entre etapas. Personalizá cada columna según tu proceso.' },
-              { icon: 'fa-comments',     title: 'Chat Unificado',         delay: 'reveal-delay-2', desc: 'Respondé mensajes de WhatsApp y Telegram desde un único panel, sin cambiar de app ni perder contexto.' },
-              { icon: 'fa-address-book', title: 'Gestión de Contactos',   delay: 'reveal-delay-3', desc: 'Base de datos centralizada con historial completo de cada cliente. Buscá, filtrá y segmentá en segundos.' },
-              { icon: 'fa-chart-bar',    title: 'Dashboard de Métricas',  delay: 'reveal-delay-4', desc: 'Visualizá en tiempo real el estado de tu equipo, leads nuevos, conversiones y conexiones activas.' },
-              { icon: 'fa-bolt',         title: 'Respuestas Rápidas',     delay: 'reveal-delay-5', desc: 'Plantillas de mensajes predefinidas para responder más rápido, con consistencia en todo tu equipo.' },
-              { icon: 'fa-users',        title: 'Multi-Agente',           delay: 'reveal-delay-6', desc: 'Tu equipo completo trabajando en simultáneo. Cada agente ve sus conversaciones asignadas en tiempo real.' },
-            ].map(feat => (
+            {features.map(feat => (
               <div key={feat.title} className={`feature-card reveal ${feat.delay}`}>
                 <div className="feature-icon">
                   <i className={`fas ${feat.icon}`} />
@@ -261,91 +286,20 @@ export default function Landing() {
       <section id="precios" className="landing-section pricing-section">
         <div className="landing-container">
           <div className="section-header reveal">
-            <span className="section-tag">Precios</span>
-            <h2 className="section-title">Planes para cada <span className="title-serif">negocio</span></h2>
-            <p className="section-sub">
-              Empezá gratis y escalá según el crecimiento de tu equipo.
-            </p>
+            <span className="section-tag">{t('landing.pricing.tag')}</span>
+            <h2 className="section-title">{t('landing.pricing.titleA')} <span className="title-serif">{t('landing.pricing.titleB')}</span></h2>
+            <p className="section-sub">{t('landing.pricing.subtitle')}</p>
           </div>
 
           <div className="pricing-grid">
-            {[
-              {
-                key: 'FREE',
-                icon: 'fa-seedling',
-                name: 'Free',
-                tagline: 'Empezá sin costo, ideal para probar.',
-                precio: null,
-                dispositivos: '1 línea conectada',
-                badge: null,
-                beneficios: [
-                  'Hasta 20 contactos nuevos',
-                  'Contactos guardados sin límite',
-                  'CRM básico con Kanban',
-                  'Dashboard con métricas',
-                ],
-                cta: 'Usar plan gratis',
-                ctaClass: 'btn-outline',
-              },
-              {
-                key: 'PRO',
-                icon: 'fa-bolt',
-                name: 'Pro',
-                tagline: 'Para equipos de ventas en crecimiento.',
-                precio: '15.000',
-                dispositivos: '5 líneas conectadas',
-                badge: 'popular',
-                beneficios: [
-                  'Hasta 75 contactos nuevos',
-                  'Tu equipo hereda tus beneficios',
-                  'Múltiples operadores simultáneos',
-                  'Todo lo del plan Free',
-                ],
-                cta: 'Suscribirse al Plan Pro',
-                ctaClass: 'btn-blue',
-              },
-              {
-                key: 'BUSINESS',
-                icon: 'fa-building',
-                name: 'Business',
-                tagline: 'Volumen alto y agencias consolidadas.',
-                precio: '30.000',
-                dispositivos: '10 líneas conectadas',
-                badge: 'business',
-                beneficios: [
-                  'Hasta 250 contactos nuevos',
-                  'Espacio de trabajo ampliado',
-                  'Reportes avanzados',
-                  'Todo lo del plan Pro',
-                ],
-                cta: 'Suscribirse al Plan Business',
-                ctaClass: 'btn-violet',
-              },
-              {
-                key: 'ENTERPRISE',
-                icon: 'fa-gem',
-                name: 'Enterprise',
-                tagline: 'Libertad absoluta, sin ningún límite.',
-                precio: '60.000',
-                dispositivos: 'Conexiones ilimitadas',
-                badge: 'vip',
-                beneficios: [
-                  'Contactos ilimitados',
-                  'Sin tope de ingreso al embudo',
-                  'Soporte dedicado 24/7',
-                  'Todo lo del plan Business',
-                ],
-                cta: 'Contactar',
-                ctaClass: 'btn-gold',
-              },
-            ].map(plan => (
+            {plans.map((plan, idx) => (
               <div
                 key={plan.key}
-                className={`pricing-card reveal reveal-scale reveal-delay-${['FREE','PRO','BUSINESS','ENTERPRISE'].indexOf(plan.key) + 1} ${plan.badge === 'popular' ? 'popular' : ''} ${plan.badge === 'business' ? 'business' : ''} ${plan.badge === 'vip' ? 'vip' : ''}`}
+                className={`pricing-card reveal reveal-scale reveal-delay-${idx + 1} ${plan.badge === 'popular' ? 'popular' : ''} ${plan.badge === 'business' ? 'business' : ''} ${plan.badge === 'vip' ? 'vip' : ''}`}
               >
                 {plan.badge && (
                   <div className={`plan-badge ${plan.badge}`}>
-                    {plan.badge === 'popular' ? '⭐ Más Popular' : plan.badge === 'business' ? '🚀 Recomendado' : '💎 VIP'}
+                    {plan.badge === 'popular' ? t('landing.pricing.badgePopular') : plan.badge === 'business' ? t('landing.pricing.badgeBusiness') : t('landing.pricing.badgeVip')}
                   </div>
                 )}
                 <div className="plan-icon">
@@ -357,11 +311,11 @@ export default function Landing() {
                   <div className="plan-price">
                     <span className="plan-price-currency">$</span>
                     <span className="plan-price-amount">{plan.precio}</span>
-                    <span className="plan-price-period">/mes</span>
+                    <span className="plan-price-period">{t('landing.pricing.perMonth')}</span>
                   </div>
                 ) : (
                   <div className="plan-price">
-                    <span className="plan-price-free">Gratis</span>
+                    <span className="plan-price-free">{t('landing.pricing.freeLabel')}</span>
                   </div>
                 )}
                 <div className="plan-device">
@@ -393,26 +347,14 @@ export default function Landing() {
         <div className="landing-container">
           <div className="about-grid">
             <div className="about-content reveal reveal-left">
-              <span className="section-tag">Nosotros</span>
+              <span className="section-tag">{t('landing.about.tag')}</span>
               <h2 className="section-title left">
-                Construido por <span className="title-serif">vendedores</span>,<br />para vendedores
+                {t('landing.about.titleA')} <span className="title-serif">{t('landing.about.titleB')}</span>{t('landing.about.titleC')}
               </h2>
-              <p className="about-text">
-                OT CRM nació de la necesidad real de gestionar cientos de conversaciones
-                sin perder el control. Entendemos los desafíos de los equipos de ventas
-                porque los vivimos en primera persona.
-              </p>
-              <p className="about-text">
-                Nuestra misión es darte una herramienta que realmente funcione: rápida,
-                confiable y construida para el mercado hispanohablante. Sin complicaciones,
-                sin fricciones.
-              </p>
+              <p className="about-text">{t('landing.about.p1')}</p>
+              <p className="about-text">{t('landing.about.p2')}</p>
               <div className="about-values">
-                {[
-                  { icon: 'fa-rocket',     title: 'Velocidad',  desc: 'Respuestas y actualizaciones en tiempo real' },
-                  { icon: 'fa-shield-alt', title: 'Confianza',  desc: 'Tu data es tuya, siempre segura' },
-                  { icon: 'fa-headset',    title: 'Soporte',    desc: 'Te acompañamos en cada paso del camino' },
-                ].map(v => (
+                {values.map(v => (
                   <div key={v.title} className="about-value">
                     <i className={`fas ${v.icon}`} />
                     <div>
@@ -429,22 +371,22 @@ export default function Landing() {
                 <div className="acard acard-1">
                   <i className="fas fa-users" />
                   <div>
-                    <strong>Equipo conectado</strong>
-                    <span>Todos tus agentes en un panel unificado</span>
+                    <strong>{t('landing.about.card1Strong')}</strong>
+                    <span>{t('landing.about.card1Span')}</span>
                   </div>
                 </div>
                 <div className="acard acard-2">
                   <i className="fas fa-chart-line" />
                   <div>
-                    <strong>Métricas en vivo</strong>
-                    <span>Decisiones basadas en datos reales</span>
+                    <strong>{t('landing.about.card2Strong')}</strong>
+                    <span>{t('landing.about.card2Span')}</span>
                   </div>
                 </div>
                 <div className="acard acard-3">
                   <i className="fas fa-lock" />
                   <div>
-                    <strong>Datos seguros</strong>
-                    <span>Tu información siempre protegida</span>
+                    <strong>{t('landing.about.card3Strong')}</strong>
+                    <span>{t('landing.about.card3Span')}</span>
                   </div>
                 </div>
               </div>
@@ -457,66 +399,62 @@ export default function Landing() {
       <section id="soporte" className="landing-section support-section">
         <div className="landing-container">
           <div className="section-header reveal">
-            <span className="section-tag">Soporte</span>
-            <h2 className="section-title">¿Necesitás <span className="title-serif">ayuda</span>?</h2>
-            <p className="section-sub">
-              Estamos para ayudarte. Escribinos y te respondemos a la brevedad.
-            </p>
+            <span className="section-tag">{t('landing.support.tag')}</span>
+            <h2 className="section-title">{t('landing.support.titleA')} <span className="title-serif">{t('landing.support.titleB')}</span>{t('landing.support.titleC')}</h2>
+            <p className="section-sub">{t('landing.support.subtitle')}</p>
           </div>
 
           <div className="support-grid">
-            {/* Info column */}
             <div className="support-info reveal reveal-left">
               <div className="si-item">
                 <div className="si-icon"><i className="fas fa-envelope" /></div>
                 <div className="si-text">
-                  <strong>Email directo</strong>
+                  <strong>{t('landing.support.emailLabel')}</strong>
                   <span>{COMPANY_EMAIL}</span>
                 </div>
               </div>
               <div className="si-item">
                 <div className="si-icon"><i className="fas fa-clock" /></div>
                 <div className="si-text">
-                  <strong>Tiempo de respuesta</strong>
-                  <span>Menos de 24 horas</span>
+                  <strong>{t('landing.support.responseTime')}</strong>
+                  <span>{t('landing.support.responseTimeVal')}</span>
                 </div>
               </div>
               <div className="si-item">
                 <div className="si-icon"><i className="fas fa-headset" /></div>
                 <div className="si-text">
-                  <strong>Soporte incluido</strong>
-                  <span>Para todos los planes activos</span>
+                  <strong>{t('landing.support.included')}</strong>
+                  <span>{t('landing.support.includedVal')}</span>
                 </div>
               </div>
               <div className="si-item">
                 <div className="si-icon"><i className="fas fa-shield-alt" /></div>
                 <div className="si-text">
-                  <strong>Privacidad garantizada</strong>
-                  <span>Tus datos nunca se comparten</span>
+                  <strong>{t('landing.support.privacy')}</strong>
+                  <span>{t('landing.support.privacyVal')}</span>
                 </div>
               </div>
             </div>
 
-            {/* Form */}
             <form className="support-form reveal" onSubmit={handleSubmit}>
               <div className="sf-row">
                 <div className="sf-field">
-                  <label>Tu nombre</label>
+                  <label>{t('landing.support.formName')}</label>
                   <input
                     type="text"
                     name="nombre"
-                    placeholder="Juan García"
+                    placeholder={t('landing.support.formNamePh')}
                     value={form.nombre}
                     onChange={handleChange}
                     required
                   />
                 </div>
                 <div className="sf-field">
-                  <label>Tu email</label>
+                  <label>{t('landing.support.formEmail')}</label>
                   <input
                     type="email"
                     name="email"
-                    placeholder="juan@empresa.com"
+                    placeholder={t('landing.support.formEmailPh')}
                     value={form.email}
                     onChange={handleChange}
                     required
@@ -524,20 +462,20 @@ export default function Landing() {
                 </div>
               </div>
               <div className="sf-field">
-                <label>Asunto</label>
+                <label>{t('landing.support.formSubject')}</label>
                 <input
                   type="text"
                   name="asunto"
-                  placeholder="¿En qué te podemos ayudar?"
+                  placeholder={t('landing.support.formSubjectPh')}
                   value={form.asunto}
                   onChange={handleChange}
                 />
               </div>
               <div className="sf-field">
-                <label>Mensaje</label>
+                <label>{t('landing.support.formMessage')}</label>
                 <textarea
                   name="mensaje"
-                  placeholder="Describí tu consulta o problema con el mayor detalle posible..."
+                  placeholder={t('landing.support.formMessagePh')}
                   value={form.mensaje}
                   onChange={e => { handleChange(e); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                   required
@@ -545,7 +483,7 @@ export default function Landing() {
               </div>
               <button type="submit" className="sf-submit">
                 <i className="fas fa-paper-plane" />
-                Enviar consulta
+                {t('landing.support.formSubmit')}
               </button>
             </form>
           </div>
@@ -559,38 +497,27 @@ export default function Landing() {
           <div className="footer-grid">
             <div className="footer-brand">
               <LogoOrb width={84} height={85} showText={false} onClick={() => scrollTo('inicio')} />
-              <p>
-                Tu CRM para WhatsApp y Telegram. Gestión de leads
-                simple, efectiva y en tiempo real.
-              </p>
+              <p>{t('landing.footer.desc')}</p>
             </div>
             <div className="footer-links">
-              <strong>Navegación</strong>
-              <button onClick={() => scrollTo('inicio')}>Inicio</button>
-              <button onClick={() => scrollTo('como-funciona')}>Cómo funciona</button>
-              <button onClick={() => scrollTo('precios')}>Precios</button>
-              <button onClick={() => scrollTo('nosotros')}>Nosotros</button>
-              <button onClick={() => scrollTo('soporte')}>Soporte</button>
+              <strong>{t('landing.footer.nav')}</strong>
+              <button onClick={() => scrollTo('inicio')}>{t('landing.footer.navHome')}</button>
+              <button onClick={() => scrollTo('como-funciona')}>{t('landing.footer.navHow')}</button>
+              <button onClick={() => scrollTo('precios')}>{t('landing.footer.navPricing')}</button>
+              <button onClick={() => scrollTo('nosotros')}>{t('landing.footer.navAbout')}</button>
+              <button onClick={() => scrollTo('soporte')}>{t('landing.footer.navSupport')}</button>
             </div>
             <div className="footer-links">
-              <strong>Cuenta</strong>
-              <button onClick={() => navigate('/login')}>Iniciar sesión</button>
-              <button onClick={() => navigate('/login')}>Registrarse</button>
+              <strong>{t('landing.footer.cuenta')}</strong>
+              <button onClick={() => navigate('/login')}>{t('landing.footer.login')}</button>
+              <button onClick={() => navigate('/login')}>{t('landing.footer.register')}</button>
             </div>
           </div>
           <div className="footer-team">
             <div className="footer-team-members">
               {[
-                {
-                  name: 'Fabricio Thompson',
-                  linkedin: 'https://www.linkedin.com/in/fabriciothompson/',
-                  github: 'https://github.com/fabrithompson',
-                },
-                {
-                  name: "Ivan O'Connor",
-                  linkedin: 'https://www.linkedin.com/in/ivan-o-connor-b63010400/',
-                  github: 'https://github.com/IvanOCNN',
-                },
+                { name: 'Fabricio Thompson', linkedin: 'https://www.linkedin.com/in/fabriciothompson/', github: 'https://github.com/fabrithompson' },
+                { name: "Ivan O'Connor",      linkedin: 'https://www.linkedin.com/in/ivan-o-connor-b63010400/', github: 'https://github.com/IvanOCNN' },
               ].map(m => (
                 <div key={m.name} className="footer-member">
                   <span className="footer-member-name">{m.name}</span>
@@ -612,7 +539,7 @@ export default function Landing() {
             </a>
           </div>
           <div className="footer-bottom">
-            <span>© {new Date().getFullYear()} OT CRM. Todos los derechos reservados.</span>
+            <span>© {new Date().getFullYear()} OT CRM. {t('landing.footer.rights')}</span>
           </div>
         </div>
       </footer>
