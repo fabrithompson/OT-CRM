@@ -41,6 +41,9 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     long countByEtapaIdAndAgenciaId(Long etapaId, Long agenciaId);
 
+    @Query("SELECT c.etapa.id, COUNT(c) FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.etapa IS NOT NULL GROUP BY c.etapa.id")
+    List<Object[]> countClientesByEtapaAndAgencia(@Param("agenciaId") Long agenciaId);
+
     long countByAgenciaIdAndFechaRegistroAfter(Long agenciaId, LocalDateTime fecha);
 
     long countByAgenciaIdAndMensajesSinLeerGreaterThan(Long agenciaId, int count);

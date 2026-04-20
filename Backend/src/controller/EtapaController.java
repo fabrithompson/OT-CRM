@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,9 @@ import dto.EtapaUpdateRequest;
 import model.Agencia;
 import model.Etapa;
 import model.Usuario;
+import repository.ClienteRepository;
 import repository.EtapaRepository;
+import repository.MensajeRepository;
 import repository.UsuarioRepository;
 import service.EtapaService;
 
@@ -41,21 +44,63 @@ public class EtapaController {
     private final EtapaRepository etapaRepository;
     private final UsuarioRepository usuarioRepository;
     private final SimpMessagingTemplate messaging;
+    private final ClienteRepository clienteRepository;
+    private final MensajeRepository mensajeRepository;
 
     public EtapaController(EtapaRepository etapaRepository,
             EtapaService etapaService,
             UsuarioRepository usuarioRepository,
-            SimpMessagingTemplate messaging) {
+            SimpMessagingTemplate messaging,
+            ClienteRepository clienteRepository,
+            MensajeRepository mensajeRepository) {
         this.etapaRepository = etapaRepository;
         this.etapaService = etapaService;
         this.usuarioRepository = usuarioRepository;
         this.messaging = messaging;
+        this.clienteRepository = clienteRepository;
+        this.mensajeRepository = mensajeRepository;
     }
 
     @GetMapping
     public List<Etapa> listarEtapas(@AuthenticationPrincipal UserDetails userDetails) {
         Usuario usuario = getUsuarioOrThrow(userDetails);
         return etapaRepository.findByAgenciaIdOrderByOrdenAsc(usuario.getAgencia().getId());
+    }
+
+    @GetMapping("/stats")
+    public List<Map<String, Object>> getStats(@AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = getUsuarioOrThrow(userDetails);
+        if (usuario.getAgencia() == null) return List.of();
+
+        Long agenciaId = usuario.getAgencia().getId();
+        List<Etapa> etapas = etapaRepository.findByAgenciaIdOrderByOrdenAsc(agenciaId);
+
+        Map<Long, Long> clientesPorEtapa = clienteRepository
+                .countClientesByEtapaAndAgencia(agenciaId)
+                .stream()
+                .collect(Collectors.toMap(r -> (Long) r[0], r -> (Long) r[1]));
+
+        Map<Long, Long> mensajesPorEtapa = mensajeRepository
+                .countMensajesByEtapaAndAgencia(agenciaId)
+                .stream()
+                .collect(Collectors.toMap(r -> (Long) r[0], r -> (Long) r[1]));
+
+        long totalMensajes = Math.max(1L, mensajesPorEtapa.values().stream().mapToLong(Long::longValue).sum());
+
+        return etapas.stream().map(e -> {
+            long clientes = clientesPorEtapa.getOrDefault(e.getId(), 0L);
+            long mensajes = mensajesPorEtapa.getOrDefault(e.getId(), 0L);
+            Map<String, Object> m = new HashMap<>();
+            m.put("id",               e.getId());
+            m.put("nombre",           e.getNombre());
+            m.put("orden",            e.getOrden());
+            m.put("color",            e.getColor());
+            m.put("esInicial",        e.isEsInicial());
+            m.put("cantidadClientes", clientes);
+            m.put("totalMensajes",    mensajes);
+            m.put("pctMensajes",      Math.round(mensajes * 100.0 / totalMensajes));
+            return m;
+        }).collect(Collectors.toList());
     }
 
     @PostMapping
