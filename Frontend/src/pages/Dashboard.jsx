@@ -23,10 +23,11 @@ function buildSparkLine(today, total, points = 7) {
 
 function buildWeeklyData(mensajesHoy, nuevosLeads, totalCarga, range) {
     const maps = {
-        today: ['00h','03h','06h','09h','12h','15h','18h','21h'],
-        '7d':  ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],
-        '30d': ['S1','S2','S3','S4'],
-        '90d': ['Ene','Feb','Mar'],
+        today:  ['00h','03h','06h','09h','12h','15h','18h','21h'],
+        '7d':   ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],
+        '30d':  ['S1','S2','S3','S4'],
+        '90d':  ['Ene','Feb','Mar'],
+        custom: ['P1','P2','P3','P4','P5','P6','P7'],
     };
     const labels = maps[range] || maps['7d'];
     return labels.map((label, i) => {
@@ -34,24 +35,20 @@ function buildWeeklyData(mensajesHoy, nuevosLeads, totalCarga, range) {
         const isLast = i === labels.length - 1;
         return {
             label,
-            leads:    isLast ? Math.max(1, nuevosLeads)  : Math.round(Math.max(1, nuevosLeads) * w),
-            mensajes: isLast ? Math.max(1, mensajesHoy)  : Math.round(Math.max(1, mensajesHoy) * w),
-            ingresos: Math.round(Math.max(0, totalCarga) * w * 0.12),
+            leads:    nuevosLeads  > 0 ? (isLast ? nuevosLeads  : Math.round(nuevosLeads  * w)) : 0,
+            mensajes: mensajesHoy  > 0 ? (isLast ? mensajesHoy  : Math.round(mensajesHoy  * w)) : 0,
+            ingresos: totalCarga   > 0 ? Math.round(totalCarga  * w * 0.12) : 0,
         };
     });
 }
 
 function buildLeadOrigin(total) {
     if (!total) return [];
-    const wa  = Math.round(total * 0.58);
-    const tg  = Math.round(total * 0.24);
-    const web = Math.round(total * 0.12);
-    const ref = Math.max(0, total - wa - tg - web);
+    const wa = Math.round(total * 0.70);
+    const tg = Math.max(0, total - wa);
     return [
-        { name: 'WhatsApp', value: wa,  color: '#10b981' },
-        { name: 'Telegram', value: tg,  color: '#818cf8' },
-        { name: 'Web',      value: web, color: '#c084fc' },
-        { name: 'Referido', value: ref, color: '#f59e0b' },
+        { name: 'WhatsApp', value: wa, color: '#10b981' },
+        { name: 'Telegram', value: tg, color: '#818cf8' },
     ];
 }
 
@@ -262,6 +259,14 @@ export default function Dashboard() {
     const [modalAbandonar, setModalAbandonar] = useState(false);
     const [agenciaId, setAgenciaId]           = useState(null);
     const [onlineUsers, setOnlineUsers]       = useState(new Set());
+    const [etapasStats, setEtapasStats]       = useState([]);
+    const [topStats, setTopStats]             = useState({ topClientes: [], topAgentes: [] });
+    const [topView, setTopView]               = useState('agentes');
+    const [customFrom, setCustomFrom]         = useState('');
+    const [customTo, setCustomTo]             = useState('');
+    const [now, setNow]                       = useState(new Date());
+    const [pickerOpen, setPickerOpen]         = useState(false);
+    const pickerRef                           = useRef(null);
     const { playNotification }                = useAudio();
     const refreshTimer                        = useRef(null);
 
@@ -274,17 +279,32 @@ export default function Dashboard() {
         return () => window.removeEventListener('crm:presence-updated', h);
     }, []);
 
+    useEffect(() => {
+        const id = setInterval(() => setNow(new Date()), 60_000);
+        return () => clearInterval(id);
+    }, []);
+
+    useEffect(() => {
+        const h = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) setPickerOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, []);
+
     const fetchData = async (silent = false) => {
         if (!silent) setLoading(true);
         try {
-            const [statsRes, tgRes, waRes] = await Promise.allSettled([
+            const [statsRes, tgRes, waRes, etapasRes, topRes] = await Promise.allSettled([
                 api.get('/dashboard/stats'),
                 api.get('/telegram-devices'),
                 api.get('/whatsapp'),
+                api.get('/etapas/stats'),
+                api.get('/dashboard/top-stats'),
             ]);
-            const stats     = statsRes.status === 'fulfilled' ? statsRes.value.data : {};
-            const tgDevices = tgRes.status === 'fulfilled'    ? tgRes.value.data   : [];
-            const waDevices = waRes.status === 'fulfilled'    ? waRes.value.data   : [];
+            const stats     = statsRes.status === 'fulfilled'  ? statsRes.value.data  : {};
+            const tgDevices = tgRes.status === 'fulfilled'     ? tgRes.value.data     : [];
+            const waDevices = waRes.status === 'fulfilled'     ? waRes.value.data     : [];
+            if (etapasRes.status === 'fulfilled') setEtapasStats(etapasRes.value.data || []);
+            if (topRes.status === 'fulfilled')    setTopStats(topRes.value.data || { topClientes: [], topAgentes: [] });
 
             const telegramConnected = tgDevices.some(d => d.estado === 'CONECTADO');
             const whatsappConectado = waDevices.some(d => d.estado === 'CONNECTED');
@@ -400,7 +420,32 @@ export default function Dashboard() {
         const p = n.trim().split(' ');
         return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : n.slice(0, 2).toUpperCase();
     };
-    const dateLabel = { today:'Hoy', '7d':'últimos 7 días', '30d':'últimos 30 días', '90d':'últimos 90 días' };
+    const dateLabels = { today:'Hoy', '7d':'últimos 7 días', '30d':'últimos 30 días', '90d':'últimos 90 días' };
+    const originLabel = (() => {
+        if (dateRange !== 'custom') return dateLabels[dateRange] || 'período seleccionado';
+        if (customFrom && customTo)  return `${customFrom} → ${customTo}`;
+        if (customFrom)              return `Desde ${customFrom} hasta ahora`;
+        return 'Personalizado';
+    })();
+
+    const rangeText = dateRange === 'today' ? 'del día de hoy'
+        : dateRange === '7d'  ? 'los últimos 7 días'
+        : dateRange === '30d' ? 'los últimos 30 días'
+        : dateRange === '90d' ? 'los últimos 90 días'
+        : customFrom && customTo ? `del ${customFrom} al ${customTo}`
+        : customFrom ? `desde el ${customFrom} hasta ahora`
+        : 'el período seleccionado';
+
+    const hour     = now.getHours();
+    const greeting = hour >= 6 && hour < 12 ? 'Buen día'
+        : hour >= 12 && hour < 20 ? 'Buenas tardes'
+        : 'Buenas noches';
+    const firstName = (usuarioActual?.nombreCompleto || usuarioActual?.username || 'Usuario').split(' ')[0];
+
+    const trendLeads    = data.nuevosLeads === 0  ? null : { text: `+${data.nuevosLeads} hoy`, dir: 'up' };
+    const trendConv     = data.totalLeads  === 0  ? null : { text: `${convPct}%`, dir: parseFloat(convPct) >= 5 ? 'up' : 'down' };
+    const trendIngresos = data.totalCarga  === 0  ? null : { text: `+$${(data.totalCarga / 1000).toFixed(0)}K`, dir: 'up' };
+    const trendLeer     = data.leadsSinLeer === 0 ? { text: '✓ Al día', dir: 'up' } : { text: `-${data.leadsSinLeer}`, dir: 'down' };
 
     const card   = { background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' };
     const ttStyle = { background: 'rgba(8,8,16,0.96)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: '0.77rem' };
@@ -418,24 +463,83 @@ export default function Dashboard() {
 
             {/* ── Top bar ── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                <h1 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>
-                    Pulso de tu operación
-                    <span style={{ color: 'rgba(255,255,255,0.38)', fontWeight: 400, fontSize: '0.88rem', marginLeft: 8 }}>
-                        · {dateLabel[dateRange]}
+                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                    <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.45)', fontWeight:400 }}>
+                        {greeting},{' '}
+                        <strong style={{ color:'white', fontWeight:700 }}>{firstName}</strong>
                     </span>
-                </h1>
+                    <h1 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'white' }}>
+                        Estas son tus métricas de{' '}
+                        <span style={{ color:'rgba(255,255,255,0.4)', fontWeight:400, fontSize:'0.9rem' }}>{rangeText}</span>
+                    </h1>
+                </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    {/* Date range pills */}
-                    <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3, gap: 2 }}>
-                        {[['today','Hoy'],['7d','7 días'],['30d','30 días'],['90d','90 días']].map(([r,lbl]) => (
-                            <button key={r} onClick={() => setDateRange(r)} style={{
-                                padding: '5px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                fontSize: '0.77rem', fontWeight: 600, transition: 'all 0.15s',
-                                background: dateRange === r ? 'rgba(255,255,255,0.13)' : 'transparent',
-                                color: dateRange === r ? 'white' : 'rgba(255,255,255,0.38)',
-                            }}>{lbl}</button>
-                        ))}
+                    {/* Date range pills + custom picker */}
+                    <div style={{ position:'relative' }} ref={pickerRef}>
+                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3, gap: 2 }}>
+                            {[['today','Hoy'],['7d','7 días'],['30d','30 días'],['90d','90 días']].map(([r,lbl]) => (
+                                <button key={r} onClick={() => { setDateRange(r); setPickerOpen(false); }} style={{
+                                    padding: '5px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                    fontSize: '0.77rem', fontWeight: 600, transition: 'all 0.15s',
+                                    background: dateRange === r ? 'rgba(255,255,255,0.13)' : 'transparent',
+                                    color: dateRange === r ? 'white' : 'rgba(255,255,255,0.38)',
+                                }}>{lbl}</button>
+                            ))}
+                            <button onClick={() => setPickerOpen(v => !v)} style={{
+                                padding: '5px 11px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                                fontSize: '0.77rem', fontWeight: 600, transition: 'all 0.15s', display:'flex', alignItems:'center', gap:4,
+                                background: dateRange === 'custom' ? 'rgba(255,255,255,0.13)' : 'transparent',
+                                color: dateRange === 'custom' ? 'white' : 'rgba(255,255,255,0.38)',
+                            }}>
+                                <i className="fas fa-calendar-alt" style={{ fontSize:'0.7rem' }} />
+                                {dateRange === 'custom' ? 'Custom' : 'Rango'}
+                            </button>
+                        </div>
+                        {pickerOpen && (
+                            <div style={{
+                                position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:200,
+                                background:'rgba(12,12,24,0.98)', border:'1px solid rgba(255,255,255,0.12)',
+                                borderRadius:12, padding:'16px 18px', minWidth:260,
+                                backdropFilter:'blur(12px)', boxShadow:'0 12px 40px rgba(0,0,0,0.6)',
+                            }}>
+                                <p style={{ margin:'0 0 12px', fontSize:'0.8rem', fontWeight:700, color:'white' }}>Rango personalizado</p>
+                                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                                    <label style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.5)' }}>
+                                        Desde
+                                        <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
+                                            style={{ display:'block', width:'100%', marginTop:4, padding:'6px 10px', boxSizing:'border-box',
+                                                background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)',
+                                                borderRadius:8, color:'white', fontSize:'0.82rem', outline:'none' }} />
+                                    </label>
+                                    <label style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.5)' }}>
+                                        Hasta <span style={{ color:'rgba(255,255,255,0.28)', fontWeight:400 }}>(vacío = ahora)</span>
+                                        <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
+                                            style={{ display:'block', width:'100%', marginTop:4, padding:'6px 10px', boxSizing:'border-box',
+                                                background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)',
+                                                borderRadius:8, color:'white', fontSize:'0.82rem', outline:'none' }} />
+                                    </label>
+                                    {!customTo && (
+                                        <div style={{ fontSize:'0.72rem', color:'#10b981', display:'flex', alignItems:'center', gap:5 }}>
+                                            <i className="fas fa-clock" />
+                                            {now.toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                                        </div>
+                                    )}
+                                </div>
+                                <button
+                                    disabled={!customFrom}
+                                    onClick={() => { setDateRange('custom'); setPickerOpen(false); }}
+                                    style={{
+                                        marginTop:14, width:'100%', padding:'8px', borderRadius:8, border:'none',
+                                        cursor: customFrom ? 'pointer' : 'not-allowed',
+                                        background: customFrom ? '#10b981' : 'rgba(255,255,255,0.1)',
+                                        color: customFrom ? 'white' : 'rgba(255,255,255,0.3)',
+                                        fontSize:'0.82rem', fontWeight:600, transition:'all 0.15s',
+                                    }}>
+                                    Aplicar rango
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <TeamAvatars
@@ -474,28 +578,28 @@ export default function Dashboard() {
                 <KpiCardV2
                     icon="fa-user-plus" label="Leads nuevos"
                     value={data.nuevosLeads.toLocaleString()}
-                    trend="+24%" trendDir="up"
+                    trend={trendLeads?.text ?? null} trendDir={trendLeads?.dir ?? 'up'}
                     gradient="linear-gradient(135deg,#064e3b 0%,#065f46 45%,#059669 100%)"
                     sparkData={sparkLeads} gradId="sg1"
                 />
                 <KpiCardV2
                     icon="fa-chart-line" label="Conversión"
                     value={`${convPct}%`}
-                    trend="+1.4pp" trendDir="up"
+                    trend={trendConv?.text ?? null} trendDir={trendConv?.dir ?? 'up'}
                     gradient="linear-gradient(135deg,#1e1b4b 0%,#3730a3 50%,#4f46e5 100%)"
                     sparkData={sparkMsgs} gradId="sg2"
                 />
                 <KpiCardV2
                     icon="fa-coins" label="Ingresos"
                     value={`$${data.totalCarga > 0 ? (data.totalCarga / 1000).toFixed(0) + 'K' : '0'}`}
-                    trend="+18%" trendDir="up"
+                    trend={trendIngresos?.text ?? null} trendDir={trendIngresos?.dir ?? 'up'}
                     gradient="linear-gradient(135deg,#4a1d96 0%,#6d28d9 45%,#7c3aed 100%)"
                     sparkData={sparkCarga} gradId="sg3"
                 />
                 <KpiCardV2
                     icon="fa-inbox" label="Sin responder"
                     value={data.leadsSinLeer.toLocaleString()}
-                    trend={data.leadsSinLeer > 0 ? `-${data.leadsSinLeer}` : '0'} trendDir="down"
+                    trend={trendLeer.text} trendDir={trendLeer.dir}
                     gradient="linear-gradient(135deg,#0c4a6e 0%,#0369a1 50%,#0284c7 100%)"
                     sparkData={sparkLeer} gradId="sg4"
                 />
@@ -506,32 +610,57 @@ export default function Dashboard() {
                 <div style={card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                         <div>
-                            <p style={secTitle}>Rendimiento semanal</p>
-                            <p style={secSub}>Leads · mensajes · ingresos</p>
+                            <p style={secTitle}>
+                                {dateRange === 'today' ? 'Rendimiento del día'
+                                    : dateRange === '7d'  ? 'Rendimiento semanal'
+                                    : dateRange === '30d' ? 'Rendimiento mensual'
+                                    : dateRange === '90d' ? 'Rendimiento trimestral'
+                                    : 'Rendimiento personalizado'}
+                            </p>
+                            <p style={secSub}>
+                                {dateRange === 'today' ? 'Por hora · leads · mensajes · ingresos'
+                                    : dateRange === '7d'  ? 'Por día · leads · mensajes · ingresos'
+                                    : dateRange === '30d' ? 'Por semana · leads · mensajes · ingresos'
+                                    : 'Por mes · leads · mensajes · ingresos'}
+                            </p>
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={195}>
-                        <AreaChart data={weeklyData} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
+                        <AreaChart data={weeklyData} margin={{ top: 4, right: 45, left: -22, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="wg1" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%"  stopColor="#10b981" stopOpacity={0.35} />
+                                    <stop offset="5%"  stopColor="#10b981" stopOpacity={0.4} />
                                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="wg2" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%"  stopColor="#818cf8" stopOpacity={0.3} />
+                                    <stop offset="5%"  stopColor="#818cf8" stopOpacity={0.35} />
                                     <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="wg3" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%"  stopColor="#ec4899" stopOpacity={0.35} />
+                                    <stop offset="5%"  stopColor="#ec4899" stopOpacity={0.3} />
                                     <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <XAxis dataKey="label" tick={{ fill:'rgba(255,255,255,0.38)', fontSize:11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill:'rgba(255,255,255,0.28)', fontSize:10 }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={ttStyle} labelStyle={{ color:'rgba(255,255,255,0.45)' }} />
-                            <Area type="monotone" dataKey="leads"    stroke="#10b981" strokeWidth={2} fill="url(#wg1)" dot={false} name="Leads" />
-                            <Area type="monotone" dataKey="mensajes" stroke="#818cf8" strokeWidth={2} fill="url(#wg2)" dot={false} name="Mensajes" />
-                            <Area type="monotone" dataKey="ingresos" stroke="#ec4899" strokeWidth={2} fill="url(#wg3)" dot={false} name="Ingresos" />
+                            <YAxis
+                                yAxisId="left" orientation="left"
+                                tick={{ fill:'rgba(255,255,255,0.28)', fontSize:10 }} axisLine={false} tickLine={false}
+                                tickFormatter={(v) => v === 0 ? '' : v}
+                                width={28}
+                            />
+                            <YAxis
+                                yAxisId="right" orientation="right"
+                                tick={{ fill:'rgba(255,255,255,0.2)', fontSize:9 }} axisLine={false} tickLine={false}
+                                tickFormatter={(v) => v === 0 ? '' : `$${(v/1000).toFixed(0)}K`}
+                                width={38}
+                            />
+                            <Tooltip
+                                contentStyle={ttStyle} labelStyle={{ color:'rgba(255,255,255,0.45)' }}
+                                formatter={(value, name) => name === 'Ingresos' ? [`$${value.toLocaleString()}`, name] : [value, name]}
+                            />
+                            <Area yAxisId="left"  type="monotone" dataKey="leads"    stroke="#10b981" strokeWidth={2} fill="url(#wg1)" dot={false} name="Leads" />
+                            <Area yAxisId="left"  type="monotone" dataKey="mensajes" stroke="#818cf8" strokeWidth={2} fill="url(#wg2)" dot={false} name="Mensajes" />
+                            <Area yAxisId="right" type="monotone" dataKey="ingresos" stroke="#ec4899" strokeWidth={1.5} fill="url(#wg3)" dot={false} name="Ingresos" />
                         </AreaChart>
                     </ResponsiveContainer>
                     <div style={{ display:'flex', gap:18, marginTop:6 }}>
@@ -547,7 +676,7 @@ export default function Dashboard() {
                 <div style={card}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                         <p style={secTitle}>Origen de leads</p>
-                        <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>últimos 30 días</span>
+                        <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>{originLabel}</span>
                     </div>
                     <div style={{ display:'flex', justifyContent:'center', position:'relative', marginTop:8 }}>
                         <PieChart width={175} height={175}>
@@ -582,137 +711,104 @@ export default function Dashboard() {
             {/* ── Row 3: Funnel + Objectives ── */}
             <div style={{ display:'grid', gridTemplateColumns:'45% 1fr', gap:16 }}>
                 <div style={card}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
-                        <p style={secTitle}>Embudo de conversión</p>
-                        <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>
-                            {cerrados} cerrados · tasa {convPct}%
-                        </span>
-                    </div>
-                    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                        {funnelData.map(row => (
-                            <div key={row.stage}>
-                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                                    <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.72)', fontWeight:500 }}>{row.stage}</span>
-                                    <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-                                        {row.conv && <span style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.38)' }}>{row.conv}</span>}
-                                        <span style={{ fontSize:'0.85rem', fontWeight:700, color:'white' }}>{row.count.toLocaleString()}</span>
+                    {(() => {
+                        const maxClientes = Math.max(1, ...etapasStats.map(e => e.cantidadClientes));
+                        const totalClientes = etapasStats.reduce((s, e) => s + e.cantidadClientes, 0);
+                        return (
+                            <>
+                                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+                                    <p style={secTitle}>Embudo de conversión</p>
+                                    <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>
+                                        {etapasStats.length} etapas · {totalClientes} contactos
+                                    </span>
+                                </div>
+                                {etapasStats.length === 0 ? (
+                                    <p style={{ color:'rgba(255,255,255,0.28)', fontSize:'0.82rem' }}>Sin etapas configuradas.</p>
+                                ) : (
+                                    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                                        {etapasStats.map(etapa => {
+                                            const barW = Math.round((etapa.cantidadClientes / maxClientes) * 100);
+                                            return (
+                                                <div key={etapa.id}>
+                                                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                                                        <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.72)', fontWeight:500 }}>{etapa.nombre}</span>
+                                                        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+                                                            <span style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.38)' }}>{etapa.pctMensajes}% msgs</span>
+                                                            <span style={{ fontSize:'0.85rem', fontWeight:700, color:'white' }}>{etapa.cantidadClientes.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ height:6, background:'rgba(255,255,255,0.07)', borderRadius:4, overflow:'hidden' }}>
+                                                        <div style={{ height:'100%', width:`${barW}%`, background: etapa.color || '#6366f1', borderRadius:4, transition:'width 0.7s ease' }} />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                </div>
-                                <div style={{ height:6, background:'rgba(255,255,255,0.07)', borderRadius:4, overflow:'hidden' }}>
-                                    <div style={{ height:'100%', width:`${row.width}%`, background:row.color, borderRadius:4, transition:'width 0.7s ease' }} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
 
+                {/* Top Clientes / Top Agentes toggle card */}
                 <div style={{ ...card, display:'flex', flexDirection:'column' }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-                        <p style={secTitle}>Objetivos del mes</p>
-                        <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>
-                            {new Date().toLocaleString('es-AR',{ month:'long' })}
-                        </span>
-                    </div>
-                    <div style={{ display:'flex', justifyContent:'space-around', alignItems:'center', flex:1 }}>
-                        <CircularProgress
-                            pct={objVentas} color="#10b981" icon="fa-trophy"
-                            label="Ventas"
-                            sublabel={`${Math.round(data.nuevosLeads*0.08)} / ${Math.round(data.nuevosLeads*0.1)||120}`}
-                        />
-                        <CircularProgress
-                            pct={objIngresos} color="#8b5cf6" icon="fa-coins"
-                            label="Ingresos"
-                            sublabel={`${Math.round(data.totalCarga/1000)||418}K / ${Math.round(data.totalCarga/850)||500}K`}
-                        />
-                        <CircularProgress
-                            pct={objLeads} color="#ec4899" icon="fa-users"
-                            label="Leads"
-                            sublabel={`${data.totalLeads} / ${Math.round(data.totalLeads*1.2)||1500}`}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Row 4: Heatmap + Top agents ── */}
-            <div style={{ display:'grid', gridTemplateColumns:'55% 1fr', gap:16 }}>
-                {/* Activity heatmap */}
-                <div style={card}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:14 }}>
-                        <p style={secTitle}>Mapa de actividad</p>
-                        <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>mensajes recibidos · día × hora</span>
-                    </div>
-                    <div style={{ display:'flex', marginLeft:32, marginBottom:5, gap:4 }}>
-                        {[0,3,6,9,12,15,18,21].map(h => (
-                            <div key={h} style={{ flex:1, textAlign:'center', fontSize:'0.62rem', color:'rgba(255,255,255,0.28)' }}>{h}</div>
-                        ))}
-                    </div>
-                    {heatmap.map(row => (
-                        <div key={row.day} style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4 }}>
-                            <span style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.32)', width:28, flexShrink:0 }}>{row.day}</span>
-                            {row.slots.map(slot => {
-                                const alpha = (0.08 + (slot.v / heatMax) * 0.88).toFixed(2);
-                                return (
-                                    <div key={slot.h} title={`${row.day} ${slot.h}h: ${slot.v} msg`} style={{
-                                        flex:1, height:17, borderRadius:4,
-                                        background:`rgba(16,185,129,${alpha})`,
-                                        cursor:'default',
-                                    }} />
-                                );
-                            })}
-                        </div>
-                    ))}
-                    <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:10, justifyContent:'flex-end' }}>
-                        <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.28)' }}>Menos</span>
-                        {[0.08,0.3,0.54,0.72,0.96].map(a => (
-                            <div key={a} style={{ width:14, height:14, borderRadius:3, background:`rgba(16,185,129,${a})` }} />
-                        ))}
-                        <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.28)' }}>Más</span>
-                    </div>
-                </div>
-
-                {/* Top agents */}
-                <div style={card}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:18 }}>
-                        <p style={secTitle}>Top agentes</p>
-                        <button onClick={() => navigate('/perfil')} style={{
-                            fontSize:'0.72rem', color:'#10b981', background:'rgba(16,185,129,0.1)',
-                            border:'1px solid rgba(16,185,129,0.25)', borderRadius:6, padding:'4px 10px', cursor:'pointer',
-                        }}>
-                            <i className="fas fa-external-link-alt" style={{ marginRight:4 }} />Ver todos
-                        </button>
-                    </div>
-                    {topAgentes.length === 0 ? (
-                        <p style={{ color:'rgba(255,255,255,0.28)', fontSize:'0.82rem' }}>Sin agentes en el equipo.</p>
-                    ) : (
-                        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                            {topAgentes.map((agent, idx) => (
-                                <div key={agent.username||idx} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                                    <span style={{ fontSize:'0.72rem', fontWeight:700, color:'rgba(255,255,255,0.28)', width:20, textAlign:'center' }}>#{idx+1}</span>
-                                    <div style={{
-                                        width:36, height:36, borderRadius:'50%',
-                                        background:AGENT_COLORS[idx]+'22', border:`2px solid ${AGENT_COLORS[idx]}`,
-                                        display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
-                                    }}>
-                                        {agent.fotoUrl
-                                            ? <img src={agent.fotoUrl} alt="" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
-                                            : <span style={{ fontSize:'0.72rem', fontWeight:700, color:AGENT_COLORS[idx] }}>{getInitials(agent)}</span>}
-                                    </div>
-                                    <div style={{ flex:1, minWidth:0 }}>
-                                        <div style={{ fontSize:'0.84rem', fontWeight:600, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                                            {agent.nombreCompleto||agent.username}
-                                        </div>
-                                        <div style={{ height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, marginTop:5, overflow:'hidden' }}>
-                                            <div style={{ height:'100%', width:`${Math.round((agent.ventas/Math.max(1,topAgentes[0].ventas))*100)}%`, background:AGENT_COLORS[idx], borderRadius:2 }} />
-                                        </div>
-                                    </div>
-                                    <div style={{ textAlign:'right', flexShrink:0 }}>
-                                        <div style={{ fontSize:'0.8rem', fontWeight:700, color:'white' }}>{agent.ventas} ventas</div>
-                                        <div style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.38)' }}>${(agent.ingresos/1000).toFixed(0)}k</div>
-                                    </div>
-                                </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                        <p style={secTitle}>Top ranking</p>
+                        <div style={{ display:'flex', background:'rgba(255,255,255,0.06)', borderRadius:8, padding:3, gap:2 }}>
+                            {[['agentes','Agentes'],['clientes','Clientes']].map(([v,lbl]) => (
+                                <button key={v} onClick={() => setTopView(v)} style={{
+                                    padding:'4px 12px', borderRadius:6, border:'none', cursor:'pointer',
+                                    fontSize:'0.74rem', fontWeight:600, transition:'all 0.15s',
+                                    background: topView === v ? 'rgba(255,255,255,0.13)' : 'transparent',
+                                    color: topView === v ? 'white' : 'rgba(255,255,255,0.38)',
+                                }}>{lbl}</button>
                             ))}
                         </div>
-                    )}
+                    </div>
+                    {(() => {
+                        const list = topView === 'agentes' ? topStats.topAgentes : topStats.topClientes;
+                        const maxTotal = Math.max(1, ...list.map(r => r.total || 0));
+                        if (!list.length) return (
+                            <p style={{ color:'rgba(255,255,255,0.28)', fontSize:'0.82rem' }}>
+                                {topView === 'agentes' ? 'Sin ventas registradas.' : 'Sin cargas registradas.'}
+                            </p>
+                        );
+                        return (
+                            <div style={{ display:'flex', flexDirection:'column', gap:14, flex:1, justifyContent:'space-around' }}>
+                                {list.map((row, idx) => (
+                                    <div key={row.id || idx} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                                        <span style={{ fontSize:'0.72rem', fontWeight:700, color:'rgba(255,255,255,0.28)', width:20, textAlign:'center', flexShrink:0 }}>#{idx+1}</span>
+                                        <div style={{
+                                            width:32, height:32, borderRadius:'50%', flexShrink:0,
+                                            background: AGENT_COLORS[idx % 4] + '22',
+                                            border: `2px solid ${AGENT_COLORS[idx % 4]}`,
+                                            display:'flex', alignItems:'center', justifyContent:'center',
+                                        }}>
+                                            <span style={{ fontSize:'0.68rem', fontWeight:700, color: AGENT_COLORS[idx % 4] }}>
+                                                {(row.nombre || '?').slice(0,2).toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div style={{ flex:1, minWidth:0 }}>
+                                            <div style={{ fontSize:'0.82rem', fontWeight:600, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                                {row.nombre}
+                                            </div>
+                                            <div style={{ height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, marginTop:4, overflow:'hidden' }}>
+                                                <div style={{ height:'100%', width:`${Math.round((row.total / maxTotal) * 100)}%`, background: AGENT_COLORS[idx % 4], borderRadius:2, transition:'width 0.7s ease' }} />
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign:'right', flexShrink:0 }}>
+                                            <div style={{ fontSize:'0.8rem', fontWeight:700, color:'white' }}>
+                                                ${row.total >= 1000 ? (row.total / 1000).toFixed(1) + 'K' : row.total?.toFixed(0)}
+                                            </div>
+                                            <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.35)' }}>
+                                                {topView === 'agentes' ? 'en ventas' : 'en cargas'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
 

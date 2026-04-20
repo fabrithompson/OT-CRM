@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +26,10 @@ import org.springframework.web.server.ResponseStatusException;
 import exception.RegistroException;
 import model.SolicitudUnionEquipo;
 import model.Usuario;
+import org.springframework.data.domain.PageRequest;
+
 import repository.SolicitudUnionEquipoRepository;
+import repository.TransaccionRepository;
 import repository.UsuarioRepository;
 import service.DashboardService;
 import service.UsuarioService;
@@ -41,19 +45,59 @@ public class DashboardRestController {
     private final UsuarioService usuarioService;
     private final SimpMessagingTemplate messagingTemplate;
     private final SolicitudUnionEquipoRepository solicitudRepository;
+    private final TransaccionRepository transaccionRepository;
 
     public DashboardRestController(
             DashboardService dashboardService,
             UsuarioRepository usuarioRepository,
             UsuarioService usuarioService,
             SimpMessagingTemplate messagingTemplate,
-            SolicitudUnionEquipoRepository solicitudRepository
+            SolicitudUnionEquipoRepository solicitudRepository,
+            TransaccionRepository transaccionRepository
     ) {
         this.dashboardService = dashboardService;
         this.usuarioRepository = usuarioRepository;
         this.usuarioService = usuarioService;
         this.messagingTemplate = messagingTemplate;
         this.solicitudRepository = solicitudRepository;
+        this.transaccionRepository = transaccionRepository;
+    }
+
+    @GetMapping("/top-stats")
+    public ResponseEntity<Map<String, Object>> getTopStats(Principal principal) {
+        Usuario usuario = getUsuarioAutenticado(principal.getName());
+        if (usuario.getAgencia() == null) {
+            return ResponseEntity.ok(Map.of("topClientes", List.of(), "topAgentes", List.of()));
+        }
+        Long agenciaId = usuario.getAgencia().getId();
+        PageRequest top5 = PageRequest.of(0, 5);
+
+        List<Map<String, Object>> topClientes = transaccionRepository
+                .topClientesByMonto(agenciaId, top5)
+                .stream()
+                .map(r -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id",     r[0]);
+                    m.put("nombre", r[1] != null ? r[1] : "Sin nombre");
+                    m.put("total",  r[2]);
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> topAgentes = transaccionRepository
+                .topAgentesByMonto(agenciaId, top5)
+                .stream()
+                .map(r -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id",       r[0]);
+                    m.put("nombre",   r[1] != null ? r[1] : (r[2] != null ? r[2] : "Agente"));
+                    m.put("username", r[2]);
+                    m.put("total",    r[3]);
+                    return m;
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(Map.of("topClientes", topClientes, "topAgentes", topAgentes));
     }
 
     @GetMapping("/stats")
