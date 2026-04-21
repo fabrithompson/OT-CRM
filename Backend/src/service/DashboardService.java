@@ -1,6 +1,5 @@
 package service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,7 +39,7 @@ public class DashboardService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getDashboardData(Usuario usuario) {
+    public Map<String, Object> getDashboardData(Usuario usuario, LocalDateTime desde, LocalDateTime hasta) {
         if (usuario == null) return Collections.emptyMap();
 
         Map<String, Object> data = new HashMap<>();
@@ -60,30 +59,39 @@ public class DashboardService {
             data.put("agencia", agenciaDto);
 
             Long agenciaId = usuario.getAgencia().getId();
-            LocalDateTime inicioDelDia = LocalDate.now().atStartOfDay();
 
-            long nuevosLeads = clienteRepository.countByAgenciaIdAndFechaRegistroAfter(agenciaId, inicioDelDia);
+            long nuevosLeads  = clienteRepository.countByAgenciaIdAndFechaRegistroBetween(agenciaId, desde, hasta);
             long leadsSinLeer = clienteRepository.countByAgenciaIdAndMensajesSinLeerGreaterThan(agenciaId, 0);
-            long totalLeads = clienteRepository.countByAgenciaId(agenciaId);
+            long totalLeads   = clienteRepository.countByAgenciaId(agenciaId);
+
+            long waLeads = 0, tgLeads = 0;
+            for (Object[] row : clienteRepository.countByPlataformaAndFechaRegistroBetween(agenciaId, desde, hasta)) {
+                String plat = row[0] != null ? row[0].toString() : "";
+                long cnt = row[1] instanceof Number ? ((Number) row[1]).longValue() : 0L;
+                if ("WHATSAPP".equals(plat)) waLeads = cnt;
+                else if ("TELEGRAM".equals(plat)) tgLeads = cnt;
+            }
 
             data.put("nuevosLeads", nuevosLeads);
             data.put("leadsSinLeer", leadsSinLeer);
             data.put("totalLeads", totalLeads);
+            data.put("waLeads", waLeads);
+            data.put("tgLeads", tgLeads);
 
             // ── Mensajes analytics ──
-            long mensajesHoy   = mensajeRepository.countByClienteAgenciaIdAndFechaHoraAfter(agenciaId, inicioDelDia);
-            long totalMensajes = mensajeRepository.countByClienteAgenciaId(agenciaId);
+            long mensajesHoy   = mensajeRepository.countByClienteAgenciaIdAndFechaHoraBetween(agenciaId, desde, hasta);
+            long totalMensajes = mensajeRepository.countByClienteAgenciaIdAndFechaHoraBetween(agenciaId, desde, hasta);
             data.put("mensajesHoy",   mensajesHoy);
             data.put("totalMensajes", totalMensajes);
 
             // ── Financiero ──
-            Double totalCarga   = transaccionRepository.sumMontoByAgenciaIdAndTipo(agenciaId, "CARGA");
-            Double totalRetiro  = transaccionRepository.sumMontoByAgenciaIdAndTipo(agenciaId, "RETIRO");
+            Double totalCarga  = transaccionRepository.sumMontoByAgenciaIdAndTipoAndFecha(agenciaId, "CARGA",   desde, hasta);
+            Double totalRetiro = transaccionRepository.sumMontoByAgenciaIdAndTipoAndFecha(agenciaId, "RETIRO",  desde, hasta);
             data.put("totalCarga",  totalCarga  != null ? totalCarga  : 0.0);
             data.put("totalRetiro", totalRetiro != null ? totalRetiro : 0.0);
 
             List<Map<String, Object>> ultimas = transaccionRepository
-                    .findTop5ByAgenciaId(agenciaId, PageRequest.of(0, 5))
+                    .findTop5ByAgenciaIdAndFecha(agenciaId, desde, hasta, PageRequest.of(0, 5))
                     .stream()
                     .map(t -> {
                         Map<String, Object> tx = new HashMap<>();

@@ -68,6 +68,9 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
     @Query("SELECT COUNT(m) FROM Mensaje m WHERE m.cliente.agencia.id = :agenciaId AND m.fechaHora >= :desde")
     long countByClienteAgenciaIdAndFechaHoraAfter(@Param("agenciaId") Long agenciaId, @Param("desde") LocalDateTime desde);
 
+    @Query("SELECT COUNT(m) FROM Mensaje m WHERE m.cliente.agencia.id = :agenciaId AND m.fechaHora BETWEEN :desde AND :hasta")
+    long countByClienteAgenciaIdAndFechaHoraBetween(@Param("agenciaId") Long agenciaId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
     @Query("SELECT m.cliente.etapa.id, COUNT(m) FROM Mensaje m WHERE m.cliente.agencia.id = :agenciaId AND m.cliente.etapa IS NOT NULL GROUP BY m.cliente.etapa.id")
     List<Object[]> countMensajesByEtapaAndAgencia(@Param("agenciaId") Long agenciaId);
 }
