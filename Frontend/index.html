@@ -2,7 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" id="favicon" type="image/png" href="/logonew.png" />
+    <link rel="apple-touch-icon" href="/logonew.png" />
+    <script>
+      (function() {
+        var img = new Image();
+        img.onload = function() {
+          var c = document.createElement('canvas');
+          c.width = 64; c.height = 64;
+          var ctx = c.getContext('2d');
+          ctx.filter = 'brightness(0) invert(1)';
+          ctx.drawImage(img, 0, 0, 64, 64);
+          var el = document.getElementById('favicon');
+          if (el) el.href = c.toDataURL('image/png');
+        };
+        img.src = '/logonew.png';
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OT CRM</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

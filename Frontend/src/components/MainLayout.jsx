@@ -6,11 +6,13 @@ import useAudio from '../hooks/useAudio';
 import api from '../utils/api';
 import { requestNotifPermission, pushBrowserNotif } from '../utils/notifications';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../context/LangContext';
 import '../assets/css/landing.css';
 
 const COMPANY_EMAIL = 'otempresa@otempresa.com';
 
 function HelpModal({ open, setOpen }) {
+    const { t } = useLanguage();
     const [sent, setSent] = useState(false);
     const [form, setForm] = useState({ nombre: '', email: '', mensaje: '' });
 
@@ -35,7 +37,7 @@ function HelpModal({ open, setOpen }) {
                 <div className="help-modal-header">
                     <div className="help-modal-title">
                         <i className="fas fa-headset" />
-                        <strong>Centro de ayuda</strong>
+                        <strong>{t('help.title')}</strong>
                     </div>
                     <button className="help-modal-close" onClick={() => setOpen(false)}>
                         <i className="fas fa-times" />
@@ -44,31 +46,31 @@ function HelpModal({ open, setOpen }) {
                 {sent ? (
                     <div className="help-modal-sent">
                         <i className="fas fa-check-circle" />
-                        <h4>¡Consulta enviada!</h4>
-                        <p>Te respondemos en menos de 24 horas. Revisá tu bandeja de correo.</p>
+                        <h4>{t('help.sentTitle')}</h4>
+                        <p>{t('help.sentMsg')}</p>
                     </div>
                 ) : (
                     <>
-                        <p>Completá el formulario y te respondemos a la brevedad.</p>
+                        <p>{t('help.formIntro')}</p>
                         <form onSubmit={handleSubmit}>
                             <div className="sf-field">
-                                <label>Tu nombre</label>
+                                <label>{t('help.name')}</label>
                                 <input type="text" name="nombre" placeholder="Juan García"
                                     value={form.nombre} onChange={handleChange} required />
                             </div>
                             <div className="sf-field">
-                                <label>Tu email</label>
+                                <label>{t('help.email')}</label>
                                 <input type="email" name="email" placeholder="juan@empresa.com"
                                     value={form.email} onChange={handleChange} required />
                             </div>
                             <div className="sf-field">
-                                <label>Mensaje</label>
+                                <label>{t('help.message')}</label>
                                 <textarea name="mensaje" rows={4}
-                                    placeholder="Describí tu consulta o problema..."
+                                    placeholder={t('help.msgPlaceholder')}
                                     value={form.mensaje} onChange={handleChange} required />
                             </div>
                             <button type="submit" className="sf-submit">
-                                <i className="fas fa-paper-plane" /> Enviar consulta
+                                <i className="fas fa-paper-plane" /> {t('help.submit')}
                             </button>
                         </form>
                     </>
@@ -160,11 +162,11 @@ export default function MainLayout() {
                     // Siempre refrescar cache antes de mostrar la notificación
                     // para asegurarse de tener el alias actualizado
                     const refreshAndNotify = (cache) => {
-                        const deviceName = cache[ev.sessionId] || ev.alias || ev.sessionId || 'Desconocido';
-                        const title   = isConnected ? 'Dispositivo conectado' : 'Dispositivo desconectado';
+                        const deviceName = cache[ev.sessionId] || ev.alias || ev.sessionId || t('notif.unknown');
+                        const title   = isConnected ? t('notif.deviceConnected') : t('notif.deviceDisconnected');
                         const message = isConnected
-                            ? `Se conectó el dispositivo "${deviceName}"`
-                            : `Se desconectó el dispositivo "${deviceName}"`;
+                            ? `${t('notif.deviceConnectedMsg')} "${deviceName}"`
+                            : `${t('notif.deviceDisconnectedMsg')} "${deviceName}"`;
 
                         if (isConnected) playConnect();
                         else             playDisconnect();
@@ -199,6 +201,7 @@ export default function MainLayout() {
         });
     });
 
+    const { t } = useLanguage();
     const [helpOpen, setHelpOpen] = useState(false);
 
     if (!token) return <Navigate to="/login" replace />;
@@ -222,7 +225,7 @@ export default function MainLayout() {
                         width: 8, height: 8, borderRadius: '50%',
                         background: '#000', animation: 'pulse 1.5s infinite'
                     }} />
-                    Reconectando...
+                    {t('common.reconnecting')}
                 </div>
             )}
             <div className="app-container">

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
 import { useUser } from '../context/UserContext';
+import { useLanguage } from '../context/LangContext';
 
 const PLAN_ICON = {
     FREE: { icon: 'fa-seedling', color: '#6b7280' },
@@ -11,8 +12,8 @@ const PLAN_ICON = {
     ENTERPRISE: { icon: 'fa-gem', color: '#f59e0b' },
 };
 
-const formatVencimiento = (v) => {
-    if (!v || v === 'Sin vencimiento') return 'Sin fecha';
+const formatVencimiento = (v, noDateLabel) => {
+    if (!v || v === 'Sin vencimiento') return noDateLabel || 'Sin fecha';
     try {
         return new Date(v).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     } catch {
@@ -23,6 +24,7 @@ const formatVencimiento = (v) => {
 const capitalize = (s) => s ? s.charAt(0) + s.slice(1).toLowerCase() : '';
 
 export default function MiSuscripcion() {
+    const { t } = useLanguage();
     const { usuario: perfil, agenciaId, refresh: refreshUser } = useUser();
     const [equipo, setEquipo] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -89,12 +91,12 @@ export default function MiSuscripcion() {
                     <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
                         <div style={{ padding: '24px 28px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                             <h2 style={{ color: '#fff', margin: 0, fontSize: '1.4rem', fontWeight: 700 }}>
-                                Gestión de Suscripción
+                                {t('suscripcion.title')}
                             </h2>
                             <p style={{ color: '#9ca3af', margin: '5px 0 0', fontSize: '0.88rem' }}>
                                 {esEquipo
-                                    ? `Plan del equipo "${equipo.agenciaNombre}" — ${miembros.length} miembros`
-                                    : 'Información sobre tu plan actual'}
+                                    ? `Plan "${equipo.agenciaNombre}" — ${miembros.length} ${miembros.length !== 1 ? t('suscripcion.members') : t('suscripcion.member')}`
+                                    : t('suscripcion.currentPlanInfo')}
                             </p>
                         </div>
 
@@ -106,7 +108,7 @@ export default function MiSuscripcion() {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <span style={{ color: '#9ca3af', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em' }}>
-                                        {esEquipo ? 'Plan del Equipo' : 'Plan Activo'}
+                                        {esEquipo ? t('suscripcion.teamPlanLabel') : t('suscripcion.activePlanLabel')}
                                     </span>
                                     <h3 style={{ color: '#fff', margin: '4px 0 0', fontSize: '1.5rem', fontWeight: 800 }}>
                                         {capitalize(planNombre)}
@@ -123,13 +125,13 @@ export default function MiSuscripcion() {
                             {/* Stats Grid */}
                             <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <span style={{ color: '#9ca3af', fontSize: '0.72rem', display: 'block', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>Próximo Vencimiento</span>
-                                    <strong style={{ color: '#fff', fontSize: '1rem' }}>{formatVencimiento(vencimiento)}</strong>
+                                    <span style={{ color: '#9ca3af', fontSize: '0.72rem', display: 'block', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>{t('suscripcion.nextExpiry')}</span>
+                                    <strong style={{ color: '#fff', fontSize: '1rem' }}>{formatVencimiento(vencimiento, t('suscripcion.noDate'))}</strong>
                                 </div>
                                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <span style={{ color: '#9ca3af', fontSize: '0.72rem', display: 'block', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>Estado de cuenta</span>
+                                    <span style={{ color: '#9ca3af', fontSize: '0.72rem', display: 'block', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>{t('suscripcion.accountStatus')}</span>
                                     <strong style={{ color: planNombre !== 'FREE' ? '#10b981' : '#9ca3af', fontSize: '1rem' }}>
-                                        {planNombre !== 'FREE' ? 'Activa' : 'Sin suscripción'}
+                                        {planNombre !== 'FREE' ? t('suscripcion.statusActive') : t('suscripcion.statusNone')}
                                     </strong>
                                 </div>
                             </div>
@@ -140,7 +142,7 @@ export default function MiSuscripcion() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(59,130,246,0.08)', padding: '14px 18px', borderRadius: 10, border: '1px solid rgba(59,130,246,0.15)', marginBottom: 16 }}>
                                         <i className="fas fa-info-circle" style={{ color: '#3b82f6', fontSize: '1rem', flexShrink: 0 }} />
                                         <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0, lineHeight: 1.5 }}>
-                                            La suscripción de tu equipo es gestionada por el administrador. Tu plan se actualiza automáticamente.
+                                            {t('suscripcion.managedByAdmin')}
                                         </p>
                                     </div>
                                 )}
@@ -148,7 +150,7 @@ export default function MiSuscripcion() {
                                 {(esAdmin || !esEquipo) && proveedor === 'PayPal' && (
                                     <>
                                         <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: 14, lineHeight: 1.5 }}>
-                                            Tu suscripción está vinculada a <strong style={{ color: '#fff' }}>PayPal</strong>. Podés gestionarla o cancelarla desde tu panel de pagos automáticos:
+                                            {t('suscripcion.paypalManage')}
                                         </p>
                                         <a
                                             href="https://www.paypal.com/myaccount/autopay/"
@@ -156,7 +158,7 @@ export default function MiSuscripcion() {
                                             rel="noreferrer"
                                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, textDecoration: 'none', padding: 15, background: '#003087', color: '#fff', borderRadius: 10, fontWeight: 700, fontSize: '0.95rem' }}
                                         >
-                                            <i className="fab fa-paypal" /> Ir a Gestionar en PayPal
+                                            <i className="fab fa-paypal" /> {t('suscripcion.paypalBtn')}
                                         </a>
                                     </>
                                 )}
@@ -164,7 +166,7 @@ export default function MiSuscripcion() {
                                 {(esAdmin || !esEquipo) && proveedor === 'Mercado Pago' && (
                                     <>
                                         <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: 14, lineHeight: 1.5 }}>
-                                            Tu suscripción está vinculada a <strong style={{ color: '#fff' }}>Mercado Pago</strong>. Podés gestionarla desde la sección de suscripciones de tu cuenta:
+                                            {t('suscripcion.mpManage')}
                                         </p>
                                         <a
                                             href="https://www.mercadopago.com.ar/subscriptions/"
@@ -172,20 +174,20 @@ export default function MiSuscripcion() {
                                             rel="noreferrer"
                                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, textDecoration: 'none', padding: 15, background: '#009ee3', color: '#fff', borderRadius: 10, fontWeight: 700, fontSize: '0.95rem' }}
                                         >
-                                            <i className="fas fa-wallet" /> Gestionar en Mercado Pago
+                                            <i className="fas fa-wallet" /> {t('suscripcion.mpBtn')}
                                         </a>
                                     </>
                                 )}
 
                                 {(esAdmin || !esEquipo) && !proveedor && (
                                     <p style={{ color: '#9ca3af', fontSize: '0.85rem', textAlign: 'center' }}>
-                                        No tenés una suscripción recurrente activa actualmente.
+                                        {t('suscripcion.noSub')}
                                     </p>
                                 )}
 
                                 <p style={{ textAlign: 'center', marginTop: 22 }}>
                                     <Link to="/planes" style={{ color: '#9ca3af', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                        <i className="fas fa-arrow-left" /> Volver a Planes
+                                        <i className="fas fa-arrow-left" /> {t('suscripcion.backToPlans')}
                                     </Link>
                                 </p>
                             </div>
@@ -197,11 +199,11 @@ export default function MiSuscripcion() {
                         <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
                             <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div>
-                                    <h3 style={{ color: '#fff', margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Miembros del Equipo</h3>
-                                    <p style={{ color: '#9ca3af', margin: '3px 0 0', fontSize: '0.8rem' }}>Suscripción de cada miembro</p>
+                                    <h3 style={{ color: '#fff', margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{t('suscripcion.teamMembers')}</h3>
+                                    <p style={{ color: '#9ca3af', margin: '3px 0 0', fontSize: '0.8rem' }}>{t('suscripcion.eachMember')}</p>
                                 </div>
                                 <span style={{ color: '#9ca3af', fontSize: '0.8rem', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', borderRadius: 8 }}>
-                                    {miembros.length} miembro{miembros.length !== 1 ? 's' : ''}
+                                    {miembros.length} {miembros.length !== 1 ? t('suscripcion.members') : t('suscripcion.member')}
                                 </span>
                             </div>
                             <div style={{ padding: '8px 12px' }}>
@@ -247,11 +249,11 @@ export default function MiSuscripcion() {
                                                         {m.nombreCompleto || m.username}
                                                     </span>
                                                     {esYo && (
-                                                        <span style={{ color: '#9ca3af', fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', padding: '1px 6px', borderRadius: 4 }}>Vos</span>
+                                                        <span style={{ color: '#9ca3af', fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', padding: '1px 6px', borderRadius: 4 }}>{t('suscripcion.you')}</span>
                                                     )}
                                                 </div>
                                                 <span style={{ color: '#6b7280', fontSize: '0.78rem' }}>
-                                                    {m.rol === 'ADMIN' ? 'Administrador' : 'Colaborador'}
+                                                    {m.rol === 'ADMIN' ? t('suscripcion.admin') : t('suscripcion.collaborator')}
                                                 </span>
                                             </div>
 

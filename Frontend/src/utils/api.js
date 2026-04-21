@@ -33,14 +33,14 @@ export function formatTime(iso) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
-export function formatDate(iso) {
+export function formatDate(iso, todayLabel = 'Hoy', locale = undefined) {
     if (!iso) return null;
     const d = new Date(iso.replace('T', ' '));
     if (Number.isNaN(d.getTime())) return null;
     const now = new Date();
     return d.toDateString() === now.toDateString()
-        ? 'Hoy'
-        : d.toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
+        ? todayLabel
+        : d.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
 }
 
 export function getAuthHeaders() {

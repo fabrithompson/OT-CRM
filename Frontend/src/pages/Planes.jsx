@@ -1,62 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import api from '../utils/api';
+import { useLanguage } from '../context/LangContext';
 
 
 const PLAN_CONFIG = {
-    FREE: {
-        icon: 'fa-seedling',
-        clase: 'free',
-        tagline: 'Empezá sin costo, ideal para pruebas.',
-        badge: null,
-        dispositivos: '1 línea conectada',
-        beneficios: [
-            { texto: 'Hasta 25 contactos nuevos', destacado: true, icono: 'fa-user-plus' },
-            { texto: 'Contactos guardados interactúan sin límite', icono: 'fa-users' },
-            { texto: 'CRM básico', icono: 'fa-check' },
-            { texto: 'Dashboard con métricas', icono: 'fa-check' },
-        ],
-    },
-    PRO: {
-        icon: 'fa-bolt',
-        clase: 'pro',
-        tagline: 'Para equipos de ventas en crecimiento.',
-        badge: 'popular',
-        dispositivos: '5 líneas conectadas',
-        beneficios: [
-            { texto: 'Hasta 75 contactos nuevos', destacado: true, icono: 'fa-user-plus' },
-            { texto: 'Tu equipo hereda tus beneficios', icono: 'fa-users' },
-            { texto: 'Todo lo del plan Free', icono: 'fa-check' },
-            { texto: 'Múltiples operadores simultáneos', icono: 'fa-check' },
-        ],
-    },
-    BUSINESS: {
-        icon: 'fa-building',
-        clase: 'business',
-        tagline: 'Volumen alto y agencias consolidadas.',
-        badge: null,
-        dispositivos: '10 líneas conectadas',
-        beneficios: [
-            { texto: 'Hasta 250 contactos nuevos', destacado: true, icono: 'fa-user-plus' },
-            { texto: 'Espacio de trabajo ampliado', icono: 'fa-users' },
-            { texto: 'Todo lo del plan Pro', icono: 'fa-check' },
-            { texto: 'Reportes avanzados', icono: 'fa-check' },
-        ],
-    },
-    ENTERPRISE: {
-        icon: 'fa-gem',
-        clase: 'enterprise',
-        tagline: 'Libertad absoluta sin ningún límite.',
-        badge: 'vip',
-        dispositivos: 'Conexiones Ilimitadas',
-        ilimitado: true,
-        beneficios: [
-            { texto: 'Contactos ilimitados', destacado: true, icono: 'fa-infinity', golden: true },
-            { texto: 'Sin tope de ingreso al embudo', icono: 'fa-check' },
-            { texto: 'Todo lo del plan Business', icono: 'fa-check' },
-            { texto: 'Soporte dedicado 24/7', icono: 'fa-check' },
-        ],
-    },
+    FREE:       { icon: 'fa-seedling', clase: 'free',       badge: null,      ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-check','fa-check'],       benGolden: [false,false,false,false] },
+    PRO:        { icon: 'fa-bolt',     clase: 'pro',        badge: 'popular', ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-check','fa-check'],       benGolden: [false,false,false,false] },
+    BUSINESS:   { icon: 'fa-building', clase: 'business',   badge: null,      ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-check','fa-check'],       benGolden: [false,false,false,false] },
+    ENTERPRISE: { icon: 'fa-gem',      clase: 'enterprise', badge: 'vip',     ilimitado: true,  benIconos: ['fa-infinity',  'fa-check','fa-check','fa-check'],      benGolden: [true, false,false,false] },
 };
 
 
@@ -65,6 +17,7 @@ const formatPrecio = (precio) =>
 
 
 export default function Planes() {
+    const { t } = useLanguage();
     const { search } = useLocation();
     const queryParams = new URLSearchParams(search);
     const pagoParam = queryParams.get('pago');
@@ -219,10 +172,8 @@ export default function Planes() {
                     <div style={styles.alertaBase('#10b981', 'rgba(16,185,129,0.12)')}>
                         <i className="fas fa-check-circle" style={{ fontSize: '1.3rem', color: '#10b981' }}></i>
                         <div>
-                            <strong style={{ color: '#10b981' }}>¡Pago exitoso!</strong>
-                            <span style={{ color: '#d1d5db', marginLeft: 8 }}>
-                                Tu plan ha sido activado. El sistema puede tardar unos segundos en actualizarse.
-                            </span>
+                            <strong style={{ color: '#10b981' }}>{t('planes.paySuccess')}</strong>
+                            <span style={{ color: '#d1d5db', marginLeft: 8 }}>{t('planes.paySuccessDesc')}</span>
                         </div>
                         <button onClick={() => setShowExito(false)} style={styles.closeBtn}>×</button>
                     </div>
@@ -231,10 +182,8 @@ export default function Planes() {
                     <div style={styles.alertaBase('#ef4444', 'rgba(239,68,68,0.12)')}>
                         <i className="fas fa-times-circle" style={{ fontSize: '1.3rem', color: '#ef4444' }}></i>
                         <div>
-                            <strong style={{ color: '#ef4444' }}>Pago fallido.</strong>
-                            <span style={{ color: '#d1d5db', marginLeft: 8 }}>
-                                No se procesó ningún cargo. Podés intentarlo nuevamente.
-                            </span>
+                            <strong style={{ color: '#ef4444' }}>{t('planes.payFailed')}</strong>
+                            <span style={{ color: '#d1d5db', marginLeft: 8 }}>{t('planes.payFailedDesc')}</span>
                         </div>
                         <button onClick={() => setShowFallido(false)} style={styles.closeBtn}>×</button>
                     </div>
@@ -256,15 +205,15 @@ export default function Planes() {
 
                 <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
                     <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>
-                        Elegí tu Plan
+                        {t('planes.title')}
                     </h1>
                     <p style={{ color: '#9ca3af', fontSize: '1rem' }}>
-                        Escalá tu CRM y tu equipo según las necesidades de tu agencia
+                        {t('planes.subtitle')}
                     </p>
                     {vencimiento && vencimiento !== 'Sin vencimiento' && (
                         <div style={{ marginTop: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', padding: '6px 14px', color: '#f59e0b', fontSize: '0.85rem' }}>
                             <i className="fas fa-calendar-alt"></i>
-                            Plan vigente hasta el {new Date(vencimiento).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {t('planes.validUntil')} {new Date(vencimiento).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </div>
                     )}
                 </div>
@@ -273,9 +222,9 @@ export default function Planes() {
                 {planes.length === 0 && !loadError ? (
                     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
                         <i className="fas fa-box-open" style={{ fontSize: '3rem', marginBottom: 16, opacity: 0.4 }}></i>
-                        <p style={{ fontSize: '1rem' }}>No hay planes disponibles en este momento.</p>
+                        <p style={{ fontSize: '1rem' }}>{t('planes.noPlanAvail')}</p>
                         <button onClick={fetchData} style={{ marginTop: 12, background: '#10b981', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
-                            <i className="fas fa-sync-alt"></i> Recargar
+                            <i className="fas fa-sync-alt"></i> {t('planes.reload')}
                         </button>
                     </div>
                 ) : (
@@ -304,7 +253,7 @@ export default function Planes() {
                 <div style={{ textAlign: 'center', marginTop: '2rem', color: '#6b7280', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <span>
                         <i className="fas fa-shield-alt" style={{ color: '#10b981', marginRight: '6px' }}></i>
-                        Pagos procesados de forma segura con Mercado Pago &amp; PayPal · Podés cancelar en cualquier momento
+                        {t('planes.secureFooter')}
                     </span>
                     <Link to="/mi-suscripcion" style={{ color: '#10b981', fontWeight: 700, textDecoration: 'underline' }}>
                         Mi suscripción
@@ -338,6 +287,7 @@ export default function Planes() {
 
 
 function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree }) {
+    const { t } = useLanguage();
     const [hovered, setHovered] = useState(false);
     const colores = {
         free:       { accent: '#6b7280', glow: 'rgba(107,114,128,0.18)', glowStrong: 'rgba(107,114,128,0.35)' },
@@ -370,10 +320,10 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
                     : 'var(--bg-card)',
             }}>
             {esActual && (
-                <div style={styles.badgeActual(col.accent)}>Tu plan actual</div>
+                <div style={styles.badgeActual(col.accent)}>{t('planes.currentPlan')}</div>
             )}
             {!esActual && cfg.badge === 'popular' && (
-                <div style={styles.badgePopular}>Más popular</div>
+                <div style={styles.badgePopular}>{t('planes.mostPopular')}</div>
             )}
             {!esActual && cfg.badge === 'vip' && (
                 <div style={styles.badgeVip}>
@@ -389,7 +339,7 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
                 {plan.nombre.charAt(0) + plan.nombre.slice(1).toLowerCase()}
             </div>
 
-            <div style={styles.tagline}>{cfg.tagline}</div>
+            <div style={styles.tagline}>{t(`planes.${cfg.clase}.tagline`)}</div>
 
             <div style={styles.precioContainer}>
                 {esGratis ? (
@@ -416,33 +366,37 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
                 color: cfg.ilimitado ? '#f59e0b' : col.accent,
             }}>
                 <i className={`fas ${cfg.ilimitado ? 'fa-infinity' : 'fa-mobile-alt'}`}></i>
-                {cfg.dispositivos}
+                {t(`planes.${cfg.clase}.lines`)}
             </div>
 
             <ul style={styles.beneficiosList}>
-                {cfg.beneficios.map((b, idx) => (
-                    <li key={idx} style={{
-                        ...styles.beneficioItem,
-                        color: b.destacado ? (b.golden ? '#f59e0b' : '#fff') : '#9ca3af',
-                        fontWeight: b.destacado ? 600 : 400,
-                    }}>
-                        <i className={`fas ${b.icono}`} style={{ color: b.golden ? '#f59e0b' : col.accent, fontSize: '0.8rem', flexShrink: 0 }}></i>
-                        {b.texto}
-                    </li>
-                ))}
+                {['b1','b2','b3','b4'].map((key, idx) => {
+                    const isFirst = idx === 0;
+                    const isGolden = cfg.benGolden[idx];
+                    return (
+                        <li key={key} style={{
+                            ...styles.beneficioItem,
+                            color: isFirst ? (isGolden ? '#f59e0b' : '#fff') : '#9ca3af',
+                            fontWeight: isFirst ? 600 : 400,
+                        }}>
+                            <i className={`fas ${cfg.benIconos[idx]}`} style={{ color: isGolden ? '#f59e0b' : col.accent, fontSize: '0.8rem', flexShrink: 0 }}></i>
+                            {t(`planes.${cfg.clase}.${key}`)}
+                        </li>
+                    );
+                })}
             </ul>
 
             {esActual ? (
                 <button disabled style={styles.btnActual}>
-                    <i className="fas fa-check-circle"></i> Plan actual
+                    <i className="fas fa-check-circle"></i> {t('planes.currentPlanBtn')}
                 </button>
             ) : esGratis ? (
                 <button onClick={onCambiarFree} style={{ ...styles.btnPlan, background: 'rgba(107,114,128,0.15)', border: '1px solid rgba(107,114,128,0.3)', color: '#d1d5db' }}>
-                    Usar plan gratis
+                    {t('planes.useFree')}
                 </button>
             ) : (
                 <button onClick={onSuscribirse} style={{ ...styles.btnPlan, background: col.accent, color: '#fff', border: 'none' }}>
-                    Suscribirme al Plan {plan.nombre.charAt(0) + plan.nombre.slice(1).toLowerCase()}
+                    {t('planes.subscribeBtn')} {plan.nombre.charAt(0) + plan.nombre.slice(1).toLowerCase()}
                 </button>
             )}
         </div>
@@ -451,6 +405,7 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
 
 
 function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose }) {
+    const { t } = useLanguage();
     const [selected, setSelected] = useState(null);
     const planLabel = plan.nombre.charAt(0) + plan.nombre.slice(1).toLowerCase();
 
@@ -487,10 +442,10 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <h3 style={{ color: '#fff', margin: 0, fontSize: '1.35rem', fontWeight: 800 }}>
-                                Completar suscripción
+                                {t('planes.checkoutTitle')}
                             </h3>
                             <p style={{ color: '#9ca3af', margin: '6px 0 0', fontSize: '0.88rem' }}>
-                                Elegí cómo querés pagar
+                                {t('planes.checkoutSubtitle')}
                             </p>
                         </div>
                         <button
@@ -510,7 +465,7 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                                 </div>
                                 <div>
                                     <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>Plan {planLabel}</div>
-                                    <div style={{ color: '#6b7280', fontSize: '0.78rem' }}>Suscripción mensual · Cancelable</div>
+                                    <div style={{ color: '#6b7280', fontSize: '0.78rem' }}>{t('planes.subscriptionLabel')}</div>
                                 </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
@@ -524,7 +479,7 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                 {/* Payment methods */}
                 <div style={{ padding: '20px 32px 24px' }}>
                     <div style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-                        Método de pago
+                        {t('planes.payMethod')}
                     </div>
 
                     {errorPago && (
@@ -629,12 +584,12 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                         {procesando ? (
                             <>
                                 <i className="fas fa-spinner fa-spin" />
-                                Procesando...
+                                {t('planes.processing')}
                             </>
                         ) : (
                             <>
                                 <i className="fas fa-lock" style={{ fontSize: '0.8rem' }} />
-                                {selected ? 'Continuar con el pago' : 'Seleccioná un método de pago'}
+                                {selected ? t('planes.continuePayment') : t('planes.selectPayMethod')}
                             </>
                         )}
                     </button>
@@ -642,7 +597,7 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                     {/* Footer */}
                     <div style={{ textAlign: 'center', marginTop: 16, color: '#4b5563', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                         <i className="fas fa-shield-alt" style={{ fontSize: '0.7rem' }} />
-                        Pago seguro y encriptado · Sin almacenamiento de datos sensibles
+                        {t('planes.securePayment')}
                     </div>
                 </div>
             </div>
@@ -652,6 +607,7 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
 
 
 function ModalConfirmarFree({ procesando, onConfirmar, onClose }) {
+    const { t } = useLanguage();
     return (
         <div style={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div style={{ ...styles.modal, maxWidth: '380px', textAlign: 'center' }}>
@@ -659,17 +615,17 @@ function ModalConfirmarFree({ procesando, onConfirmar, onClose }) {
                     <i className="fas fa-exclamation-triangle"></i>
                 </div>
                 <h5 style={{ color: '#fff', margin: '0 0 0.5rem', fontSize: '1.2rem', fontWeight: 700 }}>
-                    ¿Volver al plan gratuito?
+                    {t('planes.backToFreeTitle')}
                 </h5>
                 <p style={{ color: '#9ca3af', margin: '0 0 1.5rem', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                    Se limitarán tus funciones y los dispositivos extra se desconectarán automáticamente.
+                    {t('planes.backToFreeDesc')}
                 </p>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <button onClick={onClose} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
-                        Cancelar
+                        {t('common.cancel')}
                     </button>
                     <button onClick={onConfirmar} disabled={procesando} style={{ flex: 1, padding: '12px', background: '#f59e0b', border: 'none', color: '#000', borderRadius: '8px', cursor: procesando ? 'not-allowed' : 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        {procesando ? <i className="fas fa-spinner fa-spin"></i> : 'Confirmar'}
+                        {procesando ? <i className="fas fa-spinner fa-spin"></i> : t('planes.confirm')}
                     </button>
                 </div>
             </div>

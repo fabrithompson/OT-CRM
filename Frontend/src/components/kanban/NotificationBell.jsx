@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { useLanguage } from '../../context/LangContext';
 
 const STORAGE_KEY_HISTORY = 'crm_notif_history';
 const STORAGE_KEY_UNREAD  = 'crm_notif_unread';
 
 export default function NotificationBell({ onOpenChat }) {
+    const { t } = useLanguage();
     const [open, setOpen]       = useState(false);
     const [history, setHistory] = useState(() => {
         try { return JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORY) || '[]'); } catch { return []; }
@@ -93,12 +95,12 @@ export default function NotificationBell({ onOpenChat }) {
 
             <div className={`dropdown-menu-custom${open ? ' show' : ''}`}>
                 <div className="dd-header">
-                    <span>Novedades</span>
+                    <span>{t('notif.title')}</span>
                     <button
                         type="button"
                         className="btn-clear-all"
                         onClick={clearAll}
-                        title="Limpiar todo"
+                        title={t('notif.clearAll')}
                     >
                         <i className="fas fa-trash-alt"></i>
                     </button>
@@ -108,7 +110,7 @@ export default function NotificationBell({ onOpenChat }) {
                     {history.length === 0 ? (
                         <div className="empty-state">
                             <i className="fas fa-bell-slash"></i>
-                            <span>Sin novedades</span>
+                            <span>{t('notif.empty')}</span>
                         </div>
                     ) : history.map((n) => {
                         const { icon, color } = iconFor(n.type);

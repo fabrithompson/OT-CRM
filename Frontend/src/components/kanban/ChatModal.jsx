@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import api, { formatTime, formatDate, getAuthHeaders } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
+import { useLanguage } from '../../context/LangContext';
 import useSlashCommands, { SlashMenu } from './SlashCommandMenu';
 
 const FORMAT_BYTES = (bytes) => {
@@ -14,6 +15,7 @@ const FORMAT_BYTES = (bytes) => {
 const COLORS_TAG = ['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#a855f7'];
 
 export default function ChatModal({ clienteId, etapas, stompClient, usuario, onClose, onMoveCard, onUpdateCard }) {
+    const { t, lang } = useLanguage();
     const toast = useToast();
     const [cliente, setCliente]           = useState(null);
     const [messages, setMessages]         = useState([]);
@@ -328,7 +330,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
     const groupedMessages = [];
     let lastDate = null;
     messages.forEach(m => {
-        const d = formatDate(m.fechaHora);
+        const d = formatDate(m.fechaHora, t('chat.today'), lang);
         if (d && d !== lastDate) { groupedMessages.push({ type: 'separator', date: d }); lastDate = d; }
         groupedMessages.push({ type: 'msg', data: m });
     });
@@ -354,7 +356,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                     <div style={{ position: 'absolute', inset: 0, zIndex: 9999, background: 'rgba(16,185,129,0.15)', border: '3px dashed #10b981', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)', pointerEvents: 'none' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: '#10b981' }}>
                             <i className="fas fa-cloud-upload-alt" style={{ fontSize: '3rem' }}></i>
-                            <span style={{ fontSize: '1.2rem', fontWeight: 700 }}>Suelta el archivo aquí</span>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 700 }}>{t('chat.dropFile')}</span>
                         </div>
                     </div>
                 )}
@@ -374,7 +376,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                             <div className="stage-selector-wrapper">
                                 <div className="stage-dd" style={{ position: 'relative' }}>
                                     <button className="stage-dd-btn" onClick={e => { e.stopPropagation(); setShowStageDD(p => !p); }}>
-                                        {etapaActual?.nombre || 'Etapa'} <i className="fas fa-chevron-down"></i>
+                                        {etapaActual?.nombre || t('chat.stage')} <i className="fas fa-chevron-down"></i>
                                     </button>
                                     {showStageDD && (
                                         <div className="stage-dd-menu show">
@@ -397,7 +399,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
 
                         {!msgExhausted && (
                             <button className="load-older-btn" style={{ textAlign: 'center', padding: '8px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.7, fontSize: '0.8rem', color: '#94a3b8' }} onClick={loadOlder}>
-                                <i className="fas fa-history"></i> Cargar mensajes anteriores
+                                <i className="fas fa-history"></i> {t('chat.loadOlder')}
                             </button>
                         )}
                         {loading ? (
@@ -414,7 +416,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                             <div className="file-preview-modal" onClick={e => e.stopPropagation()}>
                                 <div className="file-preview-header">
                                     <button className="btn-icon" onClick={cancelSendFile}><i className="fas fa-times"></i></button>
-                                    <span className="file-preview-title">{pendingFile.type.startsWith('image/') ? 'Enviar imagen' : 'Enviar archivo'}</span>
+                                    <span className="file-preview-title">{pendingFile.type.startsWith('image/') ? t('chat.sendImage') : t('chat.sendFile')}</span>
                                     <div style={{ width: 32 }} />
                                 </div>
                                 <div className="file-preview-body">
@@ -435,7 +437,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                                 <div className="file-preview-footer">
                                     <input
                                         className="file-preview-caption"
-                                        placeholder="Agrega un mensaje..."
+                                        placeholder={t('chat.captionPlaceholder')}
                                         value={captionInput}
                                         onChange={e => setCaptionInput(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter') confirmSendFile(); }}
@@ -452,7 +454,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                             <div ref={emojiRef} style={{ position: 'absolute', bottom: 65, left: 10, zIndex: 2000 }}>
                                 <EmojiPicker
                                     theme={Theme.DARK}
-                                    searchPlaceholder="Buscar emoji..."
+                                    searchPlaceholder={t('chat.emojiSearch')}
                                     width={350}
                                     height={400}
                                     onEmojiClick={(emojiData) => setMsgInput(prev => prev + emojiData.emoji)}
@@ -464,8 +466,8 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                         )}
                         {showAttach && (
                             <div className="attach-menu show">
-                                <label htmlFor="attach-image" className="attach-item" style={{ cursor: 'pointer' }}><i className="fas fa-image" style={{ color: '#10b981' }}></i><span>{' '}Imagen</span><input id="attach-image" type="file" accept="image/*" hidden onChange={handleImageFile} /></label>
-                                <label htmlFor="attach-doc" className="attach-item" style={{ cursor: 'pointer' }}><i className="fas fa-file" style={{ color: '#3b82f6' }}></i><span>{' '}Documento</span><input id="attach-doc" type="file" hidden onChange={handleDocFile} /></label>
+                                <label htmlFor="attach-image" className="attach-item" style={{ cursor: 'pointer' }}><i className="fas fa-image" style={{ color: '#10b981' }}></i><span>{' '}{t('chat.image')}</span><input id="attach-image" type="file" accept="image/*" hidden onChange={handleImageFile} /></label>
+                                <label htmlFor="attach-doc" className="attach-item" style={{ cursor: 'pointer' }}><i className="fas fa-file" style={{ color: '#3b82f6' }}></i><span>{' '}{t('chat.document')}</span><input id="attach-doc" type="file" hidden onChange={handleDocFile} /></label>
                             </div>
                         )}
                         <button className="btn-icon" onClick={() => { setShowAttach(p => !p); setShowEmoji(false); }}><i className="fas fa-paperclip"></i></button>
@@ -473,7 +475,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
 
                         <div className="input-wrapper relative-context">
                             <SlashMenu suggestions={suggestions} activeIdx={activeIdx} onSelect={apply} />
-                            <input placeholder="Escribe un mensaje..." value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => { slashKeyDown(e); if (!e.defaultPrevented && e.key === 'Enter' && !e.shiftKey) sendMessage(); }} />
+                            <input placeholder={t('chat.msgPlaceholder')} value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => { slashKeyDown(e); if (!e.defaultPrevented && e.key === 'Enter' && !e.shiftKey) sendMessage(); }} />
                         </div>
 
                         <button className={`btn-icon ${isRecording ? 'mic-active' : ''}`} onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}><i className="fas fa-microphone"></i></button>
@@ -483,16 +485,16 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
 
                 <div className="info-sidebar-pro">
                     <div className="attr-row">
-                        <span className="attr-label">Teléfono</span>
+                        <span className="attr-label">{t('chat.phone')}</span>
                         <div className="input-group-dark"><i className={isWhatsApp ? 'fab fa-whatsapp' : 'fab fa-telegram-plane'} style={{ color: isWhatsApp ? '#25D366' : '#0088cc', fontSize: '1.1rem' }}></i><input value={cliente?.telefono || ''} readOnly style={{ background: 'transparent', border: 'none', color: '#d1d7db', width: '100%' }} /></div>
                     </div>
                     <div className="attr-row">
-                        <span className="attr-label">Notas</span>
-                        <textarea className="no-resize" style={{ background: '#202c33', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#d1d7db', padding: '10px', resize: 'none', minHeight: 80, width: '100%' }} value={cliente?.notas || ''} onChange={e => setCliente(prev => ({ ...prev, notas: e.target.value }))} onBlur={saveInfo} placeholder="Notas sobre el cliente..." />
+                        <span className="attr-label">{t('chat.notes')}</span>
+                        <textarea className="no-resize" style={{ background: '#202c33', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#d1d7db', padding: '10px', resize: 'none', minHeight: 80, width: '100%' }} value={cliente?.notas || ''} onChange={e => setCliente(prev => ({ ...prev, notas: e.target.value }))} onBlur={saveInfo} placeholder={t('chat.notesPlaceholder')} />
                     </div>
                     <div className="attr-row">
-                        <span className="attr-label">Saldo</span>
-                        <div className="saldo-card"><span className="saldo-title">Total</span><span className="saldo-value" style={{ color: '#10b981', fontWeight: 700, fontSize: '1.1rem' }}>${(cliente?.saldo ?? cliente?.presupuesto ?? 0).toFixed(2)}</span></div>
+                        <span className="attr-label">{t('chat.balance')}</span>
+                        <div className="saldo-card"><span className="saldo-title">{t('chat.balanceTotal')}</span><span className="saldo-value" style={{ color: '#10b981', fontWeight: 700, fontSize: '1.1rem' }}>${(cliente?.saldo ?? cliente?.presupuesto ?? 0).toFixed(2)}</span></div>
                         <div className="money-control-wrapper" style={{ marginTop: 8 }}>
                             <button className="btn-math danger" onClick={() => updateMoney('restar')}>−</button>
                             <div className="money-input-container"><span className="currency-symbol">$</span><input className="money-input" type="number" min="0" value={montoInput} onChange={e => setMontoInput(e.target.value)} placeholder="0.00" /></div>
@@ -500,16 +502,16 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                         </div>
                     </div>
                     <div className="attr-row">
-                        <span className="attr-label">Etiquetas</span>
+                        <span className="attr-label">{t('chat.tags')}</span>
                         <div className="tags-list">
-                            {(cliente?.etiquetas?.length ?? 0) === 0 ? <span style={{ color: '#555', fontSize: '0.75rem', fontStyle: 'italic' }}>Sin etiquetas</span> : cliente.etiquetas.map(t => (
-                                <div key={t.id} className="tag-pill" style={{ backgroundColor: (t.color || '#10b981') + '26', color: t.color || '#10b981', borderColor: (t.color || '#10b981') + '4D' }}>
-                                    <span>{t.nombre}</span><button className="tag-remove-btn" onClick={() => removeTag(t.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '50%', color: 'inherit', opacity: 0.7, lineHeight: 1, fontSize: '0.75rem' }} onMouseEnter={e => e.currentTarget.style.opacity=1} onMouseLeave={e => e.currentTarget.style.opacity=0.7}><i className="fas fa-times"></i></button>
+                            {(cliente?.etiquetas?.length ?? 0) === 0 ? <span style={{ color: '#555', fontSize: '0.75rem', fontStyle: 'italic' }}>{t('chat.noTags')}</span> : cliente.etiquetas.map(tag => (
+                                <div key={tag.id} className="tag-pill" style={{ backgroundColor: (tag.color || '#10b981') + '26', color: tag.color || '#10b981', borderColor: (tag.color || '#10b981') + '4D' }}>
+                                    <span>{tag.nombre}</span><button className="tag-remove-btn" onClick={() => removeTag(tag.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '50%', color: 'inherit', opacity: 0.7, lineHeight: 1, fontSize: '0.75rem' }} onMouseEnter={e => e.currentTarget.style.opacity=1} onMouseLeave={e => e.currentTarget.style.opacity=0.7}><i className="fas fa-times"></i></button>
                                 </div>
                             ))}
                         </div>
                         <div className="input-group-dark tag-input-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#d1d7db', fontSize: '0.85rem', flex: 1 }} placeholder="Nueva etiqueta..." value={newTagName} onChange={e => setNewTagName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTag()} />
+                            <input style={{ background: 'transparent', border: 'none', outline: 'none', color: '#d1d7db', fontSize: '0.85rem', flex: 1 }} placeholder={t('chat.newTagPlaceholder')} value={newTagName} onChange={e => setNewTagName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTag()} />
                             <div style={{ display: 'flex', gap: 4 }}>
                                 {COLORS_TAG.map(c => <button key={c} className={`color-dot ${tagColor === c ? 'selected' : ''}`} style={{ background: c, width: 18, height: 18, borderRadius: '50%', cursor: 'pointer', border: tagColor === c ? '2px solid #fff' : '2px solid transparent', padding: 0, flexShrink: 0, outline: 'none' }} onClick={() => setTagColor(c)} />)}
                             </div>
@@ -517,9 +519,9 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                         </div>
                     </div>
                     <div className="attr-row">
-                        <span className="attr-label">Multimedia</span>
+                        <span className="attr-label">{t('chat.multimedia')}</span>
                         <div id="media-content" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                            {media.length === 0 ? <div style={{ padding: 10, opacity: 0.5, color: '#94a3b8', fontSize: '0.8rem', gridColumn: '1/-1' }}>Sin multimedia</div> : [...media].reverse().map((m) => (
+                            {media.length === 0 ? <div style={{ padding: 10, opacity: 0.5, color: '#94a3b8', fontSize: '0.8rem', gridColumn: '1/-1' }}>{t('chat.noMultimedia')}</div> : [...media].reverse().map((m) => (
                                 <button key={m.id || m.urlArchivo} className="media-item" style={{ aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', background: '#111', border: 'none', padding: 0 }} onClick={() => window.open(m.urlArchivo)}>
                                     {m.tipo === 'VIDEO' ? (
                                         // FIX SONARLINT S4084: Etiqueta track para accesibilidad
@@ -540,6 +542,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
 }
 
 function MessageBubble({ msg }) {
+    const { t } = useLanguage();
     const origin    = msg.origen === 'TELEGRAM' ? 'telegram-msg' : 'whatsapp-msg';
     const className = `msg ${msg.esSalida ? 'sent' : 'received'} ${origin}`;
     const renderTicks = () => {
@@ -559,7 +562,7 @@ function MessageBubble({ msg }) {
             </video>
         );
 
-        if (msg.tipo === 'DOCUMENTO' && msg.urlArchivo) return <a href={msg.urlArchivo} target="_blank" rel="noreferrer" className="msg-file"><i className="fas fa-file"></i> Descargar Archivo</a>;
+        if (msg.tipo === 'DOCUMENTO' && msg.urlArchivo) return <a href={msg.urlArchivo} target="_blank" rel="noreferrer" className="msg-file"><i className="fas fa-file"></i> {t('chat.downloadFile')}</a>;
         if (msg.tipo === 'AUDIO' && msg.urlArchivo) return <AudioPlayer src={msg.urlArchivo} sent={msg.esSalida} />;
         return null;
     };

@@ -399,7 +399,7 @@ export default function Kanban() {
 
                     <div className="search-wrapper">
                         <i className="fas fa-search"></i>
-                        <input placeholder="Buscar cliente..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                        <input placeholder={t('kanban.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                     </div>
                 </div>
 
