@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LangContext';
 import NotificationBell from '../components/kanban/NotificationBell';
 
 // Todos los endpoints de Telegram están bajo /api/v1/telegram-devices — se usa el api estándar
@@ -33,9 +34,10 @@ Modal.propTypes = {
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ estado }) {
-    if (estado === 'CONECTADO')  return <span className="status-badge status-connected">En Línea</span>;
-    if (estado === 'CONECTANDO') return <span className="status-badge status-pairing">Vinculando...</span>;
-    return <span className="status-badge status-disconnected">Desconectado</span>;
+    const { t } = useLanguage();
+    if (estado === 'CONECTADO')  return <span className="status-badge status-connected">{t('tg.statusOnline')}</span>;
+    if (estado === 'CONECTANDO') return <span className="status-badge status-pairing">{t('tg.statusPairing')}</span>;
+    return <span className="status-badge status-disconnected">{t('tg.statusOffline')}</span>;
 }
 
 StatusBadge.propTypes = { estado: PropTypes.string };
@@ -43,6 +45,7 @@ StatusBadge.defaultProps = { estado: '' };
 
 // ─── Device Card ──────────────────────────────────────────────────────────────
 function DeviceCard({ device, onConectar, onDesvincular, onEliminar }) {
+    const { t } = useLanguage();
     const { estado } = device;
     return (
         <div className="device-card" id={`card-${device.id}`}>
@@ -54,7 +57,7 @@ function DeviceCard({ device, onConectar, onDesvincular, onEliminar }) {
             </div>
             <div className="device-info">
                 <h3>{device.alias}</h3>
-                <p>{device.numeroTelefono || 'Pendiente de conexión...'}</p>
+                <p>{device.numeroTelefono || t('tg.statusPending')}</p>
                 <div className="device-meta" style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: 5 }}>
                     ID: {String(device.sessionId || '').slice(0, 12)}
                 </div>
@@ -62,20 +65,20 @@ function DeviceCard({ device, onConectar, onDesvincular, onEliminar }) {
             <div className="device-actions">
                 {estado !== 'CONECTADO' && estado !== 'CONECTANDO' && (
                     <button className="btn-card-action" onClick={() => onConectar(device.id)}>
-                        <i className="fas fa-link"></i> Conectar
+                        <i className="fas fa-link"></i> {t('tg.connect')}
                     </button>
                 )}
                 {estado === 'CONECTANDO' && (
                     <button className="btn-card-action" style={{ backgroundColor: '#f59e0b', color: 'white' }}
                         onClick={() => onConectar(device.id, device.numeroTelefono)}>
-                        <i className="fas fa-key"></i> Ingresar Código
+                        <i className="fas fa-key"></i> {t('tg.enterCode')}
                     </button>
                 )}
                 {estado === 'CONECTADO' && (
                     <button className="btn-card-action btn-card-warning"
                         style={{ backgroundColor: '#f59e0b', color: 'white', border: 'none' }}
                         onClick={() => onDesvincular(device.id)}>
-                        <i className="fas fa-unlink"></i> Desvincular
+                        <i className="fas fa-unlink"></i> {t('tg.unlink')}
                     </button>
                 )}
                 <button className="btn-card-action btn-card-danger" onClick={() => onEliminar(device.id)}>
@@ -101,6 +104,7 @@ DeviceCard.propTypes = {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function TelegramVincular() {
+    const { t } = useLanguage();
     const toast = useToast();
     const [devices, setDevices]               = useState([]);
     const [loading, setLoading]               = useState(true);
@@ -206,9 +210,9 @@ export default function TelegramVincular() {
             <div className="header-top" style={{ justifyContent: 'space-between', background: 'transparent', border: 'none', paddingBottom: 0 }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <i className="fab fa-telegram" style={{ color: '#0088cc' }}></i> Configuración Telegram
+                        <i className="fab fa-telegram" style={{ color: '#0088cc' }}></i> {t('tg.title')}
                     </h2>
-                    <p style={{ margin: '5px 0 0', color: 'var(--text-sec)', fontSize: '0.95rem' }}>Gestiona tus números conectados.</p>
+                    <p style={{ margin: '5px 0 0', color: 'var(--text-sec)', fontSize: '0.95rem' }}>{t('tg.subtitle')}</p>
                 </div>
                 <NotificationBell />
             </div>
@@ -219,7 +223,7 @@ export default function TelegramVincular() {
                         style={{ minHeight: 200, height: 'auto', maxWidth: 'none', width: '100%' }}
                         onClick={() => { setAlias(''); setModalCrear(true); }}>
                         <div className="ghost-icon-circle"><i className="fas fa-plus"></i></div>
-                        <span className="ghost-text">Agregar Número</span>
+                        <span className="ghost-text">{t('tg.addNumber')}</span>
                     </button>
                     {loading
                         ? <div style={{ padding: 40 }}><div className="spinner"></div></div>
@@ -233,47 +237,47 @@ export default function TelegramVincular() {
             </div>
 
             <Modal id="modalCrear" active={modalCrear} onClose={() => setModalCrear(false)}>
-                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Nuevo Número Telegram</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20 }}>Agrega un nuevo número de Telegram</p>
+                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('tg.newNumber')}</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20 }}>{t('tg.newNumberDesc')}</p>
                 <input className="clean-input" autoFocus style={{ width: '100%', marginBottom: 20 }}
-                    placeholder="Nombre (Alias)..." value={alias} autoComplete="off"
+                    placeholder={t('tg.aliasPlaceholder')} value={alias} autoComplete="off"
                     onChange={e => setAlias(e.target.value)} onKeyDown={e => e.key === 'Enter' && confirmarCrear()} />
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={() => setModalCrear(false)}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={() => setModalCrear(false)}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm" onClick={confirmarCrear} disabled={creando}>
-                        {creando ? <i className="fas fa-spinner fa-spin"></i> : 'Crear'}
+                        {creando ? <i className="fas fa-spinner fa-spin"></i> : t('common.create')}
                     </button>
                 </div>
             </Modal>
 
             <Modal id="modalConectar" active={modalConectar} onClose={() => setModalConectar(false)}>
-                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Vincular Telegram</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20 }}>Ingresa tu número con código de país</p>
+                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('tg.vincularTitle')}</h3>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20 }}>{t('tg.vincularDesc')}</p>
                 <input className="clean-input" style={{ width: '100%', marginBottom: 20 }}
                     placeholder="Ej: +5491122334455" autoComplete="off" value={telefono}
                     onChange={e => setTelefono(e.target.value)} onKeyDown={e => e.key === 'Enter' && solicitarCodigo()} />
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={() => setModalConectar(false)}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={() => setModalConectar(false)}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm" onClick={solicitarCodigo} disabled={pidiendoCodigo}>
-                        {pidiendoCodigo ? <i className="fas fa-spinner fa-spin"></i> : 'Pedir Código'}
+                        {pidiendoCodigo ? <i className="fas fa-spinner fa-spin"></i> : t('tg.askCode')}
                     </button>
                 </div>
             </Modal>
 
             <Modal id="modalValidar" active={modalValidar} onClose={() => setModalValidar(false)}>
-                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Código de Verificación</h3>
+                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('tg.verifyTitle')}</h3>
                 <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.6 }}>
-                    Telegram te envió un código de 5 dígitos.<br/>
-                    <span style={{ color: '#0088cc', fontWeight: 600 }}>Búscalo dentro de la app de Telegram</span>, no como SMS.
+                    {t('tg.verifyDesc')}<br/>
+                    <span style={{ color: '#0088cc', fontWeight: 600 }}>{t('tg.verifyNote')}</span>{t('tg.verifyNoteSuffix')}
                 </p>
                 <input className="clean-input" autoFocus
                     style={{ width: '100%', marginBottom: 20, textAlign: 'center', letterSpacing: 5, fontSize: '1.5rem' }}
-                    placeholder="Código" autoComplete="off" value={codigo}
+                    placeholder={t('tg.codePlaceholder')} autoComplete="off" value={codigo}
                     onChange={e => setCodigo(e.target.value)} onKeyDown={e => e.key === 'Enter' && enviarCodigo()} />
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={() => setModalValidar(false)}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={() => setModalValidar(false)}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm" onClick={enviarCodigo} disabled={validando}>
-                        {validando ? <i className="fas fa-spinner fa-spin"></i> : 'Validar'}
+                        {validando ? <i className="fas fa-spinner fa-spin"></i> : t('tg.verify')}
                     </button>
                 </div>
             </Modal>
@@ -283,14 +287,14 @@ export default function TelegramVincular() {
                     <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px', fontSize: '1.8rem' }}>
                         <i className="fas fa-unlink"></i>
                     </div>
-                    <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>¿Deseas Desvincular?</h3>
-                    <p style={{ color: '#94a3b8', marginBottom: 20 }}>Se cerrará la sesión oficial en Telegram.</p>
+                    <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>{t('tg.unlinkTitle')}</h3>
+                    <p style={{ color: '#94a3b8', marginBottom: 20 }}>{t('tg.unlinkDesc')}</p>
                 </div>
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={() => setModalDesvincular(false)}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={() => setModalDesvincular(false)}>{t('common.cancel')}</button>
                     <button className="btn-modal" style={{ backgroundColor: '#f59e0b', color: 'white' }}
                         onClick={confirmarDesvincular} disabled={desvinculando}>
-                        {desvinculando ? <i className="fas fa-spinner fa-spin"></i> : 'Desvincular'}
+                        {desvinculando ? <i className="fas fa-spinner fa-spin"></i> : t('tg.unlink')}
                     </button>
                 </div>
             </Modal>
@@ -300,13 +304,13 @@ export default function TelegramVincular() {
                     <div className="icon-trash-bg" style={{ margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#ef4444' }}>
                         <i className="fas fa-trash-alt"></i>
                     </div>
-                    <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>¿Eliminar número?</h3>
-                    <p style={{ color: '#94a3b8', marginBottom: 20 }}>Esta acción eliminará el número de Telegram del sistema.</p>
+                    <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>{t('tg.deleteTitle')}</h3>
+                    <p style={{ color: '#94a3b8', marginBottom: 20 }}>{t('tg.deleteDesc')}</p>
                 </div>
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={() => setModalEliminar(false)}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={() => setModalEliminar(false)}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm-danger" onClick={confirmarEliminar} disabled={eliminando}>
-                        {eliminando ? <i className="fas fa-spinner fa-spin"></i> : 'Eliminar'}
+                        {eliminando ? <i className="fas fa-spinner fa-spin"></i> : t('common.delete')}
                     </button>
                 </div>
             </Modal>

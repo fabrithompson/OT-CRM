@@ -125,7 +125,7 @@ export default function RespuestasRapidas() {
                     onKeyDown={e => { if (e.key === 'Escape') setModalOpen(false); }}
                     onClick={e => { if (e.target === e.currentTarget) setModalOpen(false); }}
                     style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1060, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <div style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 30, width: '90%', maxWidth: 440, boxShadow: '0 25px 50px rgba(0,0,0,0.7)' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 30, width: '90%', maxWidth: 440, boxShadow: '0 25px 50px rgba(0,0,0,0.7)' }}>
                         <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                             {formData.id ? t('respuestas.editTitle') : t('respuestas.new')}
                         </h3>
@@ -168,7 +168,7 @@ export default function RespuestasRapidas() {
                     onKeyDown={e => { if (e.key === 'Escape') setDeleteModalOpen(false); }}
                     onClick={e => { if (e.target === e.currentTarget) setDeleteModalOpen(false); }}
                     style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1060, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <div style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 30, width: '90%', maxWidth: 400, boxShadow: '0 25px 50px rgba(0,0,0,0.7)' }}>
+                    <div style={{ background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 30, width: '90%', maxWidth: 400, boxShadow: '0 25px 50px rgba(0,0,0,0.7)' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div className="icon-trash-bg" style={{ margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#ef4444' }}>
                                 <i className="fas fa-trash-alt"></i>

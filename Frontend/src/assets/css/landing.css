@@ -1543,9 +1543,8 @@
 }
 
 .help-modal {
-  background: rgba(14, 14, 18, 0.96);
-  backdrop-filter: blur(30px);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 28px;
   width: 380px;

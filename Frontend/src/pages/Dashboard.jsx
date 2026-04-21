@@ -24,20 +24,22 @@ function buildSparkLine(today, total, points = 7) {
 function buildWeeklyData(mensajesHoy, nuevosLeads, totalCarga, range) {
     const maps = {
         today:  ['00h','03h','06h','09h','12h','15h','18h','21h'],
-        '7d':   ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],
-        '30d':  ['S1','S2','S3','S4'],
-        '90d':  ['Ene','Feb','Mar'],
+        sem:    ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],
+        mes:    ['S1','S2','S3','S4'],
+        anual:  ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
         custom: ['P1','P2','P3','P4','P5','P6','P7'],
     };
-    const labels = maps[range] || maps['7d'];
+    const SCALE = { today: 1, sem: 7, mes: 30, anual: 365, custom: 1 };
+    const scale = SCALE[range] || 1;
+    const labels = maps[range] || maps['sem'];
+    const n = labels.length;
     return labels.map((label, i) => {
         const w = 0.45 + Math.abs(Math.sin(i * 1.1)) * 0.85;
-        const isLast = i === labels.length - 1;
         return {
             label,
-            leads:    nuevosLeads  > 0 ? (isLast ? nuevosLeads  : Math.round(nuevosLeads  * w)) : 0,
-            mensajes: mensajesHoy  > 0 ? (isLast ? mensajesHoy  : Math.round(mensajesHoy  * w)) : 0,
-            ingresos: totalCarga   > 0 ? Math.round(totalCarga  * w * 0.12) : 0,
+            leads:    nuevosLeads > 0 ? Math.round(nuevosLeads * scale / n * w) : 0,
+            mensajes: mensajesHoy > 0 ? Math.round(mensajesHoy * scale / n * w) : 0,
+            ingresos: totalCarga  > 0 ? Math.round(totalCarga  * scale / n * w * 0.12) : 0,
         };
     });
 }
@@ -80,18 +82,6 @@ function buildHeatmap(mensajesHoy) {
     }));
 }
 
-function buildTopAgentes(equipo, totalLeads) {
-    if (!equipo || !equipo.length) return [];
-    return equipo
-        .map((m, i) => {
-            const share    = (1 / equipo.length) * (1 + Math.abs(Math.sin(i * 2.3)) * 0.6);
-            const ventas   = Math.round(Math.max(1, totalLeads) * 0.08 * share);
-            const ingresos = Math.round(ventas * (3000 + Math.abs(Math.sin(i * 1.4)) * 2500));
-            return { ...m, ventas, ingresos };
-        })
-        .sort((a, b) => b.ventas - a.ventas)
-        .slice(0, 4);
-}
 
 /* ─────────────────────────────────────────────
    Gradient KPI Card
@@ -244,7 +234,7 @@ export default function Dashboard() {
     const { t }    = useLanguage();
 
     const [loading, setLoading]       = useState(true);
-    const [dateRange, setDateRange]   = useState('7d');
+    const [dateRange, setDateRange]   = useState('today');
     const [usuarioActual, setUsuario] = useState(null);
     const [data, setData] = useState({
         nombreUsuario: 'Usuario', rol: 'USER',
@@ -411,12 +401,10 @@ export default function Dashboard() {
     const leadOrigin = useMemo(() => buildLeadOrigin(data.totalLeads), [data.totalLeads]);
     const funnelData = useMemo(() => buildFunnel(data.totalLeads), [data.totalLeads]);
     const heatmap    = useMemo(() => buildHeatmap(data.mensajesHoy), [data.mensajesHoy]);
-    const topAgentes = useMemo(() => buildTopAgentes(data.equipo, data.totalLeads), [data.equipo, data.totalLeads]);
     const sparkLeads = useMemo(() => buildSparkLine(data.nuevosLeads, data.totalLeads), [data.nuevosLeads, data.totalLeads]);
     const sparkMsgs  = useMemo(() => buildSparkLine(data.mensajesHoy, data.totalMensajes), [data.mensajesHoy, data.totalMensajes]);
     const sparkCarga = useMemo(() => buildSparkLine(data.totalCarga, data.totalCarga * 5), [data.totalCarga]);
     const sparkLeer  = useMemo(() => buildSparkLine(data.leadsSinLeer, data.totalLeads), [data.leadsSinLeer, data.totalLeads]);
-    const heatMax    = useMemo(() => Math.max(1, ...heatmap.flatMap(r => r.slots.map(s => s.v))), [heatmap]);
 
     const cerrados = funnelData[4]?.count ?? 0;
     const convPct  = data.totalLeads > 0 ? ((cerrados / data.totalLeads) * 100).toFixed(1) : '7.6';
@@ -431,26 +419,25 @@ export default function Dashboard() {
         const p = n.trim().split(' ');
         return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : n.slice(0, 2).toUpperCase();
     };
-    const dateLabels = { today:'Hoy', '7d':'últimos 7 días', '30d':'últimos 30 días', '90d':'últimos 90 días' };
-    const originLabel = (() => {
-        if (dateRange !== 'custom') return dateLabels[dateRange] || 'período seleccionado';
-        if (customFrom && customTo)  return `${customFrom} → ${customTo}`;
-        if (customFrom)              return `Desde ${customFrom} hasta ahora`;
-        return 'Personalizado';
-    })();
 
-    const rangeText = dateRange === 'today' ? 'del día de hoy'
-        : dateRange === '7d'  ? 'los últimos 7 días'
-        : dateRange === '30d' ? 'los últimos 30 días'
-        : dateRange === '90d' ? 'los últimos 90 días'
-        : customFrom && customTo ? `del ${customFrom} al ${customTo}`
-        : customFrom ? `desde el ${customFrom} hasta ahora`
-        : 'el período seleccionado';
+    const originLabel = dateRange !== 'custom'
+        ? (t(`dashboard.metrics.range${dateRange.charAt(0).toUpperCase() + dateRange.slice(1)}`) || t('dashboard.metrics.rangeCustom'))
+        : customFrom && customTo ? `${customFrom} → ${customTo}`
+        : customFrom ? `${t('dashboard.picker.from')} ${customFrom}`
+        : t('dashboard.metrics.rangeCustom');
+
+    const rangeText = dateRange === 'today' ? t('dashboard.metrics.rangeToday')
+        : dateRange === 'sem'   ? t('dashboard.metrics.rangeSem')
+        : dateRange === 'mes'   ? t('dashboard.metrics.rangeMes')
+        : dateRange === 'anual' ? t('dashboard.metrics.rangeAnual')
+        : customFrom && customTo ? `${customFrom} → ${customTo}`
+        : customFrom ? `${t('dashboard.picker.from')} ${customFrom}`
+        : t('dashboard.metrics.rangeCustom');
 
     const hour     = now.getHours();
-    const greeting = hour >= 6 && hour < 12 ? 'Buen día'
-        : hour >= 12 && hour < 20 ? 'Buenas tardes'
-        : 'Buenas noches';
+    const greeting = hour >= 6 && hour < 12 ? t('dashboard.greeting.morning')
+        : hour >= 12 && hour < 20 ? t('dashboard.greeting.afternoon')
+        : t('dashboard.greeting.evening');
     const firstName = (usuarioActual?.nombreCompleto || usuarioActual?.username || 'Usuario').split(' ')[0];
 
     const trendLeads = data.nuevosLeads === 0  ? null : { text: `+${data.nuevosLeads} hoy`, dir: 'up' };
@@ -487,7 +474,7 @@ export default function Dashboard() {
                         <strong style={{ color:'white', fontWeight:700 }}>{firstName}</strong>
                     </span>
                     <h1 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'white' }}>
-                        Estas son tus métricas de{' '}
+                        {t('dashboard.metrics.title')}{' '}
                         <span style={{ color:'rgba(255,255,255,0.4)', fontWeight:400, fontSize:'0.9rem' }}>{rangeText}</span>
                     </h1>
                 </div>
@@ -496,7 +483,7 @@ export default function Dashboard() {
                     {/* Date range pills + custom picker */}
                     <div style={{ position:'relative' }} ref={pickerRef}>
                         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3, gap: 2 }}>
-                            {[['today','Hoy'],['7d','7 días'],['30d','30 días'],['90d','90 días']].map(([r,lbl]) => (
+                            {[['today', t('dashboard.periods.today')], ['sem', t('dashboard.periods.sem')], ['mes', t('dashboard.periods.mes')], ['anual', t('dashboard.periods.anual')]].map(([r,lbl]) => (
                                 <button key={r} onClick={() => { setDateRange(r); setPickerOpen(false); }} style={{
                                     padding: '5px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
                                     fontSize: '0.77rem', fontWeight: 600, transition: 'all 0.15s',
@@ -524,14 +511,14 @@ export default function Dashboard() {
                                 <p style={{ margin:'0 0 12px', fontSize:'0.8rem', fontWeight:700, color:'white' }}></p>
                                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                                     <label style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.5)' }}>
-                                        Desde
+                                        {t('dashboard.picker.from')}
                                         <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
                                             style={{ display:'block', width:'100%', marginTop:4, padding:'6px 10px', boxSizing:'border-box',
                                                 background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)',
                                                 borderRadius:8, color:'white', fontSize:'0.82rem', outline:'none' }} />
                                     </label>
                                     <label style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.5)' }}>
-                                        Hasta <span style={{ color:'rgba(255,255,255,0.28)', fontWeight:400 }}></span>
+                                        {t('dashboard.picker.to')}
                                         <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
                                             style={{ display:'block', width:'100%', marginTop:4, padding:'6px 10px', boxSizing:'border-box',
                                                 background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)',
@@ -548,7 +535,7 @@ export default function Dashboard() {
                                         color: customFrom ? 'white' : 'rgba(255,255,255,0.3)',
                                         fontSize:'0.82rem', fontWeight:600, transition:'all 0.15s',
                                     }}>
-                                    Aplicar Fechas
+                                    {t('dashboard.picker.apply')}
                                 </button>
                             </div>
                         )}
@@ -588,14 +575,14 @@ export default function Dashboard() {
             {/* ── KPI Row: 4 gradient cards ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
                 <KpiCardV2
-                    icon="fa-user-plus" label="Leads nuevos"
+                    icon="fa-user-plus" label={t('dashboard.kpi.newLeads')}
                     value={data.nuevosLeads.toLocaleString()}
                     trend={trendLeads?.text ?? null} trendDir={trendLeads?.dir ?? 'up'}
                     gradient="linear-gradient(135deg,#064e3b 0%,#065f46 45%,#059669 100%)"
                     sparkData={sparkLeads} gradId="sg1"
                 />
                 <KpiCardV2
-                    icon="fa-chart-line" label="Conversión"
+                    icon="fa-chart-line" label={t('dashboard.kpi.conversion')}
                     value={`${convPct}%`}
                     trend={trendConv?.text ?? null} trendDir={trendConv?.dir ?? 'up'}
                     gradient="linear-gradient(135deg,#1e1b4b 0%,#3730a3 50%,#4f46e5 100%)"
@@ -622,7 +609,7 @@ export default function Dashboard() {
                         <div style={{ fontSize:'1.65rem', fontWeight:800, color: neto < 0 ? '#fca5a5' : 'white', lineHeight:1 }}>
                             {neto > 0 ? '+' : neto < 0 ? '-' : ''}{fmtMoney(neto)}
                         </div>
-                        <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.65)', marginTop:4 }}>Neto de la empresa</div>
+                        <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.65)', marginTop:4 }}>{t('dashboard.kpi.netCompany')}</div>
                         <div style={{ display:'flex', gap:14, marginTop:8 }}>
                             <span style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.6)', display:'flex', alignItems:'center', gap:4 }}>
                                 <i className="fas fa-arrow-up" style={{ color:'#86efac', fontSize:'0.58rem' }} />
@@ -649,7 +636,7 @@ export default function Dashboard() {
                     </div>
                 </div>
                 <KpiCardV2
-                    icon="fa-inbox" label="Sin responder"
+                    icon="fa-inbox" label={t('dashboard.kpi.unread')}
                     value={data.leadsSinLeer.toLocaleString()}
                     trend={trendLeer.text} trendDir={trendLeer.dir}
                     gradient="linear-gradient(135deg,#0c4a6e 0%,#0369a1 50%,#0284c7 100%)"
@@ -663,17 +650,17 @@ export default function Dashboard() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                         <div>
                             <p style={secTitle}>
-                                {dateRange === 'today' ? 'Rendimiento del día'
-                                    : dateRange === '7d'  ? 'Rendimiento semanal'
-                                    : dateRange === '30d' ? 'Rendimiento mensual'
-                                    : dateRange === '90d' ? 'Rendimiento trimestral'
-                                    : 'Rendimiento personalizado'}
+                                {dateRange === 'today' ? t('dashboard.chart.perfDay')
+                                    : dateRange === 'sem'   ? t('dashboard.chart.perfSem')
+                                    : dateRange === 'mes'   ? t('dashboard.chart.perfMes')
+                                    : dateRange === 'anual' ? t('dashboard.chart.perfAnual')
+                                    : t('dashboard.chart.perfCustom')}
                             </p>
                             <p style={secSub}>
-                                {dateRange === 'today' ? 'Por hora · leads · mensajes · ingresos'
-                                    : dateRange === '7d'  ? 'Por día · leads · mensajes · ingresos'
-                                    : dateRange === '30d' ? 'Por semana · leads · mensajes · ingresos'
-                                    : 'Por mes · leads · mensajes · ingresos'}
+                                {dateRange === 'today' ? t('dashboard.chart.byHour')
+                                    : dateRange === 'sem'   ? t('dashboard.chart.byDay')
+                                    : dateRange === 'mes'   ? t('dashboard.chart.byWeek')
+                                    : t('dashboard.chart.byMonth')}
                             </p>
                         </div>
                     </div>
@@ -716,7 +703,7 @@ export default function Dashboard() {
                         </AreaChart>
                     </ResponsiveContainer>
                     <div style={{ display:'flex', gap:18, marginTop:6 }}>
-                        {[['#10b981','Leads'],['#818cf8','Mensajes'],['#ec4899','Ingresos']].map(([c,n]) => (
+                        {[['#10b981', t('dashboard.chart.leads')],['#818cf8', t('dashboard.chart.messages')],['#ec4899', t('dashboard.chart.income')]].map(([c,n]) => (
                             <span key={n} style={{ display:'flex', alignItems:'center', gap:5, fontSize:'0.75rem', color:'rgba(255,255,255,0.45)' }}>
                                 <span style={{ width:8, height:8, borderRadius:'50%', background:c }} />{n}
                             </span>
@@ -727,7 +714,7 @@ export default function Dashboard() {
                 {/* Lead origin donut */}
                 <div style={card}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                        <p style={secTitle}>Origen de leads</p>
+                        <p style={secTitle}>{t('dashboard.chart.leadOrigin')}</p>
                         <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>{originLabel}</span>
                     </div>
                     <div style={{ display:'flex', justifyContent:'center', position:'relative', marginTop:8 }}>
@@ -769,13 +756,13 @@ export default function Dashboard() {
                         return (
                             <>
                                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
-                                    <p style={secTitle}>Embudo de conversión</p>
+                                    <p style={secTitle}>{t('dashboard.funnel.title')}</p>
                                     <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>
-                                        {etapasStats.length} etapas · {totalClientes} contactos
+                                        {etapasStats.length} {t('dashboard.funnel.stages')} · {totalClientes} {t('dashboard.funnel.contacts')}
                                     </span>
                                 </div>
                                 {etapasStats.length === 0 ? (
-                                    <p style={{ color:'rgba(255,255,255,0.28)', fontSize:'0.82rem' }}>Sin etapas configuradas.</p>
+                                    <p style={{ color:'rgba(255,255,255,0.28)', fontSize:'0.82rem' }}>{t('dashboard.funnel.noStages')}</p>
                                 ) : (
                                     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                                         {etapasStats.map(etapa => {
@@ -805,9 +792,9 @@ export default function Dashboard() {
                 {/* Top Clientes / Top Agentes toggle card */}
                 <div style={{ ...card, display:'flex', flexDirection:'column' }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                        <p style={secTitle}>Top ranking</p>
+                        <p style={secTitle}>{t('dashboard.ranking.title')}</p>
                         <div style={{ display:'flex', background:'rgba(255,255,255,0.06)', borderRadius:8, padding:3, gap:2 }}>
-                            {[['agentes','Agentes'],['clientes','Clientes']].map(([v,lbl]) => (
+                            {[['agentes', t('dashboard.ranking.agents')], ['clientes', t('dashboard.ranking.clients')]].map(([v,lbl]) => (
                                 <button key={v} onClick={() => setTopView(v)} style={{
                                     padding:'4px 12px', borderRadius:6, border:'none', cursor:'pointer',
                                     fontSize:'0.74rem', fontWeight:600, transition:'all 0.15s',
@@ -818,11 +805,11 @@ export default function Dashboard() {
                         </div>
                     </div>
                     {(() => {
-                        const list = topView === 'agentes' ? topStats.topAgentes : topStats.topClientes;
+                        const list = (topView === 'agentes' ? topStats.topAgentes : topStats.topClientes).slice(0, 5);
                         const maxTotal = Math.max(1, ...list.map(r => r.total || 0));
                         if (!list.length) return (
                             <p style={{ color:'rgba(255,255,255,0.28)', fontSize:'0.82rem' }}>
-                                {topView === 'agentes' ? 'Sin ventas registradas.' : 'Sin cargas registradas.'}
+                                {topView === 'agentes' ? t('dashboard.ranking.noSales') : t('dashboard.ranking.noLoads')}
                             </p>
                         );
                         return (
@@ -830,16 +817,19 @@ export default function Dashboard() {
                                 {list.map((row, idx) => (
                                     <div key={row.id || idx} style={{ display:'flex', alignItems:'center', gap:10 }}>
                                         <span style={{ fontSize:'0.72rem', fontWeight:700, color:'rgba(255,255,255,0.28)', width:20, textAlign:'center', flexShrink:0 }}>#{idx+1}</span>
-                                        <div style={{
-                                            width:32, height:32, borderRadius:'50%', flexShrink:0,
-                                            background: AGENT_COLORS[idx % 4] + '22',
-                                            border: `2px solid ${AGENT_COLORS[idx % 4]}`,
-                                            display:'flex', alignItems:'center', justifyContent:'center',
-                                        }}>
-                                            <span style={{ fontSize:'0.68rem', fontWeight:700, color: AGENT_COLORS[idx % 4] }}>
-                                                {(row.nombre || '?').slice(0,2).toUpperCase()}
-                                            </span>
-                                        </div>
+                                        {row.fotoUrl
+                                            ? <img src={row.fotoUrl} alt={row.nombre} style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:`2px solid ${AGENT_COLORS[idx % 4]}` }} />
+                                            : <div style={{
+                                                width:32, height:32, borderRadius:'50%', flexShrink:0,
+                                                background: AGENT_COLORS[idx % 4] + '22',
+                                                border: `2px solid ${AGENT_COLORS[idx % 4]}`,
+                                                display:'flex', alignItems:'center', justifyContent:'center',
+                                            }}>
+                                                <span style={{ fontSize:'0.68rem', fontWeight:700, color: AGENT_COLORS[idx % 4] }}>
+                                                    {(row.nombre || '?').slice(0,2).toUpperCase()}
+                                                </span>
+                                              </div>
+                                        }
                                         <div style={{ flex:1, minWidth:0 }}>
                                             <div style={{ fontSize:'0.82rem', fontWeight:600, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                                 {row.nombre}
@@ -853,7 +843,7 @@ export default function Dashboard() {
                                                 ${row.total >= 1000 ? (row.total / 1000).toFixed(1) + 'K' : row.total?.toFixed(0)}
                                             </div>
                                             <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.35)' }}>
-                                                {topView === 'agentes' ? 'en ventas' : 'en cargas'}
+                                                {topView === 'agentes' ? t('dashboard.ranking.inSales') : t('dashboard.ranking.inLoads')}
                                             </div>
                                         </div>
                                     </div>
@@ -898,13 +888,13 @@ export default function Dashboard() {
                 <div onClick={e => { if (e.target===e.currentTarget) setModalAbandonar(false); }}
                     style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(4px)', zIndex:99999, display:'flex', justifyContent:'center', alignItems:'center' }}>
                     <div style={{ background:'var(--bg-card)', padding:'2rem', borderRadius:14, maxWidth:400, width:'90%', border:'1px solid var(--border-glass)' }}>
-                        <h3 style={{ marginTop:0, color:'#fff' }}>¿Dejar Equipo?</h3>
+                        <h3 style={{ marginTop:0, color:'#fff' }}>{t('dashboard.leaveTeam.title')}</h3>
                         <p style={{ color:'#9ca3af', fontSize:'0.92rem', lineHeight:1.6, marginBottom:24 }}>
-                            ¿Estás seguro? Perderás el acceso al plan premium del administrador y volverás a tu plan gratuito.
+                            {t('dashboard.leaveTeam.message')}
                         </p>
                         <div style={{ display:'flex', gap:12, justifyContent:'flex-end' }}>
-                            <button onClick={() => setModalAbandonar(false)} className="btn-secondary">Cancelar</button>
-                            <button onClick={abandonarEquipo} className="btn-danger">Dejar equipo</button>
+                            <button onClick={() => setModalAbandonar(false)} className="btn-secondary">{t('common.cancel')}</button>
+                            <button onClick={abandonarEquipo} className="btn-danger">{t('common.leaveTeam')}</button>
                         </div>
                     </div>
                 </div>
