@@ -360,8 +360,8 @@ export default function Kanban() {
                                 className="filter-dd-menu show"
                                 style={{
                                     position: 'absolute', top: 'calc(100% + 8px)', left: 0,
-                                    background: '#1a1f2e',
-                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)',
+                                    border: '1px solid rgba(255,255,255,0.08)',
                                     borderRadius: 10,
                                     minWidth: 200,
                                     zIndex: 999,

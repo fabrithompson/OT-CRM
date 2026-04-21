@@ -6,6 +6,8 @@
     --brand-green-hover: #059669;
     --brand-purple: #6366f1;
     --danger: #ef4444;
+    --bg-card: linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%);
+    --card-shadow: 0 4px 24px rgba(0,0,0,0.45);
     --bg-app: #050505;
     --bg-glass: rgba(20, 20, 25, .70);
     --bg-glass-hover: rgba(30, 30, 35, .80);
@@ -134,11 +136,9 @@ body {
     50%       { transform: translateY(-3px); }
 }
 .content-card, .metric-card, .column {
-    background: var(--bg-glass) !important;
-    backdrop-filter: blur(25px) !important;
-    -webkit-backdrop-filter: blur(25px) !important;
-    border: 1px solid var(--border-glass);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+    background: var(--bg-card) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    box-shadow: var(--card-shadow) !important;
 }
 
 .app-container {
@@ -379,12 +379,12 @@ body {
 .section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
 
 .content-card, .metric-card {
-    background: var(--bg-glass); backdrop-filter: blur(15px);
-    border: 1px solid var(--border-glass); border-radius: 16px; padding: 25px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .30);
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 25px;
+    box-shadow: var(--card-shadow);
     transition: transform .2s ease, border-color .2s ease;
 }
-.content-card:hover, .metric-card:hover { border-color: rgba(255, 255, 255, .30); }
+.content-card:hover, .metric-card:hover { border-color: rgba(255, 255, 255, .20); }
 .card-header {
     font-size: 1.1rem; font-weight: 700; color: var(--text-main);
     padding-bottom: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border-glass);
@@ -483,9 +483,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 
 .column {
-    background: var(--bg-glass) !important;
-    backdrop-filter: blur(25px) !important;
-    -webkit-backdrop-filter: blur(25px) !important;
+    background: var(--bg-card) !important;
     border-radius: 14px;
     display: flex;
     flex-direction: column;
@@ -493,14 +491,14 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
     max-height: 100%;
     margin-top: 0 !important;
     min-height: 160px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+    box-shadow: var(--card-shadow) !important;
     overflow: visible !important;
     min-width: 320px;
     width: 320px;
     flex: 0 0 320px;
-    border-left: 1px solid var(--border-glass) !important;
-    border-right: 1px solid var(--border-glass) !important;
-    border-bottom: 1px solid var(--border-glass) !important;
+    border-left: 1px solid rgba(255,255,255,0.08) !important;
+    border-right: 1px solid rgba(255,255,255,0.08) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
     border-top-width: 6px !important;
     border-top-style: solid !important;
     border-top-color: rgba(255, 255, 255, 0.1);
@@ -1142,15 +1140,16 @@ button:focus-visible {
     gap: 25px; padding-bottom: 40px;
 }
 .device-card {
-    background: var(--bg-glass); backdrop-filter: blur(12px);
-    border: 1px solid var(--border-glass); border-radius: 16px; padding: 24px;
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px;
     display: flex; flex-direction: column; justify-content: space-between;
     transition: all 0.3s ease; position: relative; overflow: hidden;
     min-height: 200px;
+    box-shadow: var(--card-shadow);
 }
 .device-card:hover {
-    transform: translateY(-5px); border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    transform: translateY(-5px); border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 .device-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
 .device-icon {
@@ -1224,7 +1223,8 @@ button:focus-visible {
 }
 .custom-modal-overlay.active { display: flex; opacity: 1; }
 .custom-modal {
-    background: #18181b; border: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px; padding: 30px; width: 90%; max-width: 400px;
     text-align: center; transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
@@ -1340,19 +1340,19 @@ img[src$=".webp"], .msg-sticker {
 }
 
 .response-card {
-    background: var(--bg-glass);
-    backdrop-filter: blur(15px);
-    border: 1px solid var(--border-glass);
+    background: var(--bg-card);
+    border: 1px solid rgba(255,255,255,0.08);
     border-radius: 16px;
     padding: 20px;
     display: flex; flex-direction: column;
     transition: transform 0.2s ease, border-color 0.2s ease;
     min-height: 180px;
+    box-shadow: var(--card-shadow);
 }
 .response-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .shortcut-badge {

@@ -28,7 +28,7 @@ Overlay.propTypes = {
 
 function ModalBox({ children }) {
     return (
-        <div style={{ background: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 30, width: '90%', maxWidth: 400, boxShadow: '0 25px 50px rgba(0,0,0,0.7)' }}>
+        <div style={{ background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 30, width: '90%', maxWidth: 400, boxShadow: '0 25px 50px rgba(0,0,0,0.7)' }}>
             {children}
         </div>
     );

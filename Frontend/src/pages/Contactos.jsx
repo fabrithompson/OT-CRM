@@ -340,7 +340,7 @@ export default function Contactos() {
                 <div className="glass-table-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 'calc(100vh - 150px)' }}>
                     <div className="table-scroll-wrapper custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
                         <table className="table custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                            <thead style={{ backgroundColor: '#0f1214' }}>
+                            <thead style={{ backgroundColor: '#0a0a14' }}>
                                 <tr>
                                     <th className="col-left ps-4 sticky-header" style={{ textAlign: 'left' }}>{t('contactos.colName')}</th>
                                     <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colPlatform')}</th>
@@ -359,7 +359,7 @@ export default function Contactos() {
                     <div className="table-footer" style={{ padding: '15px 20px', borderTop: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', gap: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500 }}>{t('contactos.rowsPerPage')}:</span>
-                            <select value={pageSize} onChange={handlePageSize} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', outline: 'none', cursor: 'pointer', backgroundColor: '#1e293b', color: 'white' }}>
+                            <select value={pageSize} onChange={handlePageSize} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', outline: 'none', cursor: 'pointer', backgroundColor: '#0e0e1c', color: 'white' }}>
                                 <option value={10}>10</option><option value={20}>20</option><option value={50}>50</option>
                             </select>
                         </div>
