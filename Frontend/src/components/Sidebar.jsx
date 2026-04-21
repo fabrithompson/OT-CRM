@@ -25,7 +25,7 @@ export default function Sidebar({ onHelpClick }) {
 
             {/* Logo */}
             <div className="sidebar-header">
-                <LogoOrb width={48} height={49} showText={false} onClick={() => navigate('/dashboard')} />
+                <LogoOrb width={60} height={60} showText={false} onClick={() => navigate('/dashboard')} />
             </div>
 
             {/* Nav */}
