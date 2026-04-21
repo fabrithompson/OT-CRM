@@ -285,6 +285,17 @@ export default function Dashboard() {
     }, []);
 
     useEffect(() => {
+        const midnightRef = { current: null };
+        const schedule = () => {
+            const n = new Date();
+            const next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 0);
+            midnightRef.current = setTimeout(() => { fetchRef.current(true); schedule(); }, next - n);
+        };
+        schedule();
+        return () => { if (midnightRef.current) clearTimeout(midnightRef.current); };
+    }, []);
+
+    useEffect(() => {
         const h = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) setPickerOpen(false); };
         document.addEventListener('mousedown', h);
         return () => document.removeEventListener('mousedown', h);
@@ -442,12 +453,19 @@ export default function Dashboard() {
         : 'Buenas noches';
     const firstName = (usuarioActual?.nombreCompleto || usuarioActual?.username || 'Usuario').split(' ')[0];
 
-    const trendLeads    = data.nuevosLeads === 0  ? null : { text: `+${data.nuevosLeads} hoy`, dir: 'up' };
-    const trendConv     = data.totalLeads  === 0  ? null : { text: `${convPct}%`, dir: parseFloat(convPct) >= 5 ? 'up' : 'down' };
-    const trendIngresos = data.totalCarga  === 0  ? null : { text: `+$${(data.totalCarga / 1000).toFixed(0)}K`, dir: 'up' };
-    const trendLeer     = data.leadsSinLeer === 0 ? { text: '✓ Al día', dir: 'up' } : { text: `-${data.leadsSinLeer}`, dir: 'down' };
+    const trendLeads = data.nuevosLeads === 0  ? null : { text: `+${data.nuevosLeads} hoy`, dir: 'up' };
+    const trendConv  = data.totalLeads  === 0  ? null : { text: `${convPct}%`, dir: parseFloat(convPct) >= 5 ? 'up' : 'down' };
+    const trendLeer  = data.leadsSinLeer === 0 ? { text: '✓ Al día', dir: 'up' } : { text: `-${data.leadsSinLeer}`, dir: 'down' };
+    const neto       = (data.totalCarga || 0) - (data.totalRetiro || 0);
+    const fmtMoney   = (v) => v === 0 ? '$0' : Math.abs(v) >= 1000 ? `$${(Math.abs(v)/1000).toFixed(1)}K` : `$${Math.abs(v).toFixed(0)}`;
 
-    const card   = { background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: 16, padding: '20px 22px' };
+    const card   = {
+        background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 16,
+        padding: '20px 22px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
+    };
     const ttStyle = { background: 'rgba(8,8,16,0.96)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: '0.77rem' };
     const secTitle = { margin: 0, fontSize: '0.98rem', fontWeight: 700, color: 'white' };
     const secSub   = { margin: 0, fontSize: '0.73rem', color: 'rgba(255,255,255,0.38)' };
@@ -493,7 +511,7 @@ export default function Dashboard() {
                                 color: dateRange === 'custom' ? 'white' : 'rgba(255,255,255,0.38)',
                             }}>
                                 <i className="fas fa-calendar-alt" style={{ fontSize:'0.7rem' }} />
-                                {dateRange === 'custom' ? 'Custom' : 'Rango'}
+                                {dateRange === 'custom' ? 'Custom' : ''}
                             </button>
                         </div>
                         {pickerOpen && (
@@ -503,7 +521,7 @@ export default function Dashboard() {
                                 borderRadius:12, padding:'16px 18px', minWidth:260,
                                 backdropFilter:'blur(12px)', boxShadow:'0 12px 40px rgba(0,0,0,0.6)',
                             }}>
-                                <p style={{ margin:'0 0 12px', fontSize:'0.8rem', fontWeight:700, color:'white' }}>Rango personalizado</p>
+                                <p style={{ margin:'0 0 12px', fontSize:'0.8rem', fontWeight:700, color:'white' }}></p>
                                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                                     <label style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.5)' }}>
                                         Desde
@@ -513,18 +531,12 @@ export default function Dashboard() {
                                                 borderRadius:8, color:'white', fontSize:'0.82rem', outline:'none' }} />
                                     </label>
                                     <label style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.5)' }}>
-                                        Hasta <span style={{ color:'rgba(255,255,255,0.28)', fontWeight:400 }}>(vacío = ahora)</span>
+                                        Hasta <span style={{ color:'rgba(255,255,255,0.28)', fontWeight:400 }}></span>
                                         <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
                                             style={{ display:'block', width:'100%', marginTop:4, padding:'6px 10px', boxSizing:'border-box',
                                                 background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)',
                                                 borderRadius:8, color:'white', fontSize:'0.82rem', outline:'none' }} />
                                     </label>
-                                    {!customTo && (
-                                        <div style={{ fontSize:'0.72rem', color:'#10b981', display:'flex', alignItems:'center', gap:5 }}>
-                                            <i className="fas fa-clock" />
-                                            {now.toLocaleString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
-                                        </div>
-                                    )}
                                 </div>
                                 <button
                                     disabled={!customFrom}
@@ -536,7 +548,7 @@ export default function Dashboard() {
                                         color: customFrom ? 'white' : 'rgba(255,255,255,0.3)',
                                         fontSize:'0.82rem', fontWeight:600, transition:'all 0.15s',
                                     }}>
-                                    Aplicar rango
+                                    Aplicar Fechas
                                 </button>
                             </div>
                         )}
@@ -589,13 +601,53 @@ export default function Dashboard() {
                     gradient="linear-gradient(135deg,#1e1b4b 0%,#3730a3 50%,#4f46e5 100%)"
                     sparkData={sparkMsgs} gradId="sg2"
                 />
-                <KpiCardV2
-                    icon="fa-coins" label="Ingresos"
-                    value={`$${data.totalCarga > 0 ? (data.totalCarga / 1000).toFixed(0) + 'K' : '0'}`}
-                    trend={trendIngresos?.text ?? null} trendDir={trendIngresos?.dir ?? 'up'}
-                    gradient="linear-gradient(135deg,#4a1d96 0%,#6d28d9 45%,#7c3aed 100%)"
-                    sparkData={sparkCarga} gradId="sg3"
-                />
+                {/* Finance card: neto = ingresos − egresos */}
+                <div style={{
+                    background: 'linear-gradient(135deg,#4a1d96 0%,#6d28d9 45%,#7c3aed 100%)',
+                    borderRadius: 16, padding: '20px 22px 0', overflow: 'hidden',
+                    display: 'flex', flexDirection: 'column', minHeight: 155,
+                }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                        <div style={{ background:'rgba(255,255,255,0.18)', borderRadius:10, width:38, height:38, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            <i className="fas fa-coins" style={{ color:'white', fontSize:'0.95rem' }} />
+                        </div>
+                        {neto !== 0 && (
+                            <span style={{ fontSize:'0.72rem', fontWeight:700, padding:'3px 9px', borderRadius:20, background:'rgba(255,255,255,0.2)', color:'white' }}>
+                                <i className={`fas fa-arrow-${neto > 0 ? 'up' : 'down'}`} style={{ fontSize:'0.6rem', marginRight:3 }} />
+                                {neto > 0 ? '+' : '-'}{fmtMoney(neto)}
+                            </span>
+                        )}
+                    </div>
+                    <div style={{ marginTop:12, flex:1 }}>
+                        <div style={{ fontSize:'1.65rem', fontWeight:800, color: neto < 0 ? '#fca5a5' : 'white', lineHeight:1 }}>
+                            {neto > 0 ? '+' : neto < 0 ? '-' : ''}{fmtMoney(neto)}
+                        </div>
+                        <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.65)', marginTop:4 }}>Neto de la empresa</div>
+                        <div style={{ display:'flex', gap:14, marginTop:8 }}>
+                            <span style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.6)', display:'flex', alignItems:'center', gap:4 }}>
+                                <i className="fas fa-arrow-up" style={{ color:'#86efac', fontSize:'0.58rem' }} />
+                                {fmtMoney(data.totalCarga)}
+                            </span>
+                            <span style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.6)', display:'flex', alignItems:'center', gap:4 }}>
+                                <i className="fas fa-arrow-down" style={{ color:'#fca5a5', fontSize:'0.58rem' }} />
+                                {fmtMoney(data.totalRetiro)}
+                            </span>
+                        </div>
+                    </div>
+                    <div style={{ marginLeft:-22, marginRight:-22, marginTop:8 }}>
+                        <ResponsiveContainer width="100%" height={44}>
+                            <AreaChart data={sparkCarga} margin={{ top:0, right:0, left:0, bottom:0 }}>
+                                <defs>
+                                    <linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%"  stopColor="rgba(255,255,255,0.35)" />
+                                        <stop offset="95%" stopColor="rgba(255,255,255,0)" />
+                                    </linearGradient>
+                                </defs>
+                                <Area type="monotone" dataKey="v" stroke="rgba(255,255,255,0.65)" strokeWidth={1.5} fill="url(#sg3)" dot={false} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
                 <KpiCardV2
                     icon="fa-inbox" label="Sin responder"
                     value={data.leadsSinLeer.toLocaleString()}
@@ -815,30 +867,26 @@ export default function Dashboard() {
             {/* ── Channels status (compact) ── */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16 }}>
                 {[
-                    { label:'WhatsApp', icon:'fa-whatsapp', brand:true,  connected:data.whatsappConectado,  path:'/whatsapp-vincular', color:'#10b981' },
-                    { label:'Telegram', icon:'fa-telegram',  brand:true,  connected:data.telegramConnected,  path:'/telegram-vincular', color:'#818cf8' },
+                    { label:'WhatsApp', icon:'fa-whatsapp', connected:data.whatsappConectado, path:'/whatsapp-vincular', brandColor:'#25D366' },
+                    { label:'Telegram', icon:'fa-telegram', connected:data.telegramConnected, path:'/telegram-vincular', brandColor:'#229ED9' },
                 ].map(ch => (
                     <div key={ch.label} onClick={() => navigate(ch.path)} style={{ ...card, display:'flex', alignItems:'center', gap:14, cursor:'pointer' }}>
                         <div style={{
                             width:42, height:42, borderRadius:12, flexShrink:0,
-                            background: ch.connected ? ch.color+'22' : 'rgba(255,255,255,0.05)',
-                            border:`1px solid ${ch.connected ? ch.color+'55' : 'rgba(255,255,255,0.1)'}`,
+                            background: ch.brandColor + '22',
+                            border:`1px solid ${ch.brandColor}55`,
                             display:'flex', alignItems:'center', justifyContent:'center',
                         }}>
-                            <i className={`${ch.brand?'fab':'fas'} ${ch.icon}`} style={{ color:ch.connected?ch.color:'rgba(255,255,255,0.35)', fontSize:'1.2rem' }} />
+                            <i className={`fab ${ch.icon}`} style={{ color: ch.brandColor, fontSize:'1.2rem' }} />
                         </div>
                         <div style={{ flex:1 }}>
                             <div style={{ fontSize:'0.92rem', fontWeight:600, color:'white' }}>{ch.label}</div>
                             <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3 }}>
-                                <span style={{ width:7, height:7, borderRadius:'50%', background:ch.connected?ch.color:'#6b7280' }} />
-                                <span style={{ fontSize:'0.75rem', color:ch.connected?ch.color:'rgba(255,255,255,0.38)' }}>
+                                <span style={{ width:7, height:7, borderRadius:'50%', background: ch.connected ? ch.brandColor : '#6b7280' }} />
+                                <span style={{ fontSize:'0.75rem', color: ch.connected ? ch.brandColor : 'rgba(255,255,255,0.38)' }}>
                                     {ch.connected ? t('dashboard.channels.connected') : t('dashboard.channels.disconnected')}
                                 </span>
                             </div>
-                        </div>
-                        <div style={{ textAlign:'right' }}>
-                            <div style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.38)' }}>{t('dashboard.kpi.mensajesHoy')}</div>
-                            <div style={{ fontSize:'0.92rem', fontWeight:700, color:'white' }}>{data.mensajesHoy}</div>
                         </div>
                         <i className="fas fa-chevron-right" style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.75rem' }} />
                     </div>
