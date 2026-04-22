@@ -46,6 +46,11 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     long countByAgenciaIdAndFechaRegistroAfter(Long agenciaId, LocalDateTime fecha);
 
+    long countByAgenciaIdAndFechaRegistroBetween(Long agenciaId, LocalDateTime desde, LocalDateTime hasta);
+
+    @Query("SELECT c.dispositivo.plataforma, COUNT(c) FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.fechaRegistro BETWEEN :desde AND :hasta AND c.dispositivo IS NOT NULL GROUP BY c.dispositivo.plataforma")
+    List<Object[]> countByPlataformaAndFechaRegistroBetween(@Param("agenciaId") Long agenciaId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
     long countByAgenciaIdAndMensajesSinLeerGreaterThan(Long agenciaId, int count);
 
     long countByAgenciaId(Long agenciaId);

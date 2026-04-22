@@ -83,7 +83,7 @@ function HelpModal({ open, setOpen }) {
 export default function MainLayout() {
     const token = localStorage.getItem('token');
     const { agenciaId, loading } = useUser();
-    const { playConnect, playDisconnect } = useAudio();
+    const { playConnect, playDisconnect, playNotification } = useAudio();
 
     // Cache sessionId → alias para mostrar el nombre real del dispositivo
     const deviceCacheRef = useRef({});
@@ -152,6 +152,30 @@ export default function MainLayout() {
             clearInterval(heartbeat);
             return originalDeactivate();
         };
+
+        // Notificaciones de mensajes entrantes — suscripción global para funcionar en cualquier página
+        client.subscribe(`/topic/embudo/${agenciaId}`, (msg) => {
+            try {
+                const data = JSON.parse(msg.body);
+                // Reemitir para que Kanban actualice su estado sin necesitar su propia suscripción
+                window.dispatchEvent(new CustomEvent('crm:embudo', { detail: data }));
+
+                const sinLeer = data.mensajesSinLeer ?? 0;
+                if (!data.esSalida && sinLeer > 0) {
+                    // Respetar etapas silenciadas guardadas en localStorage
+                    const mutedArr = JSON.parse(localStorage.getItem('crm_muted_stages') || '[]');
+                    const muted = new Set(mutedArr.map(Number));
+                    const etapaId = data.etapaId;
+                    if (!muted.has(etapaId)) {
+                        playNotification();
+                        const title = data.nombre || 'Nuevo mensaje';
+                        const message = data.ultimoMensaje || data.ultimoMensajeResumen || 'Nuevo mensaje';
+                        window.__crmNotifAdd?.({ title, message, type: 'chat', link: data.clienteId || data.id, timestamp: Date.now() });
+                        pushBrowserNotif(title, message);
+                    }
+                }
+            } catch {}
+        });
 
         client.subscribe(`/topic/bot/${agenciaId}`, (msg) => {
             try {

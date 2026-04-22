@@ -44,10 +44,8 @@ function buildWeeklyData(mensajesHoy, nuevosLeads, totalCarga, range) {
     });
 }
 
-function buildLeadOrigin(total) {
-    if (!total) return [];
-    const wa = Math.round(total * 0.70);
-    const tg = Math.max(0, total - wa);
+function buildLeadOrigin(wa, tg) {
+    if (!wa && !tg) return [];
     return [
         { name: 'WhatsApp', value: wa, color: '#10b981' },
         { name: 'Telegram', value: tg, color: '#818cf8' },
@@ -239,6 +237,7 @@ export default function Dashboard() {
     const [data, setData] = useState({
         nombreUsuario: 'Usuario', rol: 'USER',
         nuevosLeads: 0, leadsSinLeer: 0, totalLeads: 0,
+        waLeads: 0, tgLeads: 0,
         mensajesHoy: 0, totalMensajes: 0,
         totalCarga: 0, totalRetiro: 0,
         ultimasTransacciones: [],
@@ -291,15 +290,35 @@ export default function Dashboard() {
         return () => document.removeEventListener('mousedown', h);
     }, []);
 
-    const fetchData = async (silent = false) => {
+    const buildTopParams = useCallback((range, from, to) => {
+        const params = { periodo: range };
+        if (range === 'custom') {
+            if (from) params.desde = from;
+            if (to)   params.hasta = to;
+        }
+        return params;
+    }, []);
+
+    const fetchTopStats = useCallback(async (range, from, to) => {
+        const params = buildTopParams(range, from, to);
+        try {
+            const res = await api.get('/dashboard/top-stats', { params });
+            setTopStats(res.data || { topClientes: [], topAgentes: [] });
+        } catch (e) {
+            console.error('top-stats fetch error', e);
+        }
+    }, [buildTopParams]);
+
+    const fetchData = async (silent = false, range = dateRange, from = customFrom, to = customTo) => {
         if (!silent) setLoading(true);
+        const params = buildTopParams(range, from, to);
         try {
             const [statsRes, tgRes, waRes, etapasRes, topRes] = await Promise.allSettled([
-                api.get('/dashboard/stats'),
+                api.get('/dashboard/stats', { params }),
                 api.get('/telegram-devices'),
                 api.get('/whatsapp'),
                 api.get('/etapas/stats'),
-                api.get('/dashboard/top-stats'),
+                api.get('/dashboard/top-stats', { params }),
             ]);
             const stats     = statsRes.status === 'fulfilled'  ? statsRes.value.data  : {};
             const tgDevices = tgRes.status === 'fulfilled'     ? tgRes.value.data     : [];
@@ -333,6 +352,8 @@ export default function Dashboard() {
                 nuevosLeads:          stats.nuevosLeads          || 0,
                 leadsSinLeer:         stats.leadsSinLeer         || 0,
                 totalLeads:           stats.totalLeads           || 0,
+                waLeads:              stats.waLeads              || 0,
+                tgLeads:              stats.tgLeads              || 0,
                 mensajesHoy:          stats.mensajesHoy          || 0,
                 totalMensajes:        stats.totalMensajes        || 0,
                 totalCarga:           stats.totalCarga           || 0,
@@ -351,6 +372,10 @@ export default function Dashboard() {
 
     const fetchRef = useRef(null);
     fetchRef.current = fetchData;
+
+    useEffect(() => {
+        fetchRef.current(true, dateRange, customFrom, customTo);
+    }, [dateRange, customFrom, customTo]);
 
     const debouncedRefresh = useCallback(() => {
         if (refreshTimer.current) clearTimeout(refreshTimer.current);
@@ -398,7 +423,7 @@ export default function Dashboard() {
     /* ── Derived data (memoized & deterministic) ── */
     const weeklyData = useMemo(() => buildWeeklyData(data.mensajesHoy, data.nuevosLeads, data.totalCarga, dateRange),
         [data.mensajesHoy, data.nuevosLeads, data.totalCarga, dateRange]);
-    const leadOrigin = useMemo(() => buildLeadOrigin(data.totalLeads), [data.totalLeads]);
+    const leadOrigin = useMemo(() => buildLeadOrigin(data.waLeads, data.tgLeads), [data.waLeads, data.tgLeads]);
     const funnelData = useMemo(() => buildFunnel(data.totalLeads), [data.totalLeads]);
     const heatmap    = useMemo(() => buildHeatmap(data.mensajesHoy), [data.mensajesHoy]);
     const sparkLeads = useMemo(() => buildSparkLine(data.nuevosLeads, data.totalLeads), [data.nuevosLeads, data.totalLeads]);
@@ -731,7 +756,7 @@ export default function Dashboard() {
                             <Tooltip contentStyle={ttStyle} />
                         </PieChart>
                         <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', textAlign:'center', pointerEvents:'none' }}>
-                            <div style={{ fontSize:'1.45rem', fontWeight:800, color:'white' }}>{data.totalLeads.toLocaleString()}</div>
+                            <div style={{ fontSize:'1.45rem', fontWeight:800, color:'white' }}>{(data.waLeads + data.tgLeads).toLocaleString()}</div>
                             <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.38)', textTransform:'uppercase', letterSpacing:1 }}>LEADS</div>
                         </div>
                     </div>

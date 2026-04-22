@@ -7,16 +7,14 @@ import { useToast } from '../context/ToastContext';
 import KanbanColumn from '../components/kanban/KanbanColumn';
 import ChatModal from '../components/kanban/ChatModal';
 import { CreateStageModal, EditStageModal, DeleteStageModal } from '../components/kanban/StageModals';
-import useAudio from '../hooks/useAudio';
 import NotificationBell from '../components/kanban/NotificationBell';
-import { pushBrowserNotif } from '../utils/notifications';
 import { useUser } from '../context/UserContext';
 const PAGE_SIZE = 40;
 
 export default function Kanban() {
     const { t } = useLanguage();
     const toast = useToast();
-    const {playNotification } = useAudio();
+
     const [searchParams] = useSearchParams();
     const { usuario: userCtx, agenciaId } = useUser();
 
@@ -89,7 +87,7 @@ export default function Kanban() {
         return () => clearTimeout(t);
     }, [searchQuery]);
 
-    const handleClienteEvent = useCallback((ev, muted) => {
+    const handleClienteEvent = useCallback((ev) => {
         if (!ev.cliente) return;
         setClientes(prev => {
             const idx = prev.findIndex(c => c.id === (ev.cliente.clienteId || ev.cliente.id));
@@ -100,23 +98,7 @@ export default function Kanban() {
             }
             return [ev.cliente, ...prev];
         });
-        const sinLeer = ev.cliente?.mensajesSinLeer ?? 0;
-        if (!ev.cliente?.esSalida && sinLeer > 0) {
-            const etapaId = ev.cliente?.etapaId || ev.cliente?.etapa?.id;
-            if (!muted.has(etapaId)) {
-                playNotification();
-                const notifTitle = ev.cliente.nombre || 'Nuevo mensaje';
-                const notifMsg   = ev.cliente.ultimoMensaje || ev.cliente.ultimoMensajeResumen || 'Nuevo mensaje';
-                window.__crmNotifAdd?.({
-                    title: notifTitle, message: notifMsg,
-                    type: 'chat', link: ev.cliente.clienteId || ev.cliente.id,
-                    timestamp: Date.now(),
-                });
-                // Notificación nativa del navegador
-                pushBrowserNotif(notifTitle, notifMsg);
-            }
-        }
-    }, [playNotification]);
+    }, []);
 
     const handleEtapasReordenadas = useCallback((ev) => {
         if (!ev.nuevoOrden) return;
@@ -131,11 +113,11 @@ export default function Kanban() {
         const tipo = ev.tipo;
 
         if (tipo === 'NUEVO_LEAD') {
-            handleClienteEvent(ev, mutedStages);
+            handleClienteEvent(ev);
         } else if (tipo === 'CLIENTE_ACTUALIZADO') {
             // REST endpoint sends {tipo, clienteId, nombre, notas} without cliente wrapper
             if (ev.cliente) {
-                handleClienteEvent(ev, mutedStages);
+                handleClienteEvent(ev);
             } else if (ev.clienteId) {
                 setClientes(prev => prev.map(c =>
                     c.id === ev.clienteId
@@ -184,7 +166,7 @@ export default function Kanban() {
         } else if (tipo === 'PLAN_EQUIPO_ACTUALIZADO') {
             window.dispatchEvent(new CustomEvent('crm:plan-updated'));
         }
-    }, [mutedStages, filterEtiquetaId, loadBoard, handleClienteEvent, handleEtapasReordenadas]);
+    }, [filterEtiquetaId, loadBoard, handleClienteEvent, handleEtapasReordenadas]);
 
     wsEventRef.current = handleWSEvent;
 
@@ -197,16 +179,18 @@ export default function Kanban() {
             etapa: data.etapaId ? { id: data.etapaId } : data.etapa,
             ultimoMensajeResumen: data.ultimoMensaje || data.ultimoMensajeResumen,
         };
-        handleClienteEvent({ cliente }, mutedStages);
-    }, [handleClienteEvent, mutedStages]);
+        handleClienteEvent({ cliente });
+    }, [handleClienteEvent]);
+
+    // Escuchar el evento global despachado por MainLayout desde /topic/embudo
+    useEffect(() => {
+        const handler = (e) => { handleEmbudoRef.current?.(e.detail); };
+        window.addEventListener('crm:embudo', handler);
+        return () => window.removeEventListener('crm:embudo', handler);
+    }, []);
 
     const { clientRef: stompRef, connectionStatus } = useWebSocket(agenciaId, handleWSEvent, (client) => {
         client.publish({ destination: '/app/presence', body: JSON.stringify({ username: usuario, status: 'ONLINE', agenciaId, timestamp: Date.now() }) });
-
-        // Mensajes y movimientos de clientes en el kanban
-        client.subscribe(`/topic/embudo/${agenciaId}`, (msg) => {
-            try { handleEmbudoRef.current?.(JSON.parse(msg.body)); } catch {}
-        });
 
         // Cambios de etapas en tiempo real (color, nombre, orden, principal, crear, eliminar)
         client.subscribe(`/topic/agencia/${agenciaId}`, (msg) => {

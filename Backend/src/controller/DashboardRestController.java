@@ -1,6 +1,9 @@
 package controller;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -63,29 +67,65 @@ public class DashboardRestController {
         this.transaccionRepository = transaccionRepository;
     }
 
+    private LocalDateTime[] resolverRango(String periodo, String desde, String hasta) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime fin = now;
+        LocalDateTime inicio;
+        switch (periodo != null ? periodo : "today") {
+            case "sem":
+                inicio = now.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                           .with(LocalTime.MIN);
+                break;
+            case "mes":
+                inicio = now.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN);
+                break;
+            case "anual":
+                inicio = now.with(TemporalAdjusters.firstDayOfYear()).with(LocalTime.MIN);
+                break;
+            case "custom":
+                inicio = (desde != null && !desde.isEmpty())
+                    ? LocalDateTime.parse(desde + "T00:00:00") : now.with(LocalTime.MIN);
+                fin    = (hasta != null && !hasta.isEmpty())
+                    ? LocalDateTime.parse(hasta + "T23:59:59") : now;
+                break;
+            default:
+                inicio = now.with(LocalTime.MIN);
+                break;
+        }
+        return new LocalDateTime[]{ inicio, fin };
+    }
+
     @GetMapping("/top-stats")
-    public ResponseEntity<Map<String, Object>> getTopStats(Principal principal) {
+    public ResponseEntity<Map<String, Object>> getTopStats(
+            Principal principal,
+            @RequestParam(defaultValue = "today") String periodo,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta) {
+
         Usuario usuario = getUsuarioAutenticado(principal.getName());
         if (usuario.getAgencia() == null) {
             return ResponseEntity.ok(Map.of("topClientes", List.of(), "topAgentes", List.of()));
         }
         Long agenciaId = usuario.getAgencia().getId();
         PageRequest top5 = PageRequest.of(0, 5);
+        LocalDateTime[] rango = resolverRango(periodo, desde, hasta);
+        LocalDateTime inicio = rango[0], fin = rango[1];
 
         List<Map<String, Object>> topClientes = transaccionRepository
-                .topClientesByMonto(agenciaId, top5)
+                .topClientesByMonto(agenciaId, inicio, fin, top5)
                 .stream()
                 .map(r -> {
                     Map<String, Object> m = new HashMap<>();
-                    m.put("id",     r[0]);
-                    m.put("nombre", r[1] != null ? r[1] : "Sin nombre");
-                    m.put("total",  r[2]);
+                    m.put("id",      r[0]);
+                    m.put("nombre",  r[1] != null ? r[1] : "Sin nombre");
+                    m.put("total",   r[2]);
+                    m.put("fotoUrl", r[3]);
                     return m;
                 })
                 .collect(Collectors.toList());
 
         List<Map<String, Object>> topAgentes = transaccionRepository
-                .topAgentesByMonto(agenciaId, top5)
+                .topAgentesByMonto(agenciaId, inicio, fin, top5)
                 .stream()
                 .map(r -> {
                     Map<String, Object> m = new HashMap<>();
@@ -93,6 +133,7 @@ public class DashboardRestController {
                     m.put("nombre",   r[1] != null ? r[1] : (r[2] != null ? r[2] : "Agente"));
                     m.put("username", r[2]);
                     m.put("total",    r[3]);
+                    m.put("fotoUrl",  r[4]);
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -101,9 +142,14 @@ public class DashboardRestController {
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getRealTimeStats(Principal principal) {
+    public ResponseEntity<Map<String, Object>> getRealTimeStats(
+            Principal principal,
+            @RequestParam(defaultValue = "today") String periodo,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta) {
         Usuario usuario = getUsuarioAutenticado(principal.getName());
-        Map<String, Object> data = dashboardService.getDashboardData(usuario);
+        LocalDateTime[] rango = resolverRango(periodo, desde, hasta);
+        Map<String, Object> data = dashboardService.getDashboardData(usuario, rango[0], rango[1]);
         return ResponseEntity.ok(data);
     }
 
