@@ -23,7 +23,7 @@ import repository.TransaccionRepository;
 import service.ExcelService;
 
 @RestController
-@RequestMapping("/api/reportes")
+@RequestMapping("/api/v1/reportes")
 public class ReporteController {
 
     private static final Logger log = LoggerFactory.getLogger(ReporteController.class);
