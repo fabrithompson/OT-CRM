@@ -9,6 +9,7 @@ import ChatModal from '../components/kanban/ChatModal';
 import { CreateStageModal, EditStageModal, DeleteStageModal } from '../components/kanban/StageModals';
 import NotificationBell from '../components/kanban/NotificationBell';
 import { useUser } from '../context/UserContext';
+import { getDisplayName } from '../utils/userUtils';
 const PAGE_SIZE = 40;
 
 export default function Kanban() {
@@ -50,7 +51,7 @@ export default function Kanban() {
 
     useEffect(() => {
         if (userCtx) {
-            setUsuario(userCtx.username || userCtx.nombreCompleto || 'Agente');
+            setUsuario(getDisplayName(userCtx));
         }
     }, [userCtx]);
 

@@ -9,6 +9,7 @@ import useWebSocket from '../hooks/useWebSocket';
 import useAudio from '../hooks/useAudio';
 import NotificationBell from '../components/kanban/NotificationBell';
 import { useLanguage } from '../context/LangContext';
+import { getDisplayName } from '../utils/userUtils';
 
 /* ─────────────────────────────────────────────
    Data derivation helpers (deterministic)
@@ -334,7 +335,7 @@ export default function Dashboard() {
 
             setUsuario({
                 username:       usuario.username       || 'Usuario',
-                nombreCompleto: usuario.nombreCompleto || usuario.username || 'Usuario',
+                nombreCompleto: getDisplayName(usuario),
                 email:          usuario.email          || '',
                 fotoUrl:        usuario.fotoUrl        || null,
                 rol,
@@ -347,7 +348,7 @@ export default function Dashboard() {
             }
 
             setData({
-                nombreUsuario:        usuario.nombreCompleto || usuario.username || 'Usuario',
+                nombreUsuario:        getDisplayName(usuario),
                 rol,
                 nuevosLeads:          stats.nuevosLeads          || 0,
                 leadsSinLeer:         stats.leadsSinLeer         || 0,
@@ -463,7 +464,7 @@ export default function Dashboard() {
     const greeting = hour >= 6 && hour < 12 ? t('dashboard.greeting.morning')
         : hour >= 12 && hour < 20 ? t('dashboard.greeting.afternoon')
         : t('dashboard.greeting.evening');
-    const firstName = (usuarioActual?.nombreCompleto || usuarioActual?.username || 'Usuario').split(' ')[0];
+    const firstName = getDisplayName(usuarioActual).split(' ')[0];
 
     const trendLeads = data.nuevosLeads === 0  ? null : { text: `+${data.nuevosLeads} hoy`, dir: 'up' };
     const trendConv  = data.totalLeads  === 0  ? null : { text: `${convPct}%`, dir: parseFloat(convPct) >= 5 ? 'up' : 'down' };

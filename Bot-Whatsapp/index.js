@@ -198,7 +198,7 @@ const startHealthCheck = (sessionId) => {
             state.healthTimer = null;
             scheduleReconnect(sessionId);
         }
-    }, 120000);
+    }, 30000);
 };
 
 const stopHealthCheck = (sessionId) => {
@@ -671,6 +671,8 @@ const startSession = async (sessionId, phoneNumber = null) => {
                 qrStore.delete(sessionId);
                 resetReconnectState(sessionId);
                 startHealthCheck(sessionId);
+                // Limpiar JIDs cacheados para forzar re-verificacion con claves frescas
+                verifiedJids.flushAll();
                 const userPhone = sock.user ? sock.user.id.split(':')[0] : undefined;
                 await updateJavaStatus(sessionId, 'CONNECTED', userPhone);
                 io.emit('bot_status', { sessionId, status: 'CONNECTED' });
