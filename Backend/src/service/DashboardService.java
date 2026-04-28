@@ -60,9 +60,10 @@ public class DashboardService {
 
             Long agenciaId = usuario.getAgencia().getId();
 
-            long nuevosLeads  = clienteRepository.countByAgenciaIdAndFechaRegistroBetween(agenciaId, desde, hasta);
-            long leadsSinLeer = clienteRepository.countByAgenciaIdAndMensajesSinLeerGreaterThan(agenciaId, 0);
-            long totalLeads   = clienteRepository.countByAgenciaId(agenciaId);
+            long nuevosLeads       = clienteRepository.countByAgenciaIdAndFechaRegistroBetween(agenciaId, desde, hasta);
+            long leadsSinLeer      = clienteRepository.countByAgenciaIdAndMensajesSinLeerGreaterThan(agenciaId, 0);
+            long totalLeads        = clienteRepository.countByAgenciaIdAndFechaRegistroBetween(agenciaId, desde, hasta);
+            long clientesConCarga  = transaccionRepository.countClientesConCargaByAgenciaAndFecha(agenciaId, desde, hasta);
 
             long waLeads = 0, tgLeads = 0;
             for (Object[] row : clienteRepository.countByPlataformaAndFechaRegistroBetween(agenciaId, desde, hasta)) {
@@ -75,6 +76,7 @@ public class DashboardService {
             data.put("nuevosLeads", nuevosLeads);
             data.put("leadsSinLeer", leadsSinLeer);
             data.put("totalLeads", totalLeads);
+            data.put("clientesConCarga", clientesConCarga);
             data.put("waLeads", waLeads);
             data.put("tgLeads", tgLeads);
 

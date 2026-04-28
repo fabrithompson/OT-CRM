@@ -32,13 +32,14 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
     const [msgExhausted, setMsgExhausted] = useState(false);
     const [media, setMedia]               = useState([]);
     const [montoInput, setMontoInput]     = useState('');
-    const [isDragging, setIsDragging]     = useState(false);
-    const [pendingFile, setPendingFile]   = useState(null);
-    const [pendingPreview, setPendingPreview] = useState(null);
-    const [captionInput, setCaptionInput] = useState('');
+    const [isDragging, setIsDragging]       = useState(false);
+    const [pendingFiles, setPendingFiles]   = useState([]);
+    const [activeFileIdx, setActiveFileIdx] = useState(0);
+    const [captionInput, setCaptionInput]   = useState('');
 
     const messagesEndRef    = useRef(null);
     const dragCounterRef    = useRef(0);
+    const addFileInputRef   = useRef(null);
     const emojiRef          = useRef(null);
     const messagesAreaRef   = useRef(null);
     const mediaRecorderRef  = useRef(null);
@@ -287,40 +288,56 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         e.stopPropagation();
     }, []);
 
+    const addFilesToQueue = useCallback((fileInput) => {
+        const fileList = Array.from(fileInput);
+        const newEntries = fileList.map(file => ({ file, preview: null }));
+        setPendingFiles(prev => {
+            if (prev.length === 0) setActiveFileIdx(0);
+            return [...prev, ...newEntries];
+        });
+        setCaptionInput('');
+        fileList.forEach(file => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (ev) => setPendingFiles(prev => prev.map(e => e.file === file ? { ...e, preview: ev.target.result } : e));
+                reader.readAsDataURL(file);
+            }
+        });
+    }, []);
+
     const handleDrop = useCallback((e) => {
         e.preventDefault();
         e.stopPropagation();
         dragCounterRef.current = 0;
         setIsDragging(false);
-        const file = e.dataTransfer.files?.[0];
-        if (file) showFilePreview(file);
-    }, []);
+        const files = e.dataTransfer.files;
+        if (files?.length > 0) addFilesToQueue(files);
+    }, [addFilesToQueue]);
 
-    const showFilePreview = (file) => {
-        setPendingFile(file);
+    const confirmSendFile = async () => {
+        if (pendingFiles.length === 0) return;
+        const files = pendingFiles.map(e => e.file);
+        setPendingFiles([]);
+        setActiveFileIdx(0);
         setCaptionInput('');
-        if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (ev) => setPendingPreview(ev.target.result);
-            reader.readAsDataURL(file);
-        } else {
-            setPendingPreview(null);
+        for (const file of files) {
+            await uploadFile(file);
         }
     };
 
-    const confirmSendFile = () => {
-        if (!pendingFile) return;
-        uploadFile(pendingFile);
-        setPendingFile(null);
-        setPendingPreview(null);
+    const cancelSendFile = () => {
+        setPendingFiles([]);
+        setActiveFileIdx(0);
         setCaptionInput('');
     };
 
-    const cancelSendFile = () => {
-        setPendingFile(null);
-        setPendingPreview(null);
-        setCaptionInput('');
-    };
+    const removeFileFromQueue = useCallback((idx) => {
+        setPendingFiles(prev => {
+            const next = prev.filter((_, i) => i !== idx);
+            setActiveFileIdx(curr => Math.min(curr, Math.max(0, next.length - 1)));
+            return next;
+        });
+    }, []);
 
     if (!clienteId) return null;
 
@@ -336,22 +353,19 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
     });
 
     const handleImageFile = (e) => {
-        if (e.target.files[0]) {
-            showFilePreview(e.target.files[0]);
-        }
+        if (e.target.files?.length > 0) addFilesToQueue(e.target.files);
         setShowAttach(false);
     };
 
     const handleDocFile = (e) => {
-        if (e.target.files[0]) {
-            showFilePreview(e.target.files[0]);
-        }
+        if (e.target.files?.length > 0) addFilesToQueue(e.target.files);
         setShowAttach(false);
     };
 
     return (
         <div id="chatModal" className="modal-overlay show" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="pro-modal" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop} style={{ position: 'relative' }}>
+            <div className="pro-modal">
+                <div className="chat-main-panel" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop} style={{ position: 'relative' }}>
                 {isDragging && (
                     <div style={{ position: 'absolute', inset: 0, zIndex: 9999, background: 'rgba(16,185,129,0.15)', border: '3px dashed #10b981', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)', pointerEvents: 'none' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: '#10b981' }}>
@@ -360,7 +374,6 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                         </div>
                     </div>
                 )}
-                <div className="chat-main-panel">
                     <div className="chat-header-pro">
                         <div className="header-info-group">
                             <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, flexShrink: 0 }}>
@@ -411,28 +424,48 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                     </div>
 
                     {/* ── File preview modal ── */}
-                    {pendingFile && (
+                    {pendingFiles.length > 0 && (
                         <div className="file-preview-overlay" onClick={cancelSendFile}>
                             <div className="file-preview-modal" onClick={e => e.stopPropagation()}>
                                 <div className="file-preview-header">
                                     <button className="btn-icon" onClick={cancelSendFile}><i className="fas fa-times"></i></button>
-                                    <span className="file-preview-title">{pendingFile.type.startsWith('image/') ? t('chat.sendImage') : t('chat.sendFile')}</span>
+                                    <span className="file-preview-title">
+                                        {pendingFiles[activeFileIdx]?.file.type.startsWith('image/') ? t('chat.sendImage') : t('chat.sendFile')}
+                                        {pendingFiles.length > 1 && <span style={{ opacity: 0.55, fontWeight: 400, fontSize: '0.85rem', marginLeft: 6 }}>{pendingFiles.length} archivos</span>}
+                                    </span>
                                     <div style={{ width: 32 }} />
                                 </div>
                                 <div className="file-preview-body">
-                                    {pendingPreview ? (
-                                        <img src={pendingPreview} alt="Vista previa" className="file-preview-image" />
+                                    {pendingFiles[activeFileIdx]?.preview ? (
+                                        <img src={pendingFiles[activeFileIdx].preview} alt="Vista previa" className="file-preview-image" />
                                     ) : (
                                         <div className="file-preview-doc">
                                             <div className="file-preview-doc-icon">
                                                 <i className="fas fa-file-alt"></i>
                                             </div>
                                             <div className="file-preview-doc-info">
-                                                <span className="file-preview-doc-name">{pendingFile.name}</span>
-                                                <span className="file-preview-doc-size">{FORMAT_BYTES(pendingFile.size)}</span>
+                                                <span className="file-preview-doc-name">{pendingFiles[activeFileIdx]?.file.name}</span>
+                                                <span className="file-preview-doc-size">{FORMAT_BYTES(pendingFiles[activeFileIdx]?.file.size ?? 0)}</span>
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                                <div className="file-strip">
+                                    {pendingFiles.map((entry, idx) => (
+                                        <div key={idx} className={`file-strip-thumb${idx === activeFileIdx ? ' active' : ''}`} onClick={() => setActiveFileIdx(idx)}>
+                                            {entry.preview
+                                                ? <img src={entry.preview} alt="" />
+                                                : <i className="fas fa-file-alt"></i>
+                                            }
+                                            <button className="file-strip-remove" onClick={e => { e.stopPropagation(); removeFileFromQueue(idx); }}>
+                                                <i className="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button className="file-strip-add" onClick={() => addFileInputRef.current?.click()}>
+                                        <i className="fas fa-plus"></i>
+                                    </button>
+                                    <input ref={addFileInputRef} type="file" hidden multiple onChange={e => { if (e.target.files?.length > 0) addFilesToQueue(e.target.files); e.target.value = ''; }} />
                                 </div>
                                 <div className="file-preview-footer">
                                     <input
@@ -441,6 +474,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                                         value={captionInput}
                                         onChange={e => setCaptionInput(e.target.value)}
                                         onKeyDown={e => { if (e.key === 'Enter') confirmSendFile(); }}
+                                        onPaste={e => { const files = Array.from(e.clipboardData?.items ?? []).filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean); if (files.length > 0) { e.preventDefault(); addFilesToQueue(files); } }}
                                         autoFocus
                                     />
                                     <button className="btn-send-round" onClick={confirmSendFile}><i className="fas fa-paper-plane"></i></button>
@@ -466,8 +500,8 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                         )}
                         {showAttach && (
                             <div className="attach-menu show">
-                                <label htmlFor="attach-image" className="attach-item" style={{ cursor: 'pointer' }}><i className="fas fa-image" style={{ color: '#10b981' }}></i><span>{' '}{t('chat.image')}</span><input id="attach-image" type="file" accept="image/*" hidden onChange={handleImageFile} /></label>
-                                <label htmlFor="attach-doc" className="attach-item" style={{ cursor: 'pointer' }}><i className="fas fa-file" style={{ color: '#3b82f6' }}></i><span>{' '}{t('chat.document')}</span><input id="attach-doc" type="file" hidden onChange={handleDocFile} /></label>
+                                <label htmlFor="attach-image" className="attach-item" style={{ cursor: 'pointer' }}><i className="fas fa-image" style={{ color: '#10b981' }}></i><span>{' '}{t('chat.image')}</span><input id="attach-image" type="file" accept="image/*" multiple hidden onChange={handleImageFile} /></label>
+                                <label htmlFor="attach-doc" className="attach-item" style={{ cursor: 'pointer' }}><i className="fas fa-file" style={{ color: '#3b82f6' }}></i><span>{' '}{t('chat.document')}</span><input id="attach-doc" type="file" multiple hidden onChange={handleDocFile} /></label>
                             </div>
                         )}
                         <button className="btn-icon" onClick={() => { setShowAttach(p => !p); setShowEmoji(false); }}><i className="fas fa-paperclip"></i></button>
@@ -475,7 +509,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
 
                         <div className="input-wrapper relative-context">
                             <SlashMenu suggestions={suggestions} activeIdx={activeIdx} onSelect={apply} />
-                            <input placeholder={t('chat.msgPlaceholder')} value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => { slashKeyDown(e); if (!e.defaultPrevented && e.key === 'Enter' && !e.shiftKey) sendMessage(); }} />
+                            <input placeholder={t('chat.msgPlaceholder')} value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => { slashKeyDown(e); if (!e.defaultPrevented && e.key === 'Enter' && !e.shiftKey) sendMessage(); }} onPaste={e => { const files = Array.from(e.clipboardData?.items ?? []).filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean); if (files.length > 0) { e.preventDefault(); addFilesToQueue(files); } }} />
                         </div>
 
                         <button className={`btn-icon ${isRecording ? 'mic-active' : ''}`} onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}><i className="fas fa-microphone"></i></button>

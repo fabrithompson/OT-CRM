@@ -898,22 +898,114 @@ emoji-picker.show { display: flex; }
 }
 
 .file-preview-footer .btn-send-round {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    background: #10b981;
-    color: #000;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
     border: none;
     display: grid;
     place-content: center;
     cursor: pointer;
-    font-size: 1.1rem;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.40);
     flex-shrink: 0;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .file-preview-footer .btn-send-round:hover {
-    background: #0e9f6e;
-    transform: scale(1.05);
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.55);
+}
+
+/* ── File strip (multi-file preview) ── */
+.file-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #111b21;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.file-strip-thumb {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    background: #202c33;
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: border-color 0.15s;
+}
+
+.file-strip-thumb.active {
+    border-color: #10b981;
+}
+
+.file-strip-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.file-strip-thumb > i {
+    font-size: 1.4rem;
+    color: #8696a0;
+}
+
+.file-strip-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.75);
+    border: none;
+    color: #fff;
+    font-size: 0.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+    padding: 0;
+    line-height: 1;
+}
+
+.file-strip-thumb:hover .file-strip-remove {
+    opacity: 1;
+}
+
+.file-strip-add {
+    width: 52px;
+    height: 52px;
+    border-radius: 8px;
+    background: transparent;
+    border: 2px dashed rgba(255, 255, 255, 0.18);
+    color: #8696a0;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.file-strip-add:hover {
+    border-color: #10b981;
+    color: #10b981;
 }
 
 /* ── Emoji picker overrides for dark theme ── */
