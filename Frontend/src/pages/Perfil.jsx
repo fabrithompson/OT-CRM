@@ -12,8 +12,11 @@ export default function Perfil() {
     const [previewUrl, setPreviewUrl]   = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [mensaje, setMensaje]         = useState({ tipo: '', texto: '' });
-    const [loading, setLoading]         = useState(true);
-    const [saving, setSaving]           = useState(false);
+    const [loading, setLoading]           = useState(true);
+    const [saving, setSaving]             = useState(false);
+    const [codigoEquipo, setCodigoEquipo] = useState('');
+    const [mensajeEquipo, setMensajeEquipo] = useState({ tipo: '', texto: '' });
+    const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
 
     useEffect(() => { fetchPerfil(); }, []);
 
@@ -64,6 +67,23 @@ export default function Perfil() {
         }
     };
 
+    const handleUnirseEquipo = async (e) => {
+        e.preventDefault();
+        const codigo = codigoEquipo.trim().toUpperCase();
+        if (!codigo) return;
+        setEnviandoSolicitud(true);
+        setMensajeEquipo({ tipo: '', texto: '' });
+        try {
+            const res = await api.post('/dashboard/equipo/solicitar-union', { codigo });
+            setMensajeEquipo({ tipo: 'exito', texto: res.data?.message || t('perfil.team.successFallback') });
+            setCodigoEquipo('');
+        } catch (error) {
+            setMensajeEquipo({ tipo: 'error', texto: error.response?.data?.error || t('perfil.team.errorFallback') });
+        } finally {
+            setEnviandoSolicitud(false);
+        }
+    };
+
     if (loading) return (
         <div style={{ padding: '2rem', color: 'white', display: 'flex', justifyContent: 'center' }}>
             <div className="spinner"></div>
@@ -88,7 +108,7 @@ export default function Perfil() {
                     </div>
                 )}
 
-                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px' }}>
+                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px', marginBottom: '24px' }}>
                     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
 
                         {/* Avatar */}
@@ -161,6 +181,78 @@ export default function Perfil() {
                             style={{ padding: '15px', margin: '0 auto', width: '100%', maxWidth: '250px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                         >
                             {saving ? <i className="fas fa-spinner fa-spin"></i> : t('perfil.saveBtn')}
+                        </button>
+                    </form>
+                </div>
+                {/* Equipo */}
+                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--border-glass)' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <i className="fas fa-users" style={{ color: '#6366f1', fontSize: '1.1rem' }}></i>
+                        </div>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{t('perfil.team.title')}</h3>
+                            <p style={{ margin: 0, fontSize: '0.82rem', color: '#6b7280' }}>{t('perfil.team.subtitle')}</p>
+                        </div>
+                    </div>
+
+                    {usuario.agencia && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                                <i className="fas fa-shield-alt" style={{ color: '#6366f1' }}></i>
+                                <span style={{ color: '#c4b5fd', fontSize: '0.88rem' }}>
+                                    {t('perfil.team.currentTeam')} <strong style={{ color: '#fff' }}>{usuario.agencia.nombre}</strong>
+                                </span>
+                            </div>
+                            {usuario.agencia.codigoInvitacion && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                                    <i className="fas fa-key" style={{ color: '#10b981' }}></i>
+                                    <span style={{ color: '#6b7280', fontSize: '0.88rem' }}>{t('perfil.team.yourCode')}</span>
+                                    <code style={{ color: '#10b981', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.12em', background: 'rgba(16,185,129,0.1)', padding: '2px 10px', borderRadius: '6px' }}>
+                                        {usuario.agencia.codigoInvitacion}
+                                    </code>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {mensajeEquipo.texto && (
+                        <div style={{
+                            background: mensajeEquipo.tipo === 'exito' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                            color:      mensajeEquipo.tipo === 'exito' ? '#86efac' : '#fca5a5',
+                            border:     `1px solid ${mensajeEquipo.tipo === 'exito' ? '#10b981' : '#ef4444'}`,
+                            padding: '12px 16px', borderRadius: '10px', marginBottom: '16px',
+                            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem',
+                        }}>
+                            <i className={`fas ${mensajeEquipo.tipo === 'exito' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <span>{mensajeEquipo.texto}</span>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleUnirseEquipo} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af', fontSize: '0.85rem' }}>
+                                {t('perfil.team.codeLabel')}
+                            </label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder={t('perfil.team.codePlaceholder')}
+                                maxLength={7}
+                                value={codigoEquipo}
+                                onChange={e => setCodigoEquipo(e.target.value.toUpperCase())}
+                                style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', outline: 'none', letterSpacing: '0.1em', fontWeight: 600 }}
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={enviandoSolicitud || !codigoEquipo.trim()}
+                            style={{ padding: '12px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: enviandoSolicitud || !codigoEquipo.trim() ? 'not-allowed' : 'pointer', opacity: enviandoSolicitud || !codigoEquipo.trim() ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', flexShrink: 0, marginBottom: "3px" }}
+                        >
+                            {enviandoSolicitud
+                                ? <><i className="fas fa-spinner fa-spin"></i> {t('perfil.team.sending')}</>
+                                : <><i className="fas fa-paper-plane"></i> {t('perfil.team.sendBtn')}</>
+                            }
                         </button>
                     </form>
                 </div>

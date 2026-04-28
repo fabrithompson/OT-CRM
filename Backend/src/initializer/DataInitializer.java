@@ -44,13 +44,13 @@ public class DataInitializer implements CommandLineRunner {
     @Value("${mercadopago.access.token:}")
     private String mpAccessToken;
 
-    @Value("${plan.price.pro:15000.0}")
+    @Value("${plan.price.pro:35000.0}")
     private double planPricePro;
 
-    @Value("${plan.price.business:30000.0}")
+    @Value("${plan.price.business:80000.0}")
     private double planPriceBusiness;
 
-    @Value("${plan.price.enterprise:60000.0}")
+    @Value("${plan.price.enterprise:160000.0}")
     private double planPriceEnterprise;
 
     @Value("${app.base.url}")

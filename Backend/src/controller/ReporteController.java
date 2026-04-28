@@ -2,6 +2,7 @@ package controller;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import model.Transaccion;
 import repository.TransaccionRepository;
@@ -38,9 +40,20 @@ public class ReporteController {
 
     @GetMapping("/descargar/excel")
     @Transactional(readOnly = true)
-    public ResponseEntity<InputStreamResource> descargarExcel() {
+    public ResponseEntity<InputStreamResource> descargarExcel(
+            @RequestParam(defaultValue = "America/Argentina/Buenos_Aires") String timezone) {
         try {
-            List<Transaccion> transacciones = transaccionRepository.findAllByOrderByFechaDesc();
+            ZoneId zona;
+            try {
+                zona = ZoneId.of(timezone);
+            } catch (Exception e) {
+                log.warn("Timezone inválido recibido: '{}', usando Argentina como fallback.", timezone);
+                zona = ZoneId.of("America/Argentina/Buenos_Aires");
+            }
+            LocalDate hoy = LocalDate.now(zona);
+            LocalDateTime inicioDia = hoy.atStartOfDay();
+            LocalDateTime finDia = hoy.atTime(23, 59, 59);
+            List<Transaccion> transacciones = transaccionRepository.findAllByFechaBetweenOrderByFechaDesc(inicioDia, finDia);
 
             if (transacciones == null) {
                 log.error("La base de datos devolvió NULL para la lista de transacciones.");

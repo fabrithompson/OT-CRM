@@ -237,7 +237,7 @@ export default function Dashboard() {
     const [usuarioActual, setUsuario] = useState(null);
     const [data, setData] = useState({
         nombreUsuario: 'Usuario', rol: 'USER',
-        nuevosLeads: 0, leadsSinLeer: 0, totalLeads: 0,
+        nuevosLeads: 0, leadsSinLeer: 0, totalLeads: 0, clientesConCarga: 0,
         waLeads: 0, tgLeads: 0,
         mensajesHoy: 0, totalMensajes: 0,
         totalCarga: 0, totalRetiro: 0,
@@ -353,6 +353,7 @@ export default function Dashboard() {
                 nuevosLeads:          stats.nuevosLeads          || 0,
                 leadsSinLeer:         stats.leadsSinLeer         || 0,
                 totalLeads:           stats.totalLeads           || 0,
+                clientesConCarga:     stats.clientesConCarga     || 0,
                 waLeads:              stats.waLeads              || 0,
                 tgLeads:              stats.tgLeads              || 0,
                 mensajesHoy:          stats.mensajesHoy          || 0,
@@ -433,7 +434,7 @@ export default function Dashboard() {
     const sparkLeer  = useMemo(() => buildSparkLine(data.leadsSinLeer, data.totalLeads), [data.leadsSinLeer, data.totalLeads]);
 
     const cerrados = funnelData[4]?.count ?? 0;
-    const convPct  = data.totalLeads > 0 ? ((cerrados / data.totalLeads) * 100).toFixed(1) : '7.6';
+    const convPct  = data.totalLeads > 0 ? (((data.clientesConCarga ?? 0) / data.totalLeads) * 100).toFixed(1) : '0.0';
 
     const objVentas   = Math.min(99, 72 + (data.nuevosLeads  % 20));
     const objIngresos = Math.min(99, 78 + (data.mensajesHoy  % 15));
@@ -577,7 +578,8 @@ export default function Dashboard() {
                     <button type="button" className="btn-excel-animado" title={t('dashboard.report')}
                         onClick={async () => {
                             try {
-                                const res = await api.get('/reportes/descargar/excel', { responseType: 'blob' });
+                                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                                const res = await api.get('/reportes/descargar/excel', { params: { timezone }, responseType: 'blob' });
                                 const url = URL.createObjectURL(res.data);
                                 const a = document.createElement('a');
                                 a.href = url; a.download = 'reporte.xlsx'; a.click();
