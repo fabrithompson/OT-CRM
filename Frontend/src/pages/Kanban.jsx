@@ -301,6 +301,7 @@ export default function Kanban() {
                         mutedStages={mutedStages}
                         onToggleMute={toggleMute}
                         onMakeMain={() => {}}
+                        onColorChange={(id, color) => setEtapas(prev => prev.map(e => e.id === id ? { ...e, color } : e))}
                     />
                 ))}
                 <button className="ghost-column-placeholder" onClick={() => setCreateOpen(true)} style={{ marginTop: 0, minWidth: 250, flexShrink: 0 }}>

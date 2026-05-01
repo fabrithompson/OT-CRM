@@ -518,7 +518,20 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
     display: none; grid-template-columns: repeat(3, 1fr); gap: 10px;
     z-index: 1000; box-shadow: 0 10px 25px rgba(0,0,0,0.6);
 }
-.color-picker-menu.show { display: flex; animation: fadeIn 0.2s ease-out; }
+.color-picker-menu.show { display: flex; }
+
+@keyframes colorPickerIn {
+    0%   { transform: translateX(-50%) translateY(-10px) scale(0.8); opacity: 0; }
+    65%  { transform: translateX(-50%) translateY(3px) scale(1.05); opacity: 1; }
+    100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+}
+@keyframes colorPickerOut {
+    0%   { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+    25%  { transform: translateX(-50%) translateY(3px) scale(1.05); opacity: 1; }
+    100% { transform: translateX(-50%) translateY(-10px) scale(0.8); opacity: 0; }
+}
+.color-picker-menu.entering { animation: colorPickerIn  0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+.color-picker-menu.exiting  { animation: colorPickerOut 0.22s cubic-bezier(0.6, -0.28, 0.735, 0.045) both; }
 
 .color-option {
     width: 14px; height: 14px; border-radius: 50%; cursor: pointer;
