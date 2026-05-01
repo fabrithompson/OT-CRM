@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import KanbanCard from './KanbanCard';
 import api from '../../utils/api';
@@ -40,26 +40,41 @@ IconBtn.defaultProps = { style: {}, className: '', id: undefined };
 
 export default function KanbanColumn({
     etapa, clientes, onOpenChat, onEditStage, onDeleteStage,
-    onDropCard, onDropColumn, mutedStages, onToggleMute, onMakeMain,
+    onDropCard, onDropColumn, mutedStages, onToggleMute, onMakeMain, onColorChange,
 }) {
     const [showColorPicker, setShowColorPicker] = useState(false);
+    const [pickerClosing, setPickerClosing]     = useState(false);
     const [isDragOver, setIsDragOver]           = useState(false);
     const [isDraggingCol, setIsDraggingCol]     = useState(false);
-    const colRef   = useRef(null);
-    const colorRef = useRef(null);
+    const colRef         = useRef(null);
+    const colorRef       = useRef(null);
+    const pickerTimerRef = useRef(null);
 
     const isMuted = mutedStages.has(etapa.id);
 
-    useEffect(() => {
-        const handler = (e) => {
-            if (colorRef.current && !colorRef.current.contains(e.target)) setShowColorPicker(false);
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
+    const closePicker = useCallback(() => {
+        setPickerClosing(true);
+        if (pickerTimerRef.current) clearTimeout(pickerTimerRef.current);
+        pickerTimerRef.current = setTimeout(() => {
+            setShowColorPicker(false);
+            setPickerClosing(false);
+        }, 220);
     }, []);
 
+    useEffect(() => {
+        const handler = (e) => {
+            if (colorRef.current && !colorRef.current.contains(e.target)) closePicker();
+        };
+        document.addEventListener('mousedown', handler);
+        return () => {
+            document.removeEventListener('mousedown', handler);
+            if (pickerTimerRef.current) clearTimeout(pickerTimerRef.current);
+        };
+    }, [closePicker]);
+
     const changeColor = async (color) => {
-        setShowColorPicker(false);
+        closePicker();
+        onColorChange?.(etapa.id, color);
         try { await api.patch(`/etapas/${etapa.id}/color?color=${encodeURIComponent(color)}`); }
         catch (e) { console.error(e); }
     };
@@ -135,13 +150,13 @@ export default function KanbanColumn({
                             type="button"
                             className="stage-color-dot"
                             style={{ background: color, border: 'none', cursor: 'pointer', padding: 0 }}
-                            onClick={(e) => { e.stopPropagation(); setShowColorPicker(prev => !prev); }}
+                            onClick={(e) => { e.stopPropagation(); showColorPicker ? closePicker() : setShowColorPicker(true); }}
                             title="Cambiar color"
                             aria-label="Cambiar color de etapa"
                         />
                         {showColorPicker && (
                             <div
-                                className="color-picker-menu show"
+                                className={`color-picker-menu ${pickerClosing ? 'exiting' : 'entering'}`}
                                 style={{
                                     position: 'absolute',
                                     top: 'calc(100% + 6px)',

@@ -80,7 +80,7 @@ export default function Landing() {
     {
       key: 'PRO', icon: 'fa-bolt', name: 'Pro',
       tagline: t('landing.pricing.pro.tagline'),
-      precio: '15.000',
+      precio: '35.000',
       dispositivos: t('landing.pricing.pro.dispositivos'),
       badge: 'popular',
       beneficios: [t('landing.pricing.pro.b1'), t('landing.pricing.pro.b2'), t('landing.pricing.pro.b3'), t('landing.pricing.pro.b4')],
@@ -89,7 +89,7 @@ export default function Landing() {
     {
       key: 'BUSINESS', icon: 'fa-building', name: 'Business',
       tagline: t('landing.pricing.business.tagline'),
-      precio: '30.000',
+      precio: '80.000',
       dispositivos: t('landing.pricing.business.dispositivos'),
       badge: 'business',
       beneficios: [t('landing.pricing.business.b1'), t('landing.pricing.business.b2'), t('landing.pricing.business.b3'), t('landing.pricing.business.b4')],
@@ -98,7 +98,7 @@ export default function Landing() {
     {
       key: 'ENTERPRISE', icon: 'fa-gem', name: 'Enterprise',
       tagline: t('landing.pricing.enterprise.tagline'),
-      precio: '60.000',
+      precio: '160.000',
       dispositivos: t('landing.pricing.enterprise.dispositivos'),
       badge: 'vip',
       beneficios: [t('landing.pricing.enterprise.b1'), t('landing.pricing.enterprise.b2'), t('landing.pricing.enterprise.b3'), t('landing.pricing.enterprise.b4')],
