@@ -14,9 +14,12 @@ import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -29,6 +32,7 @@ import model.Mensaje;
 import model.Usuario;
 import repository.ClienteRepository;
 import repository.UsuarioRepository;
+import service.AiAgentService;
 import service.ChatService;
 import service.CloudStorageService;
 import service.TelegramBridgeService;
@@ -47,6 +51,10 @@ public class ChatController {
     private final CloudStorageService cloudStorageService;
     private final UsuarioRepository usuarioRepository;
     private final SimpMessagingTemplate messaging;
+    private final AiAgentService aiAgentService;
+
+    @Value("${bot.secret.key}")
+    private String botSecretKey;
 
     public ChatController(ChatService chatService,
                           WhatsAppService whatsAppService,
@@ -54,7 +62,8 @@ public class ChatController {
                           ClienteRepository clienteRepository,
                           CloudStorageService cloudStorageService,
                           UsuarioRepository usuarioRepository,
-                          SimpMessagingTemplate messaging) {
+                          SimpMessagingTemplate messaging,
+                          AiAgentService aiAgentService) {
         this.chatService = chatService;
         this.whatsAppService = whatsAppService;
         this.telegramBridgeService = telegramBridgeService;
@@ -62,6 +71,7 @@ public class ChatController {
         this.cloudStorageService = cloudStorageService;
         this.usuarioRepository = usuarioRepository;
         this.messaging = messaging;
+        this.aiAgentService = aiAgentService;
     }
 
     @GetMapping("/{clienteId}/historial")
@@ -172,6 +182,32 @@ public class ChatController {
         long nuevos = chatService.contarNuevosDesde(hace24h, usuario.getAgencia().getId());
 
         return Map.of("nuevos_24h", nuevos);
+    }
+
+    @PostMapping("/incoming")
+    public ResponseEntity<Void> incoming(
+            @RequestHeader("X-Bot-Token") String token,
+            @RequestBody Map<String, Object> payload) {
+
+        if (!botSecretKey.equals(token)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Object rawId = payload.get("clienteId");
+        Object rawMsg = payload.get("message");
+        if (rawId == null || rawMsg == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Long clienteId;
+        try {
+            clienteId = Long.valueOf(rawId.toString());
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        aiAgentService.processCustomerMessage(clienteId, rawMsg.toString());
+        return ResponseEntity.ok().build();
     }
 
     private Usuario getUsuario(UserDetails userDetails) {
