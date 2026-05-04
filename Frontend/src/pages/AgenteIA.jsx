@@ -1,51 +1,77 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LangContext';
+import '../assets/css/dashboard.css';
+
+const chatKey = (id) => `crm_agente_chat_${id}`;
 
 export default function AgenteIA() {
     const { t } = useLanguage();
-    const { usuario, loading: userLoading } = useUser();
+    const { usuario, agenciaId, loading: userLoading } = useUser();
     const navigate = useNavigate();
 
     const isEnterprise = usuario?.plan?.nombre === 'ENTERPRISE';
 
-    // Config state
     const [instructions, setInstructions] = useState('');
     const [businessContext, setBusinessContext] = useState('');
     const [enabled, setEnabled] = useState(false);
-    const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | saved
+    const [saveStatus, setSaveStatus] = useState('idle');
 
-    // Chat state
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [chatLoading, setChatLoading] = useState(false);
     const messagesEndRef = useRef(null);
+    const chatReady = useRef(false);
 
+    // Init messages from localStorage once agenciaId is known
+    useEffect(() => {
+        if (!isEnterprise || userLoading || !agenciaId || chatReady.current) return;
+        chatReady.current = true;
+        try {
+            const saved = JSON.parse(localStorage.getItem(chatKey(agenciaId)) || '[]');
+            setMessages(saved.length > 0 ? saved : [{ role: 'assistant', content: t('agente.welcomeMsg') }]);
+        } catch {
+            setMessages([{ role: 'assistant', content: t('agente.welcomeMsg') }]);
+        }
+    }, [isEnterprise, userLoading, agenciaId, t]);
+
+    // Persist chat on every change
+    useEffect(() => {
+        if (!agenciaId || !chatReady.current || messages.length === 0) return;
+        localStorage.setItem(chatKey(agenciaId), JSON.stringify(messages));
+    }, [messages, agenciaId]);
+
+    // Load agent config
     useEffect(() => {
         if (!isEnterprise || userLoading) return;
-        setMessages([{ role: 'assistant', content: t('agente.welcomeMsg') }]);
         api.get('/agent-config').then(res => {
             setInstructions(res.data.instructions || '');
             setBusinessContext(res.data.businessContext || '');
             setEnabled(res.data.enabled || false);
         }).catch(() => {});
-    }, [isEnterprise, userLoading, t]);
+    }, [isEnterprise, userLoading]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    const clearChat = useCallback(() => {
+        const welcome = [{ role: 'assistant', content: t('agente.welcomeMsg') }];
+        setMessages(welcome);
+        if (agenciaId) localStorage.setItem(chatKey(agenciaId), JSON.stringify(welcome));
+    }, [t, agenciaId]);
+
     const sendMessage = async () => {
         const text = input.trim();
         if (!text || chatLoading) return;
-        const newMessages = [...messages, { role: 'user', content: text }];
-        setMessages(newMessages);
+        const next = [...messages, { role: 'user', content: text }];
+        setMessages(next);
         setInput('');
         setChatLoading(true);
         try {
-            const res = await api.post('/agent-config/chat', { messages: newMessages });
+            const res = await api.post('/agent-config/chat', { messages: next });
             setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }]);
         } catch {
             setMessages(prev => [...prev, { role: 'assistant', content: t('agente.errorMsg') }]);
@@ -55,10 +81,7 @@ export default function AgenteIA() {
     };
 
     const handleKeyDown = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     };
 
     const saveConfig = async () => {
@@ -73,15 +96,19 @@ export default function AgenteIA() {
     };
 
     if (userLoading) {
-        return <div className="main-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.5)' }}>{t('common.loading')}</span>
-        </div>;
+        return (
+            <div className="db-root" style={{ alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: 'rgba(255,255,255,0.5)' }}>{t('common.loading')}</span>
+            </div>
+        );
     }
 
     return (
-        <div className="main-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-
-            {/* Gate modal for non-enterprise users */}
+        <div
+            className="db-root"
+            style={{ '--db-accent': '#22d3ee', height: '100%', overflow: 'hidden', gap: 0 }}
+        >
+            {/* Gate modal */}
             {!isEnterprise && (
                 <div style={{
                     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
@@ -113,61 +140,73 @@ export default function AgenteIA() {
                 </div>
             )}
 
-            {/* Page header */}
-            <div style={{ padding: '24px 28px 0', flexShrink: 0 }}>
-                <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>
-                    <i className="fa-solid fa-robot" style={{ marginRight: 10, color: '#22d3ee' }} />
-                    {t('agente.title')}
-                </h1>
-                <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
-                    {t('agente.subtitle')}
-                </p>
+            {/* Topbar */}
+            <div className="db-topbar" style={{ flexShrink: 0 }}>
+                <div>
+                    <div className="db-greeting" style={{ fontSize: 'clamp(1.1rem, 2vw, 1.45rem)' }}>
+                        <i className="fa-solid fa-robot" style={{ marginRight: 10, color: '#22d3ee' }} />
+                        {t('agente.title')}
+                    </div>
+                    <div className="db-subtitle">{t('agente.subtitle')}</div>
+                </div>
+                {enabled && (
+                    <div className="db-online-badge">
+                        <span className="db-online-dot" />
+                        {t('agente.active')}
+                    </div>
+                )}
             </div>
 
             {/* Two-column layout */}
             <div style={{
                 display: 'flex', gap: 20, flex: 1,
-                padding: '20px 28px 24px', overflow: 'hidden',
-                minHeight: 0,
+                padding: '0 28px 24px', overflow: 'hidden', minHeight: 0,
             }}>
-
-                {/* Left: Setup chat */}
-                <div style={{
+                {/* Chat panel */}
+                <div className="db-card" style={{
                     flex: '0 0 55%', display: 'flex', flexDirection: 'column',
-                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: 16, overflow: 'hidden', minHeight: 0,
+                    padding: 0, overflow: 'hidden', minHeight: 0,
                 }}>
                     <div style={{
                         padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-                        flexShrink: 0,
+                        flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}>
-                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                            <i className="fa-solid fa-comments" style={{ marginRight: 8, color: '#22d3ee' }} />
+                        <span className="db-card-title" style={{ fontSize: '0.8rem' }}>
+                            <i className="fa-solid fa-comments" style={{ marginRight: 8, color: '#22d3ee', opacity: 1 }} />
                             {t('agente.chatTitle')}
                         </span>
+                        <button
+                            type="button"
+                            onClick={clearChat}
+                            title={t('agente.clearChat')}
+                            style={{
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: 'rgba(255,255,255,0.35)', padding: '4px 6px',
+                                borderRadius: 6, fontSize: '0.8rem', transition: '0.15s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; }}
+                        >
+                            <i className="fas fa-trash-alt" />
+                        </button>
                     </div>
 
-                    {/* Messages */}
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{
+                        flex: 1, overflowY: 'auto', padding: '16px 18px',
+                        display: 'flex', flexDirection: 'column', gap: 12,
+                    }}>
                         {messages.map((msg, i) => (
                             <div key={i} style={{
                                 display: 'flex',
                                 justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                             }}>
                                 <div style={{
-                                    maxWidth: '80%',
-                                    padding: '10px 14px',
+                                    maxWidth: '80%', padding: '10px 14px',
                                     borderRadius: msg.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                                    background: msg.role === 'user'
-                                        ? 'rgba(34,211,238,0.15)'
-                                        : 'rgba(255,255,255,0.06)',
-                                    border: msg.role === 'user'
-                                        ? '1px solid rgba(34,211,238,0.25)'
-                                        : '1px solid rgba(255,255,255,0.08)',
-                                    fontSize: '0.9rem',
-                                    lineHeight: 1.55,
-                                    color: 'rgba(255,255,255,0.9)',
-                                    whiteSpace: 'pre-wrap',
+                                    background: msg.role === 'user' ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.06)',
+                                    border: msg.role === 'user' ? '1px solid rgba(34,211,238,0.25)' : '1px solid rgba(255,255,255,0.08)',
+                                    fontSize: '0.9rem', lineHeight: 1.55,
+                                    color: 'rgba(255,255,255,0.9)', whiteSpace: 'pre-wrap',
                                 }}>
                                     {msg.content}
                                 </div>
@@ -176,10 +215,8 @@ export default function AgenteIA() {
                         {chatLoading && (
                             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                                 <div style={{
-                                    padding: '10px 16px',
-                                    borderRadius: '14px 14px 14px 2px',
-                                    background: 'rgba(255,255,255,0.06)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    padding: '10px 16px', borderRadius: '14px 14px 14px 2px',
+                                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
                                     fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)',
                                 }}>
                                     <i className="fa-solid fa-ellipsis fa-fade" />
@@ -189,7 +226,6 @@ export default function AgenteIA() {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Input */}
                     <div style={{
                         padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,0.06)',
                         display: 'flex', gap: 10, flexShrink: 0,
@@ -200,10 +236,7 @@ export default function AgenteIA() {
                             onKeyDown={handleKeyDown}
                             placeholder={t('agente.inputPlaceholder')}
                             rows={2}
-                            style={{
-                                flex: 1, resize: 'none', fontSize: '0.9rem',
-                                padding: '10px 14px', borderRadius: 10,
-                            }}
+                            style={{ flex: 1, resize: 'none', fontSize: '0.9rem', padding: '10px 14px', borderRadius: 10 }}
                         />
                         <button
                             onClick={sendMessage}
@@ -222,33 +255,31 @@ export default function AgenteIA() {
                     </div>
                 </div>
 
-                {/* Right: Config panel */}
+                {/* Config panel */}
                 <div style={{
-                    flex: '0 0 calc(45% - 20px)', display: 'flex', flexDirection: 'column', gap: 16,
-                    overflowY: 'auto', minHeight: 0,
+                    flex: '0 0 calc(45% - 20px)', display: 'flex', flexDirection: 'column',
+                    gap: 16, overflowY: 'auto', minHeight: 0,
                 }}>
-                    <div style={{
-                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-                        borderRadius: 16, padding: '20px',
-                    }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 600 }}>
-                            <i className="fa-solid fa-sliders" style={{ marginRight: 8, color: '#22d3ee' }} />
-                            {t('agente.configTitle')}
-                        </h3>
+                    <div className="db-card">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                            <i className="fa-solid fa-sliders" style={{ color: '#22d3ee' }} />
+                            <span className="db-card-title">{t('agente.configTitle')}</span>
+                        </div>
 
-                        {/* Enabled toggle */}
-                        <div style={{
+                        <div className="db-metric-card" style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '14px 16px', borderRadius: 12,
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.06)',
                             marginBottom: 16,
                         }}>
                             <div>
                                 <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('agente.enabledLabel')}</div>
-                                <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', marginTop: 2 }}>{t('agente.enabledSub')}</div>
+                                <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', marginTop: 2 }}>
+                                    {t('agente.enabledSub')}
+                                </div>
                             </div>
-                            <label style={{ position: 'relative', display: 'inline-block', width: 46, height: 26, cursor: 'pointer' }}>
+                            <label style={{
+                                position: 'relative', display: 'inline-block',
+                                width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
+                            }}>
                                 <input
                                     type="checkbox"
                                     checked={enabled}
@@ -261,8 +292,7 @@ export default function AgenteIA() {
                                     transition: '0.2s',
                                 }}>
                                     <span style={{
-                                        position: 'absolute',
-                                        top: 3, left: enabled ? 23 : 3,
+                                        position: 'absolute', top: 3, left: enabled ? 23 : 3,
                                         width: 20, height: 20, borderRadius: '50%',
                                         background: '#fff', transition: '0.2s',
                                     }} />
@@ -270,7 +300,6 @@ export default function AgenteIA() {
                             </label>
                         </div>
 
-                        {/* Instructions */}
                         <div style={{ marginBottom: 16 }}>
                             <label style={{ display: 'block', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>
                                 {t('agente.instructionsLabel')}
@@ -284,7 +313,6 @@ export default function AgenteIA() {
                             />
                         </div>
 
-                        {/* Business context */}
                         <div style={{ marginBottom: 20 }}>
                             <label style={{ display: 'block', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>
                                 {t('agente.contextLabel')}
@@ -304,12 +332,8 @@ export default function AgenteIA() {
                             className="btn-primary"
                             style={{ width: '100%' }}
                         >
-                            {saveStatus === 'saving' && <i className="fa-solid fa-spinner fa-spin" />}
-                            {saveStatus === 'saved' && <i className="fa-solid fa-check" />}
-                            {saveStatus === 'idle' && <i className="fa-solid fa-floppy-disk" />}
-                            {saveStatus === 'saving' ? t('agente.saving')
-                                : saveStatus === 'saved' ? t('agente.saved')
-                                : t('agente.save')}
+                            <i className={`fa-solid ${saveStatus === 'saving' ? 'fa-spinner fa-spin' : saveStatus === 'saved' ? 'fa-check' : 'fa-floppy-disk'}`} style={{ marginRight: 6 }} />
+                            {saveStatus === 'saving' ? t('agente.saving') : saveStatus === 'saved' ? t('agente.saved') : t('agente.save')}
                         </button>
                     </div>
                 </div>
