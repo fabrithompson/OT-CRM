@@ -24,8 +24,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import model.AgentConfig;
 import model.Agencia;
+import model.RespuestaRapida;
 import model.Usuario;
 import repository.AgentConfigRepository;
+import repository.RespuestaRapidaRepository;
 import repository.UsuarioRepository;
 
 @RestController
@@ -44,13 +46,16 @@ public class AgentConfigController {
     private final ChatModel chatModel;
     private final AgentConfigRepository agentConfigRepository;
     private final UsuarioRepository usuarioRepository;
+    private final RespuestaRapidaRepository respuestaRapidaRepository;
 
     public AgentConfigController(ChatModel chatModel,
                                   AgentConfigRepository agentConfigRepository,
-                                  UsuarioRepository usuarioRepository) {
+                                  UsuarioRepository usuarioRepository,
+                                  RespuestaRapidaRepository respuestaRapidaRepository) {
         this.chatModel = chatModel;
         this.agentConfigRepository = agentConfigRepository;
         this.usuarioRepository = usuarioRepository;
+        this.respuestaRapidaRepository = respuestaRapidaRepository;
     }
 
     record ChatMessage(String role, String content) {}
@@ -89,14 +94,18 @@ public class AgentConfigController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
+    @Transactional(readOnly = true)
     @PostMapping("/chat")
-    public ResponseEntity<?> chat(@RequestBody ChatRequest req) {
+    public ResponseEntity<?> chat(@AuthenticationPrincipal UserDetails userDetails,
+                                   @RequestBody ChatRequest req) {
         if (req.messages() == null || req.messages().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "No messages"));
         }
 
+        String systemPrompt = buildChatSystemPrompt(userDetails);
+
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(SETUP_SYSTEM_PROMPT));
+        messages.add(new SystemMessage(systemPrompt));
         for (ChatMessage m : req.messages()) {
             if ("user".equals(m.role())) {
                 messages.add(new UserMessage(m.content()));
@@ -112,6 +121,25 @@ public class AgentConfigController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    private String buildChatSystemPrompt(UserDetails userDetails) {
+        StringBuilder sb = new StringBuilder(SETUP_SYSTEM_PROMPT);
+        try {
+            Usuario usuario = getUsuario(userDetails);
+            if (usuario.getAgencia() != null) {
+                List<RespuestaRapida> respuestas = respuestaRapidaRepository.findByAgencia(usuario.getAgencia());
+                if (!respuestas.isEmpty()) {
+                    sb.append("\n\nRespuestas rápidas ya configuradas en el CRM de este negocio " +
+                              "(podés referenciarlas o sugerir mejoras):\n");
+                    for (RespuestaRapida r : respuestas) {
+                        sb.append("- /").append(r.getAtajo())
+                          .append(" → \"").append(r.getRespuesta()).append("\"\n");
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return sb.toString();
     }
 
     private Map<String, Object> defaultConfig() {

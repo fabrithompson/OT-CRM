@@ -452,6 +452,8 @@ export const TRANSLATIONS = {
       gateMsg: 'Solo los usuarios con el plan Enterprise pueden acceder al Agente IA. Mejorá tu plan para desbloquear esta funcionalidad.',
       gateClose: 'Cerrar',
       gateUpgrade: 'Mejorar Plan',
+      clearChat: 'Limpiar chat',
+      active: 'Activo',
     },
     landing: {
       nav: { inicio: 'Inicio', precios: 'Precios', nosotros: 'Nosotros', soporte: 'Soporte', ingresar: 'Ingresar' },
@@ -980,6 +982,8 @@ export const TRANSLATIONS = {
       gateMsg: 'Only users with the Enterprise plan can access the AI Agent. Upgrade your plan to unlock this feature.',
       gateClose: 'Close',
       gateUpgrade: 'Upgrade Plan',
+      clearChat: 'Clear chat',
+      active: 'Active',
     },
     landing: {
       nav: { inicio: 'Home', precios: 'Pricing', nosotros: 'About', soporte: 'Support', ingresar: 'Sign In' },
