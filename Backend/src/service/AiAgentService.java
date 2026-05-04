@@ -3,6 +3,7 @@ package service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -10,6 +11,7 @@ import model.AgentConfig;
 import model.AiConversationState;
 import model.AiConversationState.AiStatus;
 import model.Cliente;
+import model.Plan;
 import repository.AgentConfigRepository;
 import repository.AiConversationStateRepository;
 import repository.ClienteRepository;
@@ -26,19 +28,22 @@ public class AiAgentService {
     private final ClienteRepository clienteRepository;
     private final WhatsAppService whatsAppService;
     private final TelegramBridgeService telegramBridgeService;
+    private final SubscriptionValidationService subscriptionValidationService;
 
     public AiAgentService(ChatClient chatClient,
                           AgentConfigRepository agentConfigRepository,
                           AiConversationStateRepository aiStateRepository,
                           ClienteRepository clienteRepository,
-                          WhatsAppService whatsAppService,
-                          TelegramBridgeService telegramBridgeService) {
+                          @Lazy WhatsAppService whatsAppService,
+                          TelegramBridgeService telegramBridgeService,
+                          SubscriptionValidationService subscriptionValidationService) {
         this.chatClient = chatClient;
         this.agentConfigRepository = agentConfigRepository;
         this.aiStateRepository = aiStateRepository;
         this.clienteRepository = clienteRepository;
         this.whatsAppService = whatsAppService;
         this.telegramBridgeService = telegramBridgeService;
+        this.subscriptionValidationService = subscriptionValidationService;
     }
 
     /**
@@ -50,6 +55,9 @@ public class AiAgentService {
         if (clienteId == null || incomingMessage == null) return false;
         Cliente cliente = clienteRepository.findById(clienteId).orElse(null);
         if (cliente == null || cliente.getAgencia() == null) return false;
+
+        Plan plan = subscriptionValidationService.getPlanEfectivoAgencia(cliente.getAgencia());
+        if (!"ENTERPRISE".equals(plan.getNombre())) return false;
 
         Long agenciaId = cliente.getAgencia().getId();
         AgentConfig config = agentConfigRepository.findByAgenciaId(agenciaId).orElse(null);

@@ -17,7 +17,9 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -64,6 +66,11 @@ public class WhatsAppService {
     private final TelegramBridgeService bridgeService;
     private final SubscriptionValidationService subscriptionValidationService;
     private final CloudStorageService cloudStorageService;
+
+    @Lazy
+    @Autowired
+    private AiAgentService aiAgentService;
+
     private final Cache<String, Object> phoneLocks = Caffeine.newBuilder()
             .expireAfterAccess(2, TimeUnit.MINUTES)
             .maximumSize(10_000)
@@ -187,6 +194,14 @@ public class WhatsAppService {
             }
 
             guardarMensajeEntrante(req, cliente);
+
+            if (req.texto() != null && !req.texto().isBlank()) {
+                try {
+                    aiAgentService.processCustomerMessage(cliente.getId(), req.texto());
+                } catch (Exception e) {
+                    log.warn("AI agent error for cliente {}: {}", cliente.getId(), e.getMessage());
+                }
+            }
 
         } catch (Exception e) {
             log.error("Error procesando mensaje entrante de {}: {}", req.from(), e.getMessage(), e);
