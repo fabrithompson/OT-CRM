@@ -177,6 +177,25 @@ export default function MainLayout() {
             } catch {}
         });
 
+        client.subscribe(`/topic/agencia/${agenciaId}`, (msg) => {
+            try {
+                const data = JSON.parse(msg.body);
+                if (data.tipo === 'NUEVA_SOLICITUD') {
+                    playNotification();
+                    const nombre = data.nombreUsuario || 'Usuario';
+                    window.__crmNotifAdd?.({
+                        title: t('notif.teamRequest'),
+                        message: `${nombre} ${t('notif.teamRequestMsg')}`,
+                        type: 'TEAM_REQUEST',
+                        link: null,
+                        timestamp: Date.now(),
+                    });
+                    pushBrowserNotif(t('notif.teamRequest'), `${nombre} ${t('notif.teamRequestMsg')}`);
+                    window.dispatchEvent(new CustomEvent('crm:nueva-solicitud', { detail: data }));
+                }
+            } catch {}
+        });
+
         client.subscribe(`/topic/bot/${agenciaId}`, (msg) => {
             try {
                 const ev = JSON.parse(msg.body);

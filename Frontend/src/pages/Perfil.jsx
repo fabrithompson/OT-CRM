@@ -17,8 +17,27 @@ export default function Perfil() {
     const [codigoEquipo, setCodigoEquipo] = useState('');
     const [mensajeEquipo, setMensajeEquipo] = useState({ tipo: '', texto: '' });
     const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+    const [solicitudes, setSolicitudes]   = useState([]);
+    const [gestionando, setGestionando]   = useState(null);
+
+    const isAdmin = ['OWNER', 'ADMIN'].includes(usuario.rol);
+
+    const fetchSolicitudes = async () => {
+        try {
+            const res = await api.get('/dashboard/equipo/solicitudes-pendientes');
+            setSolicitudes(res.data || []);
+        } catch {}
+    };
 
     useEffect(() => { fetchPerfil(); }, []);
+
+    useEffect(() => {
+        if (!isAdmin) return;
+        fetchSolicitudes();
+        const handler = () => fetchSolicitudes();
+        window.addEventListener('crm:nueva-solicitud', handler);
+        return () => window.removeEventListener('crm:nueva-solicitud', handler);
+    }, [isAdmin]);
 
     const fetchPerfil = async () => {
         try {
@@ -65,6 +84,15 @@ export default function Perfil() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleGestionar = async (solicitudId, aprobar) => {
+        setGestionando(solicitudId);
+        try {
+            await api.post('/dashboard/equipo/gestionar-solicitud', { solicitudId, aprobar });
+            setSolicitudes(prev => prev.filter(s => s.id !== solicitudId));
+        } catch {}
+        finally { setGestionando(null); }
     };
 
     const handleUnirseEquipo = async (e) => {
@@ -185,7 +213,7 @@ export default function Perfil() {
                     </form>
                 </div>
                 {/* Equipo */}
-                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px' }}>
+                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px', marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--border-glass)' }}>
                         <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <i className="fas fa-users" style={{ color: '#6366f1', fontSize: '1.1rem' }}></i>
@@ -256,6 +284,80 @@ export default function Perfil() {
                         </button>
                     </form>
                 </div>
+
+                {/* Solicitudes pendientes — solo admins */}
+                {isAdmin && (
+                    <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--border-glass)' }}>
+                            <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(167,139,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <i className="fas fa-user-plus" style={{ color: '#a78bfa', fontSize: '1.1rem' }}></i>
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+                                    {t('solicitudes.title')}
+                                    {solicitudes.length > 0 && (
+                                        <span style={{ marginLeft: 8, background: '#a78bfa', color: '#fff', borderRadius: '20px', padding: '2px 9px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                            {solicitudes.length}
+                                        </span>
+                                    )}
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.82rem', color: '#6b7280' }}>{t('solicitudes.subtitle')}</p>
+                            </div>
+                        </div>
+
+                        {solicitudes.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '20px 0', color: '#6b7280', fontSize: '0.9rem' }}>
+                                <i className="fas fa-inbox" style={{ fontSize: '1.5rem', marginBottom: 8, display: 'block' }}></i>
+                                {t('solicitudes.empty')}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {solicitudes.map(s => {
+                                    const u = s.usuarioSolicitante;
+                                    const fecha = new Date(s.fechaCreacion).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                    const busy = gestionando === s.id;
+                                    return (
+                                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', borderRadius: '12px', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)' }}>
+                                            {u.fotoUrl ? (
+                                                <img src={u.fotoUrl} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                                            ) : (
+                                                <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(167,139,250,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#a78bfa', fontWeight: 700, flexShrink: 0 }}>
+                                                    {(u.nombreCompleto || u.username || '?').charAt(0).toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {u.nombreCompleto || u.username}
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                                                    @{u.username} · {t('solicitudes.requested')} {fecha}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                                <button
+                                                    onClick={() => handleGestionar(s.id, true)}
+                                                    disabled={busy}
+                                                    style={{ padding: '7px 16px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)', color: '#10b981', borderRadius: '8px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                                                >
+                                                    {busy ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
+                                                    {t('solicitudes.approve')}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleGestionar(s.id, false)}
+                                                    disabled={busy}
+                                                    style={{ padding: '7px 16px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                                                >
+                                                    {busy ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-times"></i>}
+                                                    {t('solicitudes.reject')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

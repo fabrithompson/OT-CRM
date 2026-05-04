@@ -10,6 +10,7 @@ const PAGE_TITLES = {
   '/respuestas-rapidas':'Respuestas Rápidas',
   '/planes':            'Suscripción',
   '/mi-suscripcion':    'Mi Suscripción',
+  '/agente-ia':         'Agente IA',
   '/perfil':            'Cuenta',
 };
 
@@ -41,6 +42,7 @@ const Perfil = lazy(() => import('./pages/Perfil'));
 const Planes = lazy(() => import('./pages/Planes'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const MiSuscripcion = lazy(() => import('./pages/MiSuscripcion'));
+const AgenteIA = lazy(() => import('./pages/AgenteIA'));
 
 function App() {
   return (
@@ -65,6 +67,7 @@ function App() {
               <Route path="/perfil"             element={<Perfil />} />
               <Route path="/checkout"        element={<Checkout />} />
               <Route path="/mi-suscripcion"  element={<MiSuscripcion />} />
+              <Route path="/agente-ia"       element={<AgenteIA />} />
             </Route>
           </Routes>
         </Suspense>

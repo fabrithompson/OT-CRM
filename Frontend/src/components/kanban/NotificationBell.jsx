@@ -71,6 +71,7 @@ export default function NotificationBell({ onOpenChat }) {
     const iconFor = (type) => {
         if (type === 'ERROR' || type === 'DISCONNECTED') return { icon: 'fa-wifi', color: '#ef4444' };
         if (type === 'SUCCESS' || type === 'CONNECTED')  return { icon: 'fa-check', color: '#10b981' };
+        if (type === 'TEAM_REQUEST')                     return { icon: 'fa-user-plus', color: '#a78bfa' };
         return { icon: 'fa-comment-dots', color: '#6366f1' };
     };
 
