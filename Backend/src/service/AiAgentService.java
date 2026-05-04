@@ -57,12 +57,18 @@ public class AiAgentService {
         if (cliente == null || cliente.getAgencia() == null) return false;
 
         Plan plan = subscriptionValidationService.getPlanEfectivoAgencia(cliente.getAgencia());
-        if (!"ENTERPRISE".equals(plan.getNombre())) return false;
+        if (!"ENTERPRISE".equals(plan.getNombre())) {
+            log.debug("AI agent skipped for cliente {} — plan is {}", clienteId, plan.getNombre());
+            return false;
+        }
 
         Long agenciaId = cliente.getAgencia().getId();
         AgentConfig config = agentConfigRepository.findByAgenciaId(agenciaId).orElse(null);
 
-        if (config == null || !config.isEnabled()) return false;
+        if (config == null || !config.isEnabled()) {
+            log.debug("AI agent skipped for cliente {} — config null or disabled", clienteId);
+            return false;
+        }
 
         AiConversationState state = aiStateRepository.findByClienteId(clienteId)
                 .orElseGet(() -> {
