@@ -32,6 +32,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     List<Usuario> findAllByAgenciaId(Long agenciaId);
 
-    @Query("SELECT u FROM Usuario u JOIN FETCH u.plan WHERE u.agencia.id = :agenciaId AND u.rol = 'ADMIN'")
+    @Query("SELECT u FROM Usuario u JOIN FETCH u.plan WHERE u.agencia.id = :agenciaId AND u.rol IN ('OWNER', 'ADMIN') ORDER BY CASE u.rol WHEN 'OWNER' THEN 0 ELSE 1 END")
     Optional<Usuario> findAdminByAgenciaId(@Param("agenciaId") Long agenciaId);
 }
