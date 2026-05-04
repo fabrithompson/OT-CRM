@@ -308,6 +308,9 @@ body {
 .nav-pill.nav-teal:hover          { background: rgba(20,184,166,0.12); }
 .nav-pill.nav-teal.active         { background: rgba(20,184,166,0.18); color: #2dd4bf; box-shadow: 0 0 20px rgba(20,184,166,0.22); }
 
+.nav-pill.nav-indigo:hover        { background: rgba(6,182,212,0.12); }
+.nav-pill.nav-indigo.active       { background: rgba(6,182,212,0.18); color: #22d3ee; box-shadow: 0 0 20px rgba(6,182,212,0.22); }
+
 .nav-pill.nav-support             { color: rgba(255,255,255,0.30); }
 .nav-pill.nav-support:hover       { background: rgba(16,185,129,0.18); color: #10b981; }
 
