@@ -5,12 +5,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,37 +21,55 @@ import org.springframework.web.bind.annotation.RestController;
 
 import model.AgentConfig;
 import model.Agencia;
-import model.RespuestaRapida;
 import model.Usuario;
 import repository.AgentConfigRepository;
+import repository.ClienteRepository;
+import repository.EtapaRepository;
+import repository.EtiquetaRepository;
 import repository.RespuestaRapidaRepository;
 import repository.UsuarioRepository;
+import service.CrmAgentTools;
 
 @RestController
 @RequestMapping("/api/v1/agent-config")
 public class AgentConfigController {
 
-    private static final String SETUP_SYSTEM_PROMPT =
-        "Sos un asistente de configuración para un CRM de ventas. " +
-        "Tu objetivo es ayudar al usuario a configurar su agente de IA haciendo preguntas sobre su negocio. " +
-        "Preguntá sobre: rubro o industria, productos o servicios que ofrece, tono de comunicación preferido, " +
-        "preguntas frecuentes de sus clientes, y en qué casos quiere derivar la conversación a un humano. " +
-        "Sé conciso y amigable. Hacé una pregunta a la vez. " +
-        "Cuando creas que tenés suficiente información, ofrecé un resumen claro de las instrucciones " +
-        "que el agente debería seguir para responder a los clientes.";
+    private static final String CRM_ASSISTANT_PROMPT =
+        "Sos un asistente inteligente del CRM OT. Tenés dos roles:\n\n" +
+        "1. CONFIGURAR EL AGENTE DE IA: Ayudás al usuario a configurar el agente de atención al cliente " +
+        "haciendo preguntas sobre su negocio (rubro, productos/servicios, tono preferido, preguntas " +
+        "frecuentes de sus clientes, cuándo derivar a un humano). Cuando tenés suficiente información, " +
+        "ofrecés un resumen claro de las instrucciones que el agente debería seguir.\n\n" +
+        "2. GESTIONAR EL CRM: Podés realizar acciones directas en el CRM usando las herramientas " +
+        "disponibles: mover contactos entre etapas del embudo, agregar o quitar etiquetas, ajustar " +
+        "saldos, listar contactos/etapas/etiquetas, y consultar respuestas rápidas.\n\n" +
+        "Instrucciones:\n" +
+        "- Cuando el usuario pida realizar una acción del CRM, usá las herramientas sin pedir confirmación innecesaria.\n" +
+        "- Si no tenés información sobre algo, consultá las respuestas rápidas con la herramienta disponible.\n" +
+        "- Confirmá siempre las acciones realizadas con un resumen claro y conciso.\n" +
+        "- Sé amigable y respondé siempre en español.";
 
-    private final ChatModel chatModel;
+    private final ChatClient chatClient;
     private final AgentConfigRepository agentConfigRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ClienteRepository clienteRepository;
+    private final EtapaRepository etapaRepository;
+    private final EtiquetaRepository etiquetaRepository;
     private final RespuestaRapidaRepository respuestaRapidaRepository;
 
-    public AgentConfigController(ChatModel chatModel,
+    public AgentConfigController(ChatClient chatClient,
                                   AgentConfigRepository agentConfigRepository,
                                   UsuarioRepository usuarioRepository,
+                                  ClienteRepository clienteRepository,
+                                  EtapaRepository etapaRepository,
+                                  EtiquetaRepository etiquetaRepository,
                                   RespuestaRapidaRepository respuestaRapidaRepository) {
-        this.chatModel = chatModel;
+        this.chatClient = chatClient;
         this.agentConfigRepository = agentConfigRepository;
         this.usuarioRepository = usuarioRepository;
+        this.clienteRepository = clienteRepository;
+        this.etapaRepository = etapaRepository;
+        this.etiquetaRepository = etiquetaRepository;
         this.respuestaRapidaRepository = respuestaRapidaRepository;
     }
 
@@ -94,7 +109,7 @@ public class AgentConfigController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     @PostMapping("/chat")
     public ResponseEntity<?> chat(@AuthenticationPrincipal UserDetails userDetails,
                                    @RequestBody ChatRequest req) {
@@ -102,44 +117,36 @@ public class AgentConfigController {
             return ResponseEntity.badRequest().body(Map.of("error", "No messages"));
         }
 
-        String systemPrompt = buildChatSystemPrompt(userDetails);
+        Usuario usuario = getUsuario(userDetails);
+        Long agenciaId = usuario.getAgencia() != null ? usuario.getAgencia().getId() : null;
 
-        List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(systemPrompt));
+        List<org.springframework.ai.chat.messages.Message> historyMessages = new ArrayList<>();
         for (ChatMessage m : req.messages()) {
+            String content = java.util.Objects.requireNonNullElse(m.content(), "");
             if ("user".equals(m.role())) {
-                messages.add(new UserMessage(m.content()));
+                historyMessages.add(new UserMessage(content));
             } else if ("assistant".equals(m.role())) {
-                messages.add(new AssistantMessage(m.content()));
+                historyMessages.add(new AssistantMessage(content));
             }
         }
 
         try {
-            String reply = chatModel.call(new Prompt(messages))
-                    .getResult().getOutput().getText();
+            ChatClient.ChatClientRequestSpec spec = chatClient.prompt()
+                    .system(CRM_ASSISTANT_PROMPT)
+                    .messages(historyMessages);
+
+            if (agenciaId != null) {
+                CrmAgentTools tools = new CrmAgentTools(
+                        agenciaId, clienteRepository, etapaRepository,
+                        etiquetaRepository, respuestaRapidaRepository);
+                spec = spec.tools(tools);
+            }
+
+            String reply = spec.call().content();
             return ResponseEntity.ok(Map.of("reply", reply != null ? reply : ""));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
-    }
-
-    private String buildChatSystemPrompt(UserDetails userDetails) {
-        StringBuilder sb = new StringBuilder(SETUP_SYSTEM_PROMPT);
-        try {
-            Usuario usuario = getUsuario(userDetails);
-            if (usuario.getAgencia() != null) {
-                List<RespuestaRapida> respuestas = respuestaRapidaRepository.findByAgencia(usuario.getAgencia());
-                if (!respuestas.isEmpty()) {
-                    sb.append("\n\nRespuestas rápidas ya configuradas en el CRM de este negocio " +
-                              "(podés referenciarlas o sugerir mejoras):\n");
-                    for (RespuestaRapida r : respuestas) {
-                        sb.append("- /").append(r.getAtajo())
-                          .append(" → \"").append(r.getRespuesta()).append("\"\n");
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-        return sb.toString();
     }
 
     private Map<String, Object> defaultConfig() {

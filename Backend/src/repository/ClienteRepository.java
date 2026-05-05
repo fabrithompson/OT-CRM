@@ -120,6 +120,8 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
             @Param("etiquetaId") Long etiquetaId,
             Pageable pageable);
 
+    Optional<Cliente> findByIdAndAgenciaId(Long id, Long agenciaId);
+
     @EntityGraph(attributePaths = {"etapa", "dispositivo", "etiquetas"})
     @Query("SELECT c FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.id < :afterId ORDER BY c.id DESC")
     List<Cliente> findByAgenciaIdAndIdLessThan(
