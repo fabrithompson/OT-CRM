@@ -14,6 +14,8 @@ public interface RespuestaRapidaRepository extends JpaRepository<RespuestaRapida
 
     List<RespuestaRapida> findByAgencia(Agencia agencia);
 
+    List<RespuestaRapida> findByAgenciaId(Long agenciaId);
+
     boolean existsByAgenciaAndAtajo(Agencia agencia, String atajo);
 
     Optional<RespuestaRapida> findByAgenciaAndAtajo(Agencia agencia, String atajo);

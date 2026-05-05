@@ -25,7 +25,6 @@ export default function AgenteIA() {
     const messagesEndRef = useRef(null);
     const chatReady = useRef(false);
 
-    // Init messages from localStorage once agenciaId is known
     useEffect(() => {
         if (!isEnterprise || userLoading || !agenciaId || chatReady.current) return;
         chatReady.current = true;
@@ -37,13 +36,11 @@ export default function AgenteIA() {
         }
     }, [isEnterprise, userLoading, agenciaId, t]);
 
-    // Persist chat on every change
     useEffect(() => {
         if (!agenciaId || !chatReady.current || messages.length === 0) return;
         localStorage.setItem(chatKey(agenciaId), JSON.stringify(messages));
     }, [messages, agenciaId]);
 
-    // Load agent config
     useEffect(() => {
         if (!isEnterprise || userLoading) return;
         api.get('/agent-config').then(res => {
@@ -106,28 +103,16 @@ export default function AgenteIA() {
     return (
         <div
             className="db-root"
-            style={{ '--db-accent': '#22d3ee', height: '100%', overflow: 'hidden', gap: 0 }}
+            style={{ '--db-accent': '#22d3ee', height: '100%', overflow: 'hidden' }}
         >
             {/* Gate modal */}
             {!isEnterprise && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000, backdropFilter: 'blur(4px)',
-                }}>
-                    <div style={{
-                        background: 'var(--card-bg, #161b22)', border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 20, padding: '40px 36px', maxWidth: 420, width: '90%',
-                        textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-                    }}>
-                        <div style={{ fontSize: '3rem', marginBottom: 16 }}>🤖</div>
-                        <h2 style={{ margin: '0 0 12px', fontSize: '1.3rem', fontWeight: 700 }}>
-                            {t('agente.gateTitle')}
-                        </h2>
-                        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.95rem', margin: '0 0 28px', lineHeight: 1.5 }}>
-                            {t('agente.gateMsg')}
-                        </p>
-                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <div className="db-modal-overlay">
+                    <div className="db-modal" style={{ textAlign: 'center', maxWidth: 440 }}>
+                        <div style={{ fontSize: '2.8rem', marginBottom: 14 }}>🤖</div>
+                        <h3 style={{ color: '#fff', marginBottom: 10 }}>{t('agente.gateTitle')}</h3>
+                        <p>{t('agente.gateMsg')}</p>
+                        <div className="db-modal-actions" style={{ justifyContent: 'center' }}>
                             <button className="btn-secondary" onClick={() => navigate(-1)}>
                                 {t('agente.gateClose')}
                             </button>
@@ -150,42 +135,38 @@ export default function AgenteIA() {
                     <div className="db-subtitle">{t('agente.subtitle')}</div>
                 </div>
                 {enabled && (
-                    <div className="db-online-badge">
-                        <span className="db-online-dot" />
+                    <div className="db-online-badge" style={{
+                        background: 'rgba(34,211,238,0.10)',
+                        borderColor: 'rgba(34,211,238,0.20)',
+                        color: '#22d3ee',
+                    }}>
+                        <span className="db-online-dot" style={{ background: '#22d3ee' }} />
                         {t('agente.active')}
                     </div>
                 )}
             </div>
 
             {/* Two-column layout */}
-            <div style={{
-                display: 'flex', gap: 20, flex: 1,
-                padding: '0 28px 24px', overflow: 'hidden', minHeight: 0,
-            }}>
-                {/* Chat panel */}
+            <div style={{ display: 'flex', gap: 16, flex: 1, overflow: 'hidden', minHeight: 0 }}>
+
+                {/* LEFT: Chat panel */}
                 <div className="db-card" style={{
-                    flex: '0 0 55%', display: 'flex', flexDirection: 'column',
-                    padding: 0, overflow: 'hidden', minHeight: 0,
+                    flex: '0 0 57%', padding: 0, overflow: 'hidden',
+                    display: 'flex', flexDirection: 'column', gap: 0,
                 }}>
                     <div style={{
-                        padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        padding: '12px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)',
                         flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}>
-                        <span className="db-card-title" style={{ fontSize: '0.8rem' }}>
-                            <i className="fa-solid fa-comments" style={{ marginRight: 8, color: '#22d3ee', opacity: 1 }} />
+                        <div className="db-card-title" style={{ margin: 0 }}>
+                            <i className="fa-solid fa-comments" style={{ color: '#22d3ee' }} />
                             {t('agente.chatTitle')}
-                        </span>
+                        </div>
                         <button
                             type="button"
                             onClick={clearChat}
                             title={t('agente.clearChat')}
-                            style={{
-                                background: 'none', border: 'none', cursor: 'pointer',
-                                color: 'rgba(255,255,255,0.35)', padding: '4px 6px',
-                                borderRadius: 6, fontSize: '0.8rem', transition: '0.15s',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; }}
-                            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; }}
+                            className="db-copy-btn"
                         >
                             <i className="fas fa-trash-alt" />
                         </button>
@@ -193,7 +174,7 @@ export default function AgenteIA() {
 
                     <div style={{
                         flex: 1, overflowY: 'auto', padding: '16px 18px',
-                        display: 'flex', flexDirection: 'column', gap: 12,
+                        display: 'flex', flexDirection: 'column', gap: 10,
                     }}>
                         {messages.map((msg, i) => (
                             <div key={i} style={{
@@ -203,10 +184,10 @@ export default function AgenteIA() {
                                 <div style={{
                                     maxWidth: '80%', padding: '10px 14px',
                                     borderRadius: msg.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                                    background: msg.role === 'user' ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.06)',
-                                    border: msg.role === 'user' ? '1px solid rgba(34,211,238,0.25)' : '1px solid rgba(255,255,255,0.08)',
-                                    fontSize: '0.9rem', lineHeight: 1.55,
-                                    color: 'rgba(255,255,255,0.9)', whiteSpace: 'pre-wrap',
+                                    background: msg.role === 'user' ? 'rgba(34,211,238,0.12)' : 'rgba(255,255,255,0.05)',
+                                    border: msg.role === 'user' ? '1px solid rgba(34,211,238,0.22)' : '1px solid rgba(255,255,255,0.07)',
+                                    fontSize: '0.88rem', lineHeight: 1.6,
+                                    color: 'rgba(255,255,255,0.88)', whiteSpace: 'pre-wrap',
                                 }}>
                                     {msg.content}
                                 </div>
@@ -216,8 +197,8 @@ export default function AgenteIA() {
                             <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                                 <div style={{
                                     padding: '10px 16px', borderRadius: '14px 14px 14px 2px',
-                                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
-                                    fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)',
+                                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)',
+                                    fontSize: '0.88rem', color: 'rgba(255,255,255,0.4)',
                                 }}>
                                     <i className="fa-solid fa-ellipsis fa-fade" />
                                 </div>
@@ -236,18 +217,25 @@ export default function AgenteIA() {
                             onKeyDown={handleKeyDown}
                             placeholder={t('agente.inputPlaceholder')}
                             rows={2}
-                            style={{ flex: 1, resize: 'none', fontSize: '0.9rem', padding: '10px 14px', borderRadius: 10 }}
+                            style={{
+                                flex: 1, resize: 'none', fontSize: '0.88rem',
+                                padding: '10px 14px', borderRadius: 10,
+                                background: 'rgba(0,0,0,0.28)',
+                                border: '1px solid rgba(255,255,255,0.10)',
+                                color: '#fff', outline: 'none',
+                                fontFamily: 'Montserrat, sans-serif', lineHeight: 1.5,
+                            }}
                         />
                         <button
                             onClick={sendMessage}
                             disabled={!input.trim() || chatLoading}
                             style={{
                                 padding: '0 18px', borderRadius: 10, border: 'none',
-                                background: input.trim() && !chatLoading ? '#22d3ee' : 'rgba(255,255,255,0.1)',
-                                color: input.trim() && !chatLoading ? '#000' : 'rgba(255,255,255,0.3)',
+                                background: input.trim() && !chatLoading ? '#22d3ee' : 'rgba(255,255,255,0.08)',
+                                color: input.trim() && !chatLoading ? '#000' : 'rgba(255,255,255,0.25)',
                                 cursor: input.trim() && !chatLoading ? 'pointer' : 'not-allowed',
-                                fontWeight: 700, fontSize: '0.95rem', transition: '0.2s',
-                                alignSelf: 'flex-end', height: 44,
+                                fontWeight: 700, fontSize: '1rem', transition: '0.2s',
+                                alignSelf: 'flex-end', height: 44, flexShrink: 0,
                             }}
                         >
                             <i className="fa-solid fa-paper-plane" />
@@ -255,74 +243,76 @@ export default function AgenteIA() {
                     </div>
                 </div>
 
-                {/* Config panel */}
-                <div style={{
-                    flex: '0 0 calc(45% - 20px)', display: 'flex', flexDirection: 'column',
-                    gap: 16, overflowY: 'auto', minHeight: 0,
-                }}>
-                    <div className="db-card">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                            <i className="fa-solid fa-sliders" style={{ color: '#22d3ee' }} />
-                            <span className="db-card-title">{t('agente.configTitle')}</span>
-                        </div>
+                {/* RIGHT: Config column */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', minHeight: 0 }}>
 
-                        <div className="db-metric-card" style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            marginBottom: 16,
-                        }}>
-                            <div>
-                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('agente.enabledLabel')}</div>
-                                <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.8rem', marginTop: 2 }}>
-                                    {t('agente.enabledSub')}
-                                </div>
+                    {/* Toggle card — db-metric-card with top accent line */}
+                    <div className="db-metric-card" style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 16, flexShrink: 0,
+                    }}>
+                        <div className="db-metric-icon">
+                            <i className="fa-solid fa-robot" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div className="db-metric-label">{t('agente.enabledLabel')}</div>
+                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.40)', marginTop: 3 }}>
+                                {t('agente.enabledSub')}
                             </div>
-                            <label style={{
-                                position: 'relative', display: 'inline-block',
-                                width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
+                        </div>
+                        <label style={{
+                            position: 'relative', display: 'inline-block',
+                            width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
+                        }}>
+                            <input
+                                type="checkbox"
+                                checked={enabled}
+                                onChange={e => setEnabled(e.target.checked)}
+                                style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                            />
+                            <span style={{
+                                position: 'absolute', inset: 0, borderRadius: 13,
+                                background: enabled ? '#22d3ee' : 'rgba(255,255,255,0.15)',
+                                transition: '0.2s',
                             }}>
-                                <input
-                                    type="checkbox"
-                                    checked={enabled}
-                                    onChange={e => setEnabled(e.target.checked)}
-                                    style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
-                                />
                                 <span style={{
-                                    position: 'absolute', inset: 0, borderRadius: 13,
-                                    background: enabled ? '#22d3ee' : 'rgba(255,255,255,0.15)',
-                                    transition: '0.2s',
-                                }}>
-                                    <span style={{
-                                        position: 'absolute', top: 3, left: enabled ? 23 : 3,
-                                        width: 20, height: 20, borderRadius: '50%',
-                                        background: '#fff', transition: '0.2s',
-                                    }} />
-                                </span>
-                            </label>
+                                    position: 'absolute', top: 3, left: enabled ? 23 : 3,
+                                    width: 20, height: 20, borderRadius: '50%',
+                                    background: '#fff', transition: '0.2s',
+                                }} />
+                            </span>
+                        </label>
+                    </div>
+
+                    {/* Instructions + Context + Save */}
+                    <div className="db-card" style={{ flex: 1, gap: 14 }}>
+                        <div className="db-card-title" style={{ margin: 0 }}>
+                            <i className="fa-solid fa-sliders" style={{ color: '#22d3ee' }} />
+                            {t('agente.configTitle')}
                         </div>
 
-                        <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>
+                        <div>
+                            <div className="db-metric-label" style={{ marginBottom: 8 }}>
                                 {t('agente.instructionsLabel')}
-                            </label>
+                            </div>
                             <textarea
                                 value={instructions}
                                 onChange={e => setInstructions(e.target.value)}
                                 placeholder={t('agente.instructionsPlaceholder')}
                                 rows={5}
-                                style={{ resize: 'vertical', fontSize: '0.875rem' }}
+                                style={{ width: '100%', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box' }}
                             />
                         </div>
 
-                        <div style={{ marginBottom: 20 }}>
-                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>
+                        <div>
+                            <div className="db-metric-label" style={{ marginBottom: 8 }}>
                                 {t('agente.contextLabel')}
-                            </label>
+                            </div>
                             <textarea
                                 value={businessContext}
                                 onChange={e => setBusinessContext(e.target.value)}
                                 placeholder={t('agente.contextPlaceholder')}
                                 rows={4}
-                                style={{ resize: 'vertical', fontSize: '0.875rem' }}
+                                style={{ width: '100%', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box' }}
                             />
                         </div>
 
@@ -330,7 +320,7 @@ export default function AgenteIA() {
                             onClick={saveConfig}
                             disabled={saveStatus === 'saving'}
                             className="btn-primary"
-                            style={{ width: '100%' }}
+                            style={{ width: '100%', marginTop: 'auto' }}
                         >
                             <i className={`fa-solid ${saveStatus === 'saving' ? 'fa-spinner fa-spin' : saveStatus === 'saved' ? 'fa-check' : 'fa-floppy-disk'}`} style={{ marginRight: 6 }} />
                             {saveStatus === 'saving' ? t('agente.saving') : saveStatus === 'saved' ? t('agente.saved') : t('agente.save')}

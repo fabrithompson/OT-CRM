@@ -9,4 +9,8 @@ import model.Etiqueta;
 public interface EtiquetaRepository extends JpaRepository<Etiqueta, Long> {
 
     Optional<Etiqueta> findByNombreAndAgenciaId(String nombre, Long agenciaId);
+
+    java.util.List<Etiqueta> findByAgenciaId(Long agenciaId);
+
+    Optional<Etiqueta> findByIdAndAgenciaId(Long id, Long agenciaId);
 }

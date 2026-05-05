@@ -26,4 +26,6 @@ public interface EtapaRepository extends JpaRepository<Etapa, Long> {
     List<Etapa> findByAgenciaIdOrderByOrdenAsc(Long id);
 
     List<Etapa> findByAgenciaId(Long agenciaId);
+
+    java.util.Optional<Etapa> findByIdAndAgenciaId(Long id, Long agenciaId);
 }
