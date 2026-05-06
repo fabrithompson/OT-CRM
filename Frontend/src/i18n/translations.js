@@ -454,6 +454,8 @@ export const TRANSLATIONS = {
       gateUpgrade: 'Mejorar Plan',
       clearChat: 'Limpiar chat',
       active: 'Activo',
+      attachImage: 'Adjuntar imágenes',
+      imageHint: 'Podés adjuntar capturas de chats para que el asistente aprenda tu estilo de atención',
     },
     landing: {
       nav: { inicio: 'Inicio', precios: 'Precios', nosotros: 'Nosotros', soporte: 'Soporte', ingresar: 'Ingresar' },
@@ -984,6 +986,8 @@ export const TRANSLATIONS = {
       gateUpgrade: 'Upgrade Plan',
       clearChat: 'Clear chat',
       active: 'Active',
+      attachImage: 'Attach images',
+      imageHint: 'You can attach chat screenshots so the assistant learns your customer service style',
     },
     landing: {
       nav: { inicio: 'Home', precios: 'Pricing', nosotros: 'About', soporte: 'Support', ingresar: 'Sign In' },
