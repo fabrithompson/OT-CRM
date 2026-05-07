@@ -9,7 +9,6 @@ import java.util.Map;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.model.Media;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -138,38 +137,48 @@ public class AgentConfigController {
         Usuario usuario = getUsuario(userDetails);
         Long agenciaId = usuario.getAgencia() != null ? usuario.getAgencia().getId() : null;
 
-        List<org.springframework.ai.chat.messages.Message> historyMessages = new ArrayList<>();
-        for (ChatMessage m : req.messages()) {
+        List<ChatMessage> msgs = req.messages();
+
+        // History = all messages except the last (current) one
+        List<org.springframework.ai.chat.messages.Message> history = new ArrayList<>();
+        for (int i = 0; i < msgs.size() - 1; i++) {
+            ChatMessage m = msgs.get(i);
             String content = java.util.Objects.requireNonNullElse(m.content(), "");
             if ("user".equals(m.role())) {
-                List<ImageData> images = m.images();
-                if (images != null && !images.isEmpty()) {
-                    List<Media> mediaList = new ArrayList<>();
-                    for (ImageData img : images) {
+                history.add(new UserMessage(content));
+            } else if ("assistant".equals(m.role())) {
+                history.add(new AssistantMessage(content));
+            }
+        }
+
+        ChatMessage last = msgs.get(msgs.size() - 1);
+        String lastContent = java.util.Objects.requireNonNullElse(last.content(), "");
+        List<ImageData> images = last.images();
+        boolean hasImages = images != null && !images.isEmpty();
+
+        try {
+            ChatClient.ChatClientRequestSpec spec = chatClient.prompt()
+                    .system(CRM_ASSISTANT_PROMPT)
+                    .messages(history);
+
+            if (hasImages) {
+                final String contentFinal = lastContent;
+                final List<ImageData> imagesFinal = images;
+                spec = spec.user(u -> {
+                    u.text(contentFinal);
+                    for (ImageData img : imagesFinal) {
                         try {
                             String b64 = img.base64();
                             if (b64 != null && b64.contains(",")) b64 = b64.split(",")[1];
                             byte[] bytes = Base64.getDecoder().decode(b64);
                             String mime = img.mimeType() != null ? img.mimeType() : "image/jpeg";
-                            mediaList.add(new Media(
-                                MimeTypeUtils.parseMimeType(mime),
-                                new ByteArrayResource(bytes)
-                            ));
+                            u.media(MimeTypeUtils.parseMimeType(mime), new ByteArrayResource(bytes));
                         } catch (Exception ignored) {}
                     }
-                    historyMessages.add(new UserMessage(content, mediaList));
-                } else {
-                    historyMessages.add(new UserMessage(content));
-                }
-            } else if ("assistant".equals(m.role())) {
-                historyMessages.add(new AssistantMessage(content));
+                });
+            } else {
+                spec = spec.user(lastContent);
             }
-        }
-
-        try {
-            ChatClient.ChatClientRequestSpec spec = chatClient.prompt()
-                    .system(CRM_ASSISTANT_PROMPT)
-                    .messages(historyMessages);
 
             if (agenciaId != null) {
                 CrmAgentTools tools = new CrmAgentTools(
