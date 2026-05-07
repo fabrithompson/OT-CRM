@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LangContext';
 import '../assets/css/dashboard.css';
 
 const chatKey = (id) => `crm_agente_chat_${id}`;
+const MAX_IMAGES = 4;
 
 export default function AgenteIA() {
     const { t } = useLanguage();
@@ -22,9 +23,13 @@ export default function AgenteIA() {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [chatLoading, setChatLoading] = useState(false);
+    const [pendingImages, setPendingImages] = useState([]);
+
     const messagesEndRef = useRef(null);
     const chatReady = useRef(false);
+    const fileInputRef = useRef(null);
 
+    // Init messages from localStorage
     useEffect(() => {
         if (!isEnterprise || userLoading || !agenciaId || chatReady.current) return;
         chatReady.current = true;
@@ -36,11 +41,14 @@ export default function AgenteIA() {
         }
     }, [isEnterprise, userLoading, agenciaId, t]);
 
+    // Persist chat — strip images to keep localStorage lean
     useEffect(() => {
         if (!agenciaId || !chatReady.current || messages.length === 0) return;
-        localStorage.setItem(chatKey(agenciaId), JSON.stringify(messages));
+        const toSave = messages.map(({ role, content }) => ({ role, content }));
+        localStorage.setItem(chatKey(agenciaId), JSON.stringify(toSave));
     }, [messages, agenciaId]);
 
+    // Load agent config
     useEffect(() => {
         if (!isEnterprise || userLoading) return;
         api.get('/agent-config').then(res => {
@@ -60,15 +68,57 @@ export default function AgenteIA() {
         if (agenciaId) localStorage.setItem(chatKey(agenciaId), JSON.stringify(welcome));
     }, [t, agenciaId]);
 
+    const handleImageSelect = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        const remaining = MAX_IMAGES - pendingImages.length;
+        files.slice(0, remaining).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const dataUrl = ev.target.result;
+                setPendingImages(prev => prev.length < MAX_IMAGES
+                    ? [...prev, { previewUrl: dataUrl, base64: dataUrl, mimeType: file.type || 'image/jpeg' }]
+                    : prev
+                );
+            };
+            reader.readAsDataURL(file);
+        });
+        e.target.value = '';
+    };
+
+    const removeImage = (idx) => {
+        setPendingImages(prev => prev.filter((_, i) => i !== idx));
+    };
+
     const sendMessage = async () => {
         const text = input.trim();
-        if (!text || chatLoading) return;
-        const next = [...messages, { role: 'user', content: text }];
-        setMessages(next);
+        const hasImages = pendingImages.length > 0;
+        if (!text && !hasImages) return;
+        if (chatLoading) return;
+
+        // Display message with preview URLs (in-memory only)
+        const displayMsg = {
+            role: 'user',
+            content: text,
+            ...(hasImages ? { mediaUrls: pendingImages.map(i => i.previewUrl) } : {}),
+        };
+        const nextMessages = [...messages, displayMsg];
+        setMessages(nextMessages);
         setInput('');
+
+        // Build API payload: full history as text + images only on current message
+        const apiPayload = nextMessages.map((m, idx) => ({
+            role: m.role,
+            content: m.content,
+            ...(idx === nextMessages.length - 1 && hasImages
+                ? { images: pendingImages.map(i => ({ base64: i.base64, mimeType: i.mimeType })) }
+                : {}),
+        }));
+
+        setPendingImages([]);
         setChatLoading(true);
         try {
-            const res = await api.post('/agent-config/chat', { messages: next });
+            const res = await api.post('/agent-config/chat', { messages: apiPayload });
             setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }]);
         } catch {
             setMessages(prev => [...prev, { role: 'assistant', content: t('agente.errorMsg') }]);
@@ -154,6 +204,7 @@ export default function AgenteIA() {
                     flex: '0 0 57%', padding: 0, overflow: 'hidden',
                     display: 'flex', flexDirection: 'column', gap: 0,
                 }}>
+                    {/* Chat header */}
                     <div style={{
                         padding: '12px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)',
                         flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -172,6 +223,7 @@ export default function AgenteIA() {
                         </button>
                     </div>
 
+                    {/* Messages */}
                     <div style={{
                         flex: 1, overflowY: 'auto', padding: '16px 18px',
                         display: 'flex', flexDirection: 'column', gap: 10,
@@ -187,9 +239,33 @@ export default function AgenteIA() {
                                     background: msg.role === 'user' ? 'rgba(34,211,238,0.12)' : 'rgba(255,255,255,0.05)',
                                     border: msg.role === 'user' ? '1px solid rgba(34,211,238,0.22)' : '1px solid rgba(255,255,255,0.07)',
                                     fontSize: '0.88rem', lineHeight: 1.6,
-                                    color: 'rgba(255,255,255,0.88)', whiteSpace: 'pre-wrap',
+                                    color: 'rgba(255,255,255,0.88)',
                                 }}>
-                                    {msg.content}
+                                    {/* Image thumbnails */}
+                                    {msg.mediaUrls && msg.mediaUrls.length > 0 && (
+                                        <div style={{
+                                            display: 'flex', gap: 6, flexWrap: 'wrap',
+                                            marginBottom: msg.content ? 8 : 0,
+                                        }}>
+                                            {msg.mediaUrls.map((url, j) => (
+                                                <img
+                                                    key={j}
+                                                    src={url}
+                                                    alt=""
+                                                    style={{
+                                                        maxWidth: 180, maxHeight: 130,
+                                                        borderRadius: 8, objectFit: 'cover',
+                                                        border: '1px solid rgba(34,211,238,0.20)',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                    onClick={() => window.open(url, '_blank')}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                    {msg.content && (
+                                        <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -207,10 +283,78 @@ export default function AgenteIA() {
                         <div ref={messagesEndRef} />
                     </div>
 
+                    {/* Pending images strip */}
+                    {pendingImages.length > 0 && (
+                        <div style={{
+                            padding: '8px 18px 0',
+                            display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0,
+                            borderTop: '1px solid rgba(255,255,255,0.05)',
+                        }}>
+                            {pendingImages.map((img, i) => (
+                                <div key={i} style={{ position: 'relative' }}>
+                                    <img
+                                        src={img.previewUrl}
+                                        alt=""
+                                        style={{
+                                            width: 58, height: 58, objectFit: 'cover',
+                                            borderRadius: 8, border: '1px solid rgba(34,211,238,0.30)',
+                                            display: 'block',
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => removeImage(i)}
+                                        style={{
+                                            position: 'absolute', top: -5, right: -5,
+                                            background: '#ef4444', border: 'none', borderRadius: '50%',
+                                            width: 18, height: 18, cursor: 'pointer', color: '#fff',
+                                            fontSize: 10, lineHeight: '18px', textAlign: 'center',
+                                            padding: 0, fontWeight: 700,
+                                        }}
+                                    >×</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Input area */}
                     <div style={{
-                        padding: '12px 18px', borderTop: '1px solid rgba(255,255,255,0.06)',
-                        display: 'flex', gap: 10, flexShrink: 0,
+                        padding: '10px 18px 14px', borderTop: '1px solid rgba(255,255,255,0.06)',
+                        display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-end',
                     }}>
+                        {/* Hidden file input */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            style={{ display: 'none' }}
+                            onChange={handleImageSelect}
+                        />
+
+                        {/* Image attach button */}
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            title={t('agente.attachImage')}
+                            disabled={pendingImages.length >= MAX_IMAGES}
+                            style={{
+                                flexShrink: 0, width: 38, height: 38,
+                                borderRadius: 9, border: '1px solid rgba(255,255,255,0.10)',
+                                background: pendingImages.length > 0
+                                    ? 'rgba(34,211,238,0.12)'
+                                    : 'rgba(255,255,255,0.05)',
+                                color: pendingImages.length > 0
+                                    ? '#22d3ee'
+                                    : 'rgba(255,255,255,0.40)',
+                                cursor: pendingImages.length >= MAX_IMAGES ? 'not-allowed' : 'pointer',
+                                fontSize: '0.9rem', transition: '0.15s',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                        >
+                            <i className="fas fa-image" />
+                        </button>
+
                         <textarea
                             value={input}
                             onChange={e => setInput(e.target.value)}
@@ -219,27 +363,42 @@ export default function AgenteIA() {
                             rows={2}
                             style={{
                                 flex: 1, resize: 'none', fontSize: '0.88rem',
-                                padding: '10px 14px', borderRadius: 10,
+                                padding: '9px 13px', borderRadius: 10,
                                 background: 'rgba(0,0,0,0.28)',
                                 border: '1px solid rgba(255,255,255,0.10)',
                                 color: '#fff', outline: 'none',
                                 fontFamily: 'Montserrat, sans-serif', lineHeight: 1.5,
                             }}
                         />
+
                         <button
                             onClick={sendMessage}
-                            disabled={!input.trim() || chatLoading}
+                            disabled={(!input.trim() && !pendingImages.length) || chatLoading}
                             style={{
-                                padding: '0 18px', borderRadius: 10, border: 'none',
-                                background: input.trim() && !chatLoading ? '#22d3ee' : 'rgba(255,255,255,0.08)',
-                                color: input.trim() && !chatLoading ? '#000' : 'rgba(255,255,255,0.25)',
-                                cursor: input.trim() && !chatLoading ? 'pointer' : 'not-allowed',
-                                fontWeight: 700, fontSize: '1rem', transition: '0.2s',
-                                alignSelf: 'flex-end', height: 44, flexShrink: 0,
+                                flexShrink: 0, width: 38, height: 38,
+                                borderRadius: 9, border: 'none',
+                                background: (input.trim() || pendingImages.length) && !chatLoading
+                                    ? '#22d3ee' : 'rgba(255,255,255,0.08)',
+                                color: (input.trim() || pendingImages.length) && !chatLoading
+                                    ? '#000' : 'rgba(255,255,255,0.25)',
+                                cursor: (input.trim() || pendingImages.length) && !chatLoading
+                                    ? 'pointer' : 'not-allowed',
+                                fontWeight: 700, fontSize: '0.95rem', transition: '0.2s',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}
                         >
                             <i className="fa-solid fa-paper-plane" />
                         </button>
+                    </div>
+
+                    {/* Image hint */}
+                    <div style={{
+                        padding: '0 18px 10px', flexShrink: 0,
+                        fontSize: '0.70rem', color: 'rgba(255,255,255,0.25)',
+                        display: 'flex', alignItems: 'center', gap: 5,
+                    }}>
+                        <i className="fas fa-lightbulb" style={{ color: 'rgba(34,211,238,0.4)' }} />
+                        {t('agente.imageHint')}
                     </div>
                 </div>
 

@@ -1,6 +1,7 @@
 package controller;
 
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,10 +9,12 @@ import java.util.Map;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -35,18 +38,31 @@ import service.CrmAgentTools;
 public class AgentConfigController {
 
     private static final String CRM_ASSISTANT_PROMPT =
-        "Sos un asistente inteligente del CRM OT. Tenés dos roles:\n\n" +
+        "Sos un asistente inteligente del CRM OT. Tenés tres roles:\n\n" +
+
         "1. CONFIGURAR EL AGENTE DE IA: Ayudás al usuario a configurar el agente de atención al cliente " +
         "haciendo preguntas sobre su negocio (rubro, productos/servicios, tono preferido, preguntas " +
         "frecuentes de sus clientes, cuándo derivar a un humano). Cuando tenés suficiente información, " +
         "ofrecés un resumen claro de las instrucciones que el agente debería seguir.\n\n" +
-        "2. GESTIONAR EL CRM: Podés realizar acciones directas en el CRM usando las herramientas " +
-        "disponibles: mover contactos entre etapas del embudo, agregar o quitar etiquetas, ajustar " +
-        "saldos, listar contactos/etapas/etiquetas, y consultar respuestas rápidas.\n\n" +
-        "Instrucciones:\n" +
+
+        "2. APRENDER DE CONVERSACIONES: El usuario puede enviarte capturas de pantalla de chats reales " +
+        "con sus clientes. Cuando recibas imágenes, analizalas en profundidad:\n" +
+        "  - Identificá el estilo de escritura (formal/informal, emojis, longitud de respuestas)\n" +
+        "  - Detectá el tono y vocabulario específico del negocio\n" +
+        "  - Notá cómo responden ante consultas, reclamos, dudas o cierres de venta\n" +
+        "  - Observá frases o expresiones recurrentes del operador\n" +
+        "Con ese análisis, sugerí instrucciones concretas y detalladas para que el agente imite ese estilo. " +
+        "Podés decir: 'Basándome en estas conversaciones, te sugiero configurar el agente con estas instrucciones: ...' " +
+        "y ofrecer el texto listo para copiar al campo de instrucciones.\n\n" +
+
+        "3. GESTIONAR EL CRM: Podés realizar acciones directas usando las herramientas disponibles: " +
+        "mover contactos entre etapas, agregar o quitar etiquetas, ajustar saldos, " +
+        "listar contactos/etapas/etiquetas, y consultar respuestas rápidas.\n\n" +
+
+        "Reglas generales:\n" +
         "- Cuando el usuario pida realizar una acción del CRM, usá las herramientas sin pedir confirmación innecesaria.\n" +
-        "- Si no tenés información sobre algo, consultá las respuestas rápidas con la herramienta disponible.\n" +
-        "- Confirmá siempre las acciones realizadas con un resumen claro y conciso.\n" +
+        "- Si no tenés información sobre algo, consultá las respuestas rápidas.\n" +
+        "- Confirmá las acciones con un resumen claro y conciso.\n" +
         "- Sé amigable y respondé siempre en español.";
 
     private final ChatClient chatClient;
@@ -73,7 +89,8 @@ public class AgentConfigController {
         this.respuestaRapidaRepository = respuestaRapidaRepository;
     }
 
-    record ChatMessage(String role, String content) {}
+    record ImageData(String base64, String mimeType) {}
+    record ChatMessage(String role, String content, List<ImageData> images) {}
     record ChatRequest(List<ChatMessage> messages) {}
     record AgentConfigRequest(String instructions, String businessContext, boolean enabled) {}
 
@@ -120,20 +137,48 @@ public class AgentConfigController {
         Usuario usuario = getUsuario(userDetails);
         Long agenciaId = usuario.getAgencia() != null ? usuario.getAgencia().getId() : null;
 
-        List<org.springframework.ai.chat.messages.Message> historyMessages = new ArrayList<>();
-        for (ChatMessage m : req.messages()) {
+        List<ChatMessage> msgs = req.messages();
+
+        // History = all messages except the last (current) one
+        List<org.springframework.ai.chat.messages.Message> history = new ArrayList<>();
+        for (int i = 0; i < msgs.size() - 1; i++) {
+            ChatMessage m = msgs.get(i);
             String content = java.util.Objects.requireNonNullElse(m.content(), "");
             if ("user".equals(m.role())) {
-                historyMessages.add(new UserMessage(content));
+                history.add(new UserMessage(content));
             } else if ("assistant".equals(m.role())) {
-                historyMessages.add(new AssistantMessage(content));
+                history.add(new AssistantMessage(content));
             }
         }
+
+        ChatMessage last = msgs.get(msgs.size() - 1);
+        String lastContent = java.util.Objects.requireNonNullElse(last.content(), "");
+        List<ImageData> images = last.images();
+        boolean hasImages = images != null && !images.isEmpty();
 
         try {
             ChatClient.ChatClientRequestSpec spec = chatClient.prompt()
                     .system(CRM_ASSISTANT_PROMPT)
-                    .messages(historyMessages);
+                    .messages(history);
+
+            if (hasImages) {
+                final String contentFinal = lastContent;
+                final List<ImageData> imagesFinal = images;
+                spec = spec.user(u -> {
+                    u.text(contentFinal);
+                    for (ImageData img : imagesFinal) {
+                        try {
+                            String b64 = img.base64();
+                            if (b64 != null && b64.contains(",")) b64 = b64.split(",")[1];
+                            byte[] bytes = Base64.getDecoder().decode(b64);
+                            String mime = img.mimeType() != null ? img.mimeType() : "image/jpeg";
+                            u.media(MimeTypeUtils.parseMimeType(mime), new ByteArrayResource(bytes));
+                        } catch (Exception ignored) {}
+                    }
+                });
+            } else {
+                spec = spec.user(lastContent);
+            }
 
             if (agenciaId != null) {
                 CrmAgentTools tools = new CrmAgentTools(
