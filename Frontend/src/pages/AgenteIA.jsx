@@ -29,6 +29,13 @@ export default function AgenteIA() {
     const chatReady = useRef(false);
     const fileInputRef = useRef(null);
 
+    // Redirect non-Enterprise users immediately after data loads
+    useEffect(() => {
+        if (!userLoading && usuario && !isEnterprise) {
+            navigate('/planes', { replace: true });
+        }
+    }, [userLoading, usuario, isEnterprise, navigate]);
+
     // Init messages from localStorage
     useEffect(() => {
         if (!isEnterprise || userLoading || !agenciaId || chatReady.current) return;
@@ -155,26 +162,6 @@ export default function AgenteIA() {
             className="db-root"
             style={{ '--db-accent': '#22d3ee', height: '100%', overflow: 'hidden' }}
         >
-            {/* Gate modal */}
-            {!userLoading && usuario && !isEnterprise && (
-                <div className="db-modal-overlay">
-                    <div className="db-modal" style={{ textAlign: 'center', maxWidth: 440 }}>
-                        <div style={{ fontSize: '2.8rem', marginBottom: 14 }}>🤖</div>
-                        <h3 style={{ color: '#fff', marginBottom: 10 }}>{t('agente.gateTitle')}</h3>
-                        <p>{t('agente.gateMsg')}</p>
-                        <div className="db-modal-actions" style={{ justifyContent: 'center' }}>
-                            <button className="btn-secondary" onClick={() => navigate(-1)}>
-                                {t('agente.gateClose')}
-                            </button>
-                            <button className="btn-primary" onClick={() => navigate('/planes')}>
-                                <i className="fa-solid fa-crown" style={{ marginRight: 6 }} />
-                                {t('agente.gateUpgrade')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Topbar */}
             <div className="db-topbar" style={{ flexShrink: 0 }}>
                 <div>
