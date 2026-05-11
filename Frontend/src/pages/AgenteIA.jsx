@@ -156,7 +156,7 @@ export default function AgenteIA() {
             style={{ '--db-accent': '#22d3ee', height: '100%', overflow: 'hidden' }}
         >
             {/* Gate modal */}
-            {!isEnterprise && (
+            {!userLoading && usuario && !isEnterprise && (
                 <div className="db-modal-overlay">
                     <div className="db-modal" style={{ textAlign: 'center', maxWidth: 440 }}>
                         <div style={{ fontSize: '2.8rem', marginBottom: 14 }}>🤖</div>
@@ -320,7 +320,7 @@ export default function AgenteIA() {
                     {/* Input area */}
                     <div style={{
                         padding: '10px 18px 14px', borderTop: '1px solid rgba(255,255,255,0.06)',
-                        display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-end',
+                        display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center',
                     }}>
                         {/* Hidden file input */}
                         <input
@@ -367,7 +367,7 @@ export default function AgenteIA() {
                                 background: 'rgba(0,0,0,0.28)',
                                 border: '1px solid rgba(255,255,255,0.10)',
                                 color: '#fff', outline: 'none',
-                                fontFamily: 'Montserrat, sans-serif', lineHeight: 1.5,
+                                fontFamily: 'Montserrat, sans-serif', lineHeight: 0.8,
                             }}
                         />
 
@@ -457,8 +457,7 @@ export default function AgenteIA() {
                                 value={instructions}
                                 onChange={e => setInstructions(e.target.value)}
                                 placeholder={t('agente.instructionsPlaceholder')}
-                                rows={5}
-                                style={{ width: '100%', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                                style={{ width: '100%', resize: 'none', height: 450, fontSize: '0.85rem', boxSizing: 'border-box' }}
                             />
                         </div>
 
@@ -470,8 +469,7 @@ export default function AgenteIA() {
                                 value={businessContext}
                                 onChange={e => setBusinessContext(e.target.value)}
                                 placeholder={t('agente.contextPlaceholder')}
-                                rows={4}
-                                style={{ width: '100%', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                                style={{ width: '100%', resize: 'none', height: 85, fontSize: '0.85rem', boxSizing: 'border-box' }}
                             />
                         </div>
 
