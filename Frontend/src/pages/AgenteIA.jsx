@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LangContext';
@@ -11,7 +11,6 @@ const MAX_IMAGES = 4;
 export default function AgenteIA() {
     const { t } = useLanguage();
     const { usuario, agenciaId, loading: userLoading } = useUser();
-    const navigate = useNavigate();
 
     const isEnterprise = usuario?.plan?.nombre === 'ENTERPRISE';
 
@@ -28,13 +27,6 @@ export default function AgenteIA() {
     const messagesEndRef = useRef(null);
     const chatReady = useRef(false);
     const fileInputRef = useRef(null);
-
-    // Redirect non-Enterprise users immediately after data loads
-    useEffect(() => {
-        if (!userLoading && usuario && !isEnterprise) {
-            navigate('/planes', { replace: true });
-        }
-    }, [userLoading, usuario, isEnterprise, navigate]);
 
     // Init messages from localStorage
     useEffect(() => {
@@ -149,12 +141,17 @@ export default function AgenteIA() {
         }
     };
 
-    if (userLoading) {
+    // Wait until user AND plan are confirmed loaded before making access decision
+    if (userLoading || !usuario || !usuario.plan) {
         return (
             <div className="db-root" style={{ alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ color: 'rgba(255,255,255,0.5)' }}>{t('common.loading')}</span>
             </div>
         );
+    }
+
+    if (!isEnterprise) {
+        return <Navigate to="/planes" replace />;
     }
 
     return (
