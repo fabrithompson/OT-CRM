@@ -52,7 +52,7 @@ jobs:
           echo "Integridad del dump verificada"
 
       - name: Subir backup como artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: db-backup-${{ github.run_number }}
           path: ${{ env.BACKUP_FILE }}
