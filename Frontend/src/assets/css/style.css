@@ -302,6 +302,9 @@ body {
 .nav-pill.nav-purple:hover        { background: rgba(168,85,247,0.12); }
 .nav-pill.nav-purple.active       { background: rgba(168,85,247,0.18); color: #c084fc; box-shadow: 0 0 20px rgba(168,85,247,0.22); }
 
+.nav-pill.nav-amber:hover         { background: rgba(245,158,11,0.12); }
+.nav-pill.nav-amber.active        { background: rgba(245,158,11,0.18); color: #fbbf24; box-shadow: 0 0 20px rgba(245,158,11,0.22); }
+
 .nav-pill.nav-gold:hover          { background: rgba(234,179,8,0.12); }
 .nav-pill.nav-gold.active         { background: rgba(234,179,8,0.18); color: #facc15; box-shadow: 0 0 20px rgba(234,179,8,0.22); }
 
