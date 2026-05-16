@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+onlyBuiltDependencies:
+  - '@whiskeysockets/baileys'
+  - protobufjs
+  - sharp
+
 importers:
 
   .:
