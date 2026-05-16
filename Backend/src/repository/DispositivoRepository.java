@@ -9,9 +9,19 @@ import org.springframework.stereotype.Repository;
 import model.Agencia;
 import model.Dispositivo;
 import model.Dispositivo.Plataforma;
+import model.Dispositivo.Proposito;
 
 @Repository
 public interface DispositivoRepository extends JpaRepository<Dispositivo, Long> {
+
+    // ── Filtros por propósito (aislamiento del sector /spam) ──────────────────
+    // Los devices con propósito CAMPANIAS no aparecen en /whatsapp-vincular ni
+    // en los chequeos de conexión del Dashboard: viven solo en /spam.
+    List<Dispositivo> findByAgenciaIdAndPlataformaAndVisibleTrueAndProposito(
+            Long agenciaId, Plataforma plataforma, Proposito proposito);
+
+    boolean existsByAgenciaIdAndPlataformaAndActivoTrueAndProposito(
+            Long agenciaId, Plataforma plataforma, Proposito proposito);
 
     List<Dispositivo> findByAgenciaId(Long agenciaId);
 

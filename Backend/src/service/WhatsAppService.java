@@ -71,6 +71,10 @@ public class WhatsAppService {
     @Autowired
     private AiAgentService aiAgentService;
 
+    @Lazy
+    @Autowired
+    private CampaniaService campaniaService;
+
     private final Cache<String, Object> phoneLocks = Caffeine.newBuilder()
             .expireAfterAccess(2, TimeUnit.MINUTES)
             .maximumSize(10_000)
@@ -149,6 +153,13 @@ public class WhatsAppService {
 
             if (dispositivo == null) {
                 log.warn("SEGURIDAD: SessionID '{}' desconocido. Mensaje ignorado.", req.sessionId());
+                return;
+            }
+
+            // Los devices de CAMPAÑAS viven aislados: no crean Cliente ni Mensaje
+            // en las tablas principales. Se derivan al servicio dedicado.
+            if (dispositivo.getProposito() == Dispositivo.Proposito.CAMPANIAS) {
+                campaniaService.procesarMensajeEntrante(dispositivo, telefono, req.nombreSender(), req.texto());
                 return;
             }
 
@@ -467,10 +478,21 @@ public class WhatsAppService {
 
     @Transactional
     public Dispositivo crearDispositivo(Agencia agencia, String alias) {
+        return crearDispositivoConProposito(agencia, alias, Dispositivo.Proposito.PRINCIPAL);
+    }
+
+    /**
+     * Crea un dispositivo de WhatsApp con un propósito específico. Los devices
+     * con propósito CAMPANIAS se usan solo en /spam y quedan aislados del
+     * embudo principal.
+     */
+    public Dispositivo crearDispositivoConProposito(Agencia agencia, String alias,
+                                                    Dispositivo.Proposito proposito) {
         Dispositivo d = new Dispositivo();
         d.setAgencia(agencia);
         d.setAlias(alias);
         d.setPlataforma(Dispositivo.Plataforma.WHATSAPP);
+        d.setProposito(proposito != null ? proposito : Dispositivo.Proposito.PRINCIPAL);
         d.setSessionId("agencia_" + agencia.getId() + "_" + UUID.randomUUID().toString().substring(0, 8));
         d.setEstado(ESTADO_DISCONNECTED);
         return dispositivoRepository.save(d);

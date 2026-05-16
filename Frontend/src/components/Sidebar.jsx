@@ -8,6 +8,7 @@ const NAV_ITEMS = [
     { to: '/kanban',             icon: 'fa-chart-gantt',    labelKey: 'nav.embudo',      accent: 'nav-orange' },
     { to: '/respuestas-rapidas', icon: 'fa-bolt-lightning', labelKey: 'nav.respuestas',  accent: 'nav-blue'   },
     { to: '/contactos',          icon: 'fa-user-group',     labelKey: 'nav.contactos',   accent: 'nav-purple' },
+    { to: '/spam',               icon: 'fa-bullhorn',       labelKey: 'nav.spam',        accent: 'nav-amber'  },
     { to: '/planes',             icon: 'fa-crown',          labelKey: 'nav.suscripcion', accent: 'nav-gold',  suscripcion: true },
     { to: '/agente-ia',          icon: 'fa-robot',          labelKey: 'nav.agente',      accent: 'nav-indigo' },
     { to: '/perfil',             icon: 'fa-circle-user',    labelKey: 'nav.cuenta',      accent: 'nav-teal'   },

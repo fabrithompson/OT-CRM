@@ -8,6 +8,7 @@ const PAGE_TITLES = {
   '/kanban':            'Embudo',
   '/contactos':         'Contactos',
   '/respuestas-rapidas':'Respuestas Rápidas',
+  '/spam':              'Spam / Campañas',
   '/planes':            'Suscripción',
   '/mi-suscripcion':    'Mi Suscripción',
   '/agente-ia':         'Agente IA',
@@ -43,6 +44,7 @@ const Planes = lazy(() => import('./pages/Planes'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const MiSuscripcion = lazy(() => import('./pages/MiSuscripcion'));
 const AgenteIA = lazy(() => import('./pages/AgenteIA'));
+const Spam = lazy(() => import('./pages/Spam'));
 
 function App() {
   return (
@@ -68,6 +70,7 @@ function App() {
               <Route path="/checkout"        element={<Checkout />} />
               <Route path="/mi-suscripcion"  element={<MiSuscripcion />} />
               <Route path="/agente-ia"       element={<AgenteIA />} />
+              <Route path="/spam"            element={<Spam />} />
             </Route>
           </Routes>
         </Suspense>

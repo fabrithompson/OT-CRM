@@ -134,8 +134,13 @@ public class DashboardService {
                     .toList();
             data.put("ultimasTransacciones", ultimas);
 
+            // Solo cuentan los devices PRINCIPAL: el dashboard refleja el embudo real,
+            // no el sector /spam (los CAMPAÑAS pueden estar online sin que el negocio
+            // tenga "WhatsApp conectado" en el sentido productivo).
             boolean waConectado = dispositivoRepository.findByAgenciaIdAndPlataforma(agenciaId, Dispositivo.Plataforma.WHATSAPP)
-                    .stream().anyMatch(d -> "CONNECTED".equals(d.getEstado()));
+                    .stream()
+                    .filter(d -> d.getProposito() == Dispositivo.Proposito.PRINCIPAL)
+                    .anyMatch(d -> "CONNECTED".equals(d.getEstado()));
             boolean tgConectado = dispositivoRepository.findByAgenciaIdAndPlataforma(agenciaId, Dispositivo.Plataforma.TELEGRAM)
                     .stream().anyMatch(d -> "CONECTADO".equals(d.getEstado()));
             data.put("whatsappConectado", waConectado);

@@ -17,6 +17,7 @@ public final class DispositivoMapper {
         dto.put("estado", d.getEstado());
         dto.put("numeroTelefono", d.getNumeroTelefono());
         dto.put("plataforma", d.getPlataforma() != null ? d.getPlataforma().name() : null);
+        dto.put("proposito", d.getProposito() != null ? d.getProposito().name() : "PRINCIPAL");
         return dto;
     }
 }

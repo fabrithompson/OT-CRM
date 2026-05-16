@@ -31,12 +31,17 @@ public class Dispositivo {
         TELEGRAM
     }
 
+    public enum Proposito {
+        PRINCIPAL,
+        CAMPANIAS
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String alias;
-    private String numeroTelefono;  
+    private String numeroTelefono;
 
     @Column(unique = true, nullable = false)
     private String sessionId;
@@ -46,6 +51,13 @@ public class Dispositivo {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Plataforma plataforma;
+
+    // Distingue números del embudo principal de los números "quemables" usados
+    // solo para campañas masivas. Los CAMPANIAS no aparecen en el Kanban ni en
+    // /contactos: viven aislados en /spam.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Proposito proposito = Proposito.PRINCIPAL;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agencia_id", nullable = false)
