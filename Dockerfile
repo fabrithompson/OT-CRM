@@ -1,10 +1,17 @@
-# ── 1: Build React ──
-FROM node:20-alpine AS frontend
+# ── 1: Build React con pnpm ──
+FROM node:22-alpine AS frontend
 WORKDIR /app/frontend
-COPY Frontend/package*.json ./
-RUN npm install
+# corepack viene con Node 22 y administra pnpm sin instalación global manual.
+# La versión exacta sale del campo "packageManager" del package.json.
+RUN corepack enable
+# Copiamos primero los archivos necesarios para el install (incluye scripts/
+# porque el preinstall hook lo necesita). Si solo copiáramos package*.json,
+# el hook check-package-manager.js no se encontraría y npm/pnpm fallarían.
+COPY Frontend/package.json Frontend/pnpm-lock.yaml Frontend/.npmrc ./
+COPY Frontend/scripts ./scripts
+RUN pnpm install --frozen-lockfile
 COPY Frontend/ ./
-RUN npm run build
+RUN pnpm run build
 
 # ── 2: Build Java ──
 FROM maven:3.9.6-eclipse-temurin-21 AS backend
