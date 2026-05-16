@@ -1,4 +1,0 @@
-allowBuilds:
-  '@whiskeysockets/baileys': true
-  protobufjs: true
-  sharp: true
