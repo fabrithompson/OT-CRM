@@ -167,7 +167,7 @@ function ContactosPanel({ deviceId, contactos, onReload }) {
                 </div>
             )}
 
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 200 }}>
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 {contactos.length === 0 && (
                     <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #94a3b8)' }}>
                         <i className="fas fa-inbox" style={{ fontSize: 36, opacity: 0.3, display: 'block', marginBottom: 12 }}></i>
@@ -566,8 +566,10 @@ export default function Spam() {
     const hayDeviceConectado = deviceActivo?.estado === 'CONNECTED';
 
     return (
-        <div>
-            <div className="header-top" style={{ justifyContent: 'space-between', padding: '20px 25px' }}>
+        // Layout vertical de altura completa: header (auto) + cuerpo (flex 1).
+        // Las secciones internas tienen scroll propio así nunca se sale del viewport.
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+            <div className="header-top" style={{ justifyContent: 'space-between', padding: '20px 25px', flexShrink: 0 }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: 10 }}>
                         <i className="fas fa-bullhorn" style={{ color: '#f59e0b' }}></i>
@@ -580,30 +582,50 @@ export default function Spam() {
                 <NotificationBell />
             </div>
 
-            <div className="dashboard-content" style={{ paddingTop: 10 }}>
-                {/* Grid de devices */}
-                <div className="devices-grid">
-                    <button type="button" className="ghost-column-placeholder add-device-card"
-                        style={{ minHeight: 200, height: 'auto', width: '100%' }}
-                        onClick={() => { setAlias(''); setModalCrear(true); }}>
-                        <div className="add-icon-circle"><i className="fas fa-plus"></i></div>
-                        <span style={{ fontWeight: 500 }}>Agregar número de campaña</span>
-                    </button>
-                    {loading
-                        ? <div style={{ padding: 40 }}><div className="spinner"></div></div>
-                        : devices.map(d => (
-                            <DeviceCard key={d.id} device={d}
-                                isActive={d.id === deviceActivoId}
-                                onSelect={setDeviceActivoId}
-                                onConectar={abrirQr}
-                                onEliminar={(id) => { setPendingDeviceId(id); setModalEliminar(true); }} />
-                        ))}
+            {/* Cuerpo: ocupa lo que queda del viewport, sin scroll global */}
+            <div style={{
+                flex: 1, minHeight: 0,
+                display: 'flex', flexDirection: 'column',
+                padding: '10px 30px 20px', gap: 20
+            }}>
+                {/* Sección 1 — Devices: scroll horizontal/vertical interno si crecen */}
+                <div style={{
+                    flexShrink: 0,
+                    maxHeight: deviceActivoId ? 320 : '100%',  // colapsada cuando hay workspace (1 fila visible, scroll si crece)
+                    overflowY: 'auto',
+                    paddingRight: 4,
+                }}>
+                    {loading && <div style={{ padding: 40 }}><div className="spinner"></div></div>}
+                    {!loading && (
+                        <div className="devices-grid" style={{ paddingBottom: 4 }}>
+                            <button type="button" className="ghost-column-placeholder add-device-card"
+                                style={{ minHeight: 200, height: 'auto', width: '100%' }}
+                                onClick={() => { setAlias(''); setModalCrear(true); }}>
+                                <div className="add-icon-circle"><i className="fas fa-plus"></i></div>
+                                <span style={{ fontWeight: 500 }}>Agregar número de campaña</span>
+                            </button>
+                            {devices.map(d => (
+                                <DeviceCard key={d.id} device={d}
+                                    isActive={d.id === deviceActivoId}
+                                    onSelect={setDeviceActivoId}
+                                    onConectar={abrirQr}
+                                    onEliminar={(id) => { setPendingDeviceId(id); setModalEliminar(true); }} />
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                {/* Workspace del device activo */}
+                {/* Sección 2 — Workspace: ocupa el resto del viewport */}
                 {deviceActivoId && (
-                    <div style={{ marginTop: 30 }}>
-                        <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', color: 'var(--text-main, #fff)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                        flex: 1, minHeight: 0,
+                        display: 'flex', flexDirection: 'column',
+                        gap: 12,
+                    }}>
+                        <h3 style={{
+                            margin: 0, fontSize: '1.1rem', color: 'var(--text-main, #fff)',
+                            display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0
+                        }}>
                             <i className="fas fa-stream" style={{ color: '#f59e0b' }}></i>
                             Workspace · {deviceActivo?.alias}
                             {!hayDeviceConectado && (
@@ -614,8 +636,13 @@ export default function Spam() {
                         </h3>
 
                         {!hayDeviceConectado && (
-                            <div className="device-card" style={{ minHeight: 'auto', textAlign: 'center', padding: 30 }}>
-                                <i className="fas fa-qrcode" style={{ fontSize: 40, color: '#f59e0b', opacity: 0.5 }}></i>
+                            <div className="device-card" style={{
+                                flex: 1, minHeight: 0,
+                                display: 'flex', flexDirection: 'column',
+                                alignItems: 'center', justifyContent: 'center',
+                                textAlign: 'center', padding: 30
+                            }}>
+                                <i className="fas fa-qrcode" style={{ fontSize: 48, color: '#f59e0b', opacity: 0.5 }}></i>
                                 <p style={{ marginTop: 14, color: 'var(--text-sec, #94a3b8)' }}>
                                     Vinculá el número escaneando el QR antes de importar contactos o mandar campañas.
                                 </p>
@@ -627,7 +654,10 @@ export default function Spam() {
                         )}
 
                         {hayDeviceConectado && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 20, minHeight: 520 }}>
+                            <div style={{
+                                flex: 1, minHeight: 0,
+                                display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 20
+                            }}>
                                 <ContactosPanel deviceId={deviceActivoId}
                                     contactos={contactos}
                                     onReload={() => loadContactos(deviceActivoId)} />
