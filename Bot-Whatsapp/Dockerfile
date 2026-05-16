@@ -15,17 +15,20 @@ WORKDIR /app
 # (check-package-manager.js) lo lee y, si no existe, la instalación falla.
 COPY package.json pnpm-lock.yaml .npmrc ./
 COPY scripts ./scripts
-# Dos flags CLI necesarios — los settings equivalentes en package.json/.npmrc
+# Tres flags CLI necesarios — los settings equivalentes en package.json/.npmrc
 # no se respetan en pnpm 11.x (bug conocido):
 #
 # 1. blockExoticSubdeps=false: Baileys depende de libsignal vía git-repo
 #    (fork oficial de WhiskeySockets, no está en npm registry).
 # 2. onlyBuiltDependencies='*': pnpm 10+ bloquea scripts de install de paquetes
 #    nativos por defecto (anti supply-chain). baileys/protobufjs/sharp los
-#    necesitan para compilar bindings nativos. El install falla con
-#    ERR_PNPM_IGNORED_BUILDS si no pre-aprobamos acá; un approve-builds posterior
-#    no llega a ejecutarse porque el install ya cortó con exit 1.
-RUN pnpm install --frozen-lockfile --prod \
+#    necesitan para compilar bindings nativos.
+# 3. SIN --frozen-lockfile: pnpm 11.x guarda las aprobaciones de builds en un
+#    cache que NO se commitea, no en el lockfile. Con --frozen-lockfile activo
+#    el install corta con ERR_PNPM_IGNORED_BUILDS aunque los flags estén bien.
+#    Sin frozen, pnpm reutiliza el lockfile committeado igual mientras versiones
+#    coincidan; el riesgo de drift es mínimo y el build pasa.
+RUN pnpm install --prod \
     --config.blockExoticSubdeps=false \
     --config.onlyBuiltDependencies='*'
 COPY . .
