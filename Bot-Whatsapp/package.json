@@ -3,14 +3,17 @@
   "version": "2.2.0",
   "description": "Bot de WhatsApp Enterprise para CRM + Realtime Presence + Stability Patch",
   "main": "index.js",
+  "packageManager": "pnpm@11.1.2",
   "scripts": {
+    "preinstall": "node ./scripts/check-package-manager.js",
+    "setup": "pnpm install --config.blockExoticSubdeps=false",
     "start": "node index.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "6.7.21",
     "axios": "^1.6.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "express": "^4.18.2",
     "node-cache": "^5.1.2",
     "pino": "^8.16.0",
@@ -18,6 +21,15 @@
     "socket.io": "^4.7.4"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "pnpm": ">=10"
+  },
+  "pnpm": {
+    "blockExoticSubdeps": false,
+    "onlyBuiltDependencies": [
+      "@whiskeysockets/baileys",
+      "protobufjs",
+      "sharp"
+    ]
   }
 }
