@@ -3,11 +3,10 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
-
-onlyBuiltDependencies:
-  - '@whiskeysockets/baileys'
-  - protobufjs
-  - sharp
+  onlyBuiltDependencies:
+    - '@whiskeysockets/baileys'
+    - protobufjs
+    - sharp
 
 importers:
 
