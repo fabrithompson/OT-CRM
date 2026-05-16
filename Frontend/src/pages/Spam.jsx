@@ -2,13 +2,22 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
-import { useLanguage } from '../context/LangContext';
 import { useUser } from '../context/UserContext';
 import useWebSocket from '../hooks/useWebSocket';
-import NotificationBell from '../components/kanban/NotificationBell';
+
+// ─── Paleta del módulo (coherente con el resto del CRM) ──────────────────────
+const COLOR_AMBER       = '#f59e0b';
+const COLOR_AMBER_SOFT  = 'rgba(245,158,11,0.10)';
+const COLOR_GREEN       = '#10b981';
+const COLOR_GREEN_SOFT  = 'rgba(16,185,129,0.12)';
+const COLOR_RED         = '#ef4444';
+const COLOR_BORDER      = 'rgba(255,255,255,0.08)';
+const COLOR_BORDER_SOFT = 'rgba(255,255,255,0.04)';
+const COLOR_CARD_BG     = 'var(--bg-card, rgba(255,255,255,0.03))';
+const COLOR_TEXT        = 'var(--text-main, #fff)';
+const COLOR_TEXT_MUTED  = 'var(--text-muted, #94a3b8)';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
 const formatHora = (iso) => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -16,68 +25,111 @@ const formatHora = (iso) => {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
-// ─── Modal base ───────────────────────────────────────────────────────────────
-function Modal({ active, onClose, children }) {
+// ─── Modal con flow QR integrado ──────────────────────────────────────────────
+function AddDeviceModal({ active, onClose, onCreated }) {
+    const [alias, setAlias] = useState('');
+    const [creating, setCreating] = useState(false);
+    const [qr, setQr] = useState(null);
+    const [device, setDevice] = useState(null);
+    const [statusMsg, setStatusMsg] = useState('');
+    const pollRef = useRef(null);
+    const toast = useToast();
+
     useEffect(() => {
-        const h = (e) => { if (e.key === 'Escape') onClose(); };
-        if (active) document.addEventListener('keydown', h);
-        return () => document.removeEventListener('keydown', h);
-    }, [active, onClose]);
+        if (!active) {
+            setAlias(''); setQr(null); setDevice(null); setStatusMsg('');
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        }
+    }, [active]);
+
+    const crear = async () => {
+        if (!alias.trim()) { toast('Aviso', 'Poné un alias para el número', COLOR_AMBER); return; }
+        setCreating(true);
+        try {
+            const { data } = await api.post('/campania/devices', { alias: alias.trim() });
+            setDevice(data);
+            setStatusMsg('Generando QR...');
+            startPolling(data.id);
+        } catch (err) {
+            toast('Error', err.response?.data?.error || 'Error creando dispositivo', COLOR_RED);
+        } finally { setCreating(false); }
+    };
+
+    const startPolling = (deviceId) => {
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollRef.current = setInterval(async () => {
+            try {
+                const { data } = await api.get(`/whatsapp/${deviceId}/qr`);
+                if (data.qr) { setQr(data.qr); setStatusMsg('Escaneá el QR con WhatsApp'); }
+                if (data.status === 'CONNECTED') {
+                    clearInterval(pollRef.current); pollRef.current = null;
+                    toast('Vinculado', 'Número conectado correctamente', COLOR_GREEN);
+                    onCreated?.();
+                    onClose();
+                }
+            } catch { /* sigue intentando */ }
+        }, 2500);
+    };
+
     if (!active) return null;
     return (
         <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="custom-modal">{children}</div>
-        </div>
-    );
-}
-Modal.propTypes = { active: PropTypes.bool.isRequired, onClose: PropTypes.func.isRequired, children: PropTypes.node.isRequired };
-
-// ─── Device Card (estilo idéntico al de WhatsAppVincular, con badge "Spam") ──
-function DeviceCard({ device, isActive, onSelect, onConectar, onEliminar }) {
-    const connected = device.estado === 'CONNECTED';
-    return (
-        <div className="device-card"
-            style={{ cursor: 'pointer', outline: isActive ? '2px solid var(--brand-green, #10b981)' : 'none' }}
-            onClick={() => onSelect(device.id)}>
-            <div className="device-header">
-                <div className="device-icon" style={{ background: 'linear-gradient(135deg, #3b1f1f, #1a0f0f)', color: '#f59e0b' }}>
-                    <i className="fas fa-bullhorn"></i>
-                </div>
-                <span className={`status-badge ${connected ? 'status-connected' : 'status-disconnected'}`}>
-                    {connected ? 'Conectado' : 'Desconectado'}
-                </span>
-            </div>
-            <div className="device-info">
-                <h3>{device.alias}</h3>
-                <p>{device.numeroTelefono || 'Sin vincular'}</p>
-                <div className="device-meta" style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: 5 }}>
-                    Campaña · {String(device.sessionId || '').slice(0, 14)}
-                </div>
-            </div>
-            <div className="device-actions">
-                {!connected && (
-                    <button className="btn-card-action" onClick={(e) => { e.stopPropagation(); onConectar(device.id); }}>
-                        <i className="fas fa-qrcode"></i> Vincular
-                    </button>
+            <div className="custom-modal" style={{ maxWidth: 420 }}>
+                <h3 style={{
+                    margin: '0 0 5px', fontSize: '1.4rem',
+                    background: 'linear-gradient(to right, #fff, #aebac1)',
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+                }}>
+                    Agregar número de campaña
+                </h3>
+                {!device && (
+                    <>
+                        <p style={{ color: COLOR_TEXT_MUTED, fontSize: '0.9rem', marginBottom: 18 }}>
+                            Usá un <strong>chip aparte</strong>, no el número principal del negocio.
+                            Si lo banean, perdés solo este.
+                        </p>
+                        <input className="clean-input" autoFocus
+                            style={{ width: '100%', marginBottom: 20 }}
+                            placeholder="Alias (ej: Burner-01)"
+                            value={alias} autoComplete="off"
+                            onChange={e => setAlias(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && crear()} />
+                        <div className="modal-actions">
+                            <button className="btn-modal btn-cancel" onClick={onClose} disabled={creating}>
+                                Cancelar
+                            </button>
+                            <button className="btn-modal btn-confirm" onClick={crear} disabled={creating}>
+                                {creating ? <i className="fas fa-spinner fa-spin"></i> : 'Crear'}
+                            </button>
+                        </div>
+                    </>
                 )}
-                <button className="btn-card-action btn-card-danger"
-                    onClick={(e) => { e.stopPropagation(); onEliminar(device.id); }}>
-                    <i className="fas fa-trash-alt"></i>
-                </button>
+                {device && (
+                    <div style={{ textAlign: 'center' }}>
+                        <p style={{ color: COLOR_TEXT_MUTED, marginBottom: 14 }}>{statusMsg}</p>
+                        {qr && (
+                            <img src={qr} alt="QR"
+                                style={{ width: 260, height: 260, borderRadius: 12,
+                                    border: '4px solid white', margin: '0 auto', display: 'block' }} />
+                        )}
+                        {!qr && <div className="spinner" style={{ margin: '20px auto' }}></div>}
+                        <div className="modal-actions" style={{ marginTop: 20 }}>
+                            <button className="btn-modal btn-cancel" onClick={onClose}>Cerrar</button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
 }
-DeviceCard.propTypes = {
-    device: PropTypes.object.isRequired,
-    isActive: PropTypes.bool,
-    onSelect: PropTypes.func.isRequired,
-    onConectar: PropTypes.func.isRequired,
-    onEliminar: PropTypes.func.isRequired,
+AddDeviceModal.propTypes = {
+    active: PropTypes.bool.isRequired,
+    onClose: PropTypes.func.isRequired,
+    onCreated: PropTypes.func,
 };
 
-// ─── Panel de contactos + plantilla + envío ──────────────────────────────────
+// ─── Panel izquierdo: contactos + plantilla + envío ──────────────────────────
 function ContactosPanel({ deviceId, contactos, onReload }) {
     const [seleccionados, setSeleccionados] = useState(new Set());
     const [plantilla, setPlantilla] = useState('Hola {nombre}, te escribo de...');
@@ -97,10 +149,10 @@ function ContactosPanel({ deviceId, contactos, onReload }) {
                 `/campania/devices/${deviceId}/contactos/import`, form,
                 { headers: { 'Content-Type': 'multipart/form-data' } }
             );
-            toast('Listo', `Importados: ${data.importados} · Duplicados: ${data.duplicados} · Inválidos: ${data.invalidos}`, '#10b981');
+            toast('Listo', `Importados: ${data.importados} · Duplicados: ${data.duplicados} · Inválidos: ${data.invalidos}`, COLOR_GREEN);
             onReload();
         } catch (err) {
-            toast('Error', err.response?.data?.error || 'Error importando', '#ef4444');
+            toast('Error', err.response?.data?.error || 'Error importando', COLOR_RED);
         } finally {
             if (fileRef.current) fileRef.current.value = '';
         }
@@ -119,9 +171,9 @@ function ContactosPanel({ deviceId, contactos, onReload }) {
     };
 
     const enviar = async () => {
-        if (!deviceId) { toast('Aviso', 'Seleccioná un número primero', '#f59e0b'); return; }
-        if (seleccionados.size === 0) { toast('Aviso', 'Seleccioná al menos un contacto', '#f59e0b'); return; }
-        if (!plantilla.trim()) { toast('Aviso', 'La plantilla está vacía', '#f59e0b'); return; }
+        if (!deviceId) { toast('Aviso', 'Seleccioná un número', COLOR_AMBER); return; }
+        if (seleccionados.size === 0) { toast('Aviso', 'Seleccioná al menos un contacto', COLOR_AMBER); return; }
+        if (!plantilla.trim()) { toast('Aviso', 'La plantilla está vacía', COLOR_AMBER); return; }
         setEnviando(true);
         try {
             const { data } = await api.post('/campania/enviar', {
@@ -129,88 +181,70 @@ function ContactosPanel({ deviceId, contactos, onReload }) {
                 cuerpo: plantilla,
                 contactoIds: Array.from(seleccionados),
             });
-            toast('Campaña encolada', `Encolados: ${data.encolados} · Salteados: ${data.salteados}`, '#10b981');
+            toast('Campaña encolada', `Encolados: ${data.encolados} · Salteados: ${data.salteados}`, COLOR_GREEN);
             setSeleccionados(new Set());
         } catch (err) {
-            toast('Error', err.response?.data?.error || 'Error enviando', '#ef4444');
+            toast('Error', err.response?.data?.error || 'Error enviando', COLOR_RED);
         } finally { setEnviando(false); }
     };
 
     return (
-        <div className="device-card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, padding: 0 }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-glass, rgba(255,255,255,0.08))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-main, #fff)' }}>
-                        <i className="fas fa-users" style={{ marginRight: 8, color: '#f59e0b' }}></i>
-                        Contactos del sector
-                    </h3>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted, #94a3b8)' }}>
-                        {contactos.length} importados · {seleccionados.size} seleccionados
-                    </p>
-                </div>
+        <div style={panelStyle}>
+            <div style={panelHeaderStyle}>
+                <span><i className="fas fa-users" style={{ color: COLOR_AMBER, marginRight: 8 }}></i> Contactos del sector</span>
                 <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={importar} />
-                <button className="btn-card-action" onClick={() => fileRef.current?.click()} disabled={!deviceId}
-                    style={{ flex: 'none', padding: '8px 14px' }}>
-                    <i className="fas fa-file-upload"></i> Importar
+                <button onClick={() => fileRef.current?.click()} style={btnSmall} disabled={!deviceId}>
+                    <i className="fas fa-file-upload"></i> Importar Excel
                 </button>
             </div>
 
-            {contactos.length > 0 && (
-                <div style={{ padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <label style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
-                        <input type="checkbox"
-                            checked={contactos.length > 0 && seleccionados.size === contactos.length}
-                            onChange={toggleTodos}
-                            style={{ marginRight: 8 }} />
-                        Seleccionar todos
-                    </label>
-                </div>
-            )}
+            <div style={{ padding: '8px 14px', borderBottom: `1px solid ${COLOR_BORDER}` }}>
+                <label style={{ color: COLOR_TEXT_MUTED, fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
+                    <input type="checkbox"
+                        checked={contactos.length > 0 && seleccionados.size === contactos.length}
+                        onChange={toggleTodos}
+                        style={{ marginRight: 8 }} />
+                    Seleccionar todos ({seleccionados.size}/{contactos.length})
+                </label>
+            </div>
 
             <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 {contactos.length === 0 && (
-                    <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted, #94a3b8)' }}>
-                        <i className="fas fa-inbox" style={{ fontSize: 36, opacity: 0.3, display: 'block', marginBottom: 12 }}></i>
-                        <p style={{ margin: 0, fontSize: 14 }}>Sin contactos importados.</p>
-                        <p style={{ margin: '4px 0 0', fontSize: 12 }}>Subí un Excel con columnas <strong>Nombre</strong> y <strong>Teléfono</strong>.</p>
-                    </div>
+                    <p style={{ padding: 20, color: COLOR_TEXT_MUTED, textAlign: 'center', fontSize: 13 }}>
+                        Sin contactos. Importá un Excel con columnas <strong>Nombre</strong> y <strong>Teléfono</strong>.
+                    </p>
                 )}
                 {contactos.map(c => (
-                    <div key={c.id}
-                        onClick={() => toggleUno(c.id)}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            padding: '10px 20px', cursor: 'pointer',
-                            borderBottom: '1px solid rgba(255,255,255,0.04)',
-                            background: seleccionados.has(c.id) ? 'rgba(16,185,129,0.08)' : 'transparent',
-                            transition: 'background 0.15s'
-                        }}>
+                    <div key={c.id} style={{
+                        ...contactoRowStyle,
+                        background: seleccionados.has(c.id) ? COLOR_AMBER_SOFT : 'transparent',
+                    }} onClick={() => toggleUno(c.id)}>
                         <input type="checkbox" checked={seleccionados.has(c.id)}
                             onChange={() => toggleUno(c.id)}
+                            style={{ marginRight: 12 }}
                             onClick={e => e.stopPropagation()} />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ color: 'var(--text-main, #fff)', fontSize: 14, fontWeight: 500 }}>{c.nombre}</div>
-                            <div style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 12, fontFamily: 'monospace' }}>{c.telefono}</div>
+                            <div style={{ color: COLOR_TEXT, fontSize: 14 }}>{c.nombre}</div>
+                            <div style={{ color: COLOR_TEXT_MUTED, fontSize: 12, fontFamily: 'monospace' }}>{c.telefono}</div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div style={{ padding: 16, borderTop: '1px solid var(--border-glass, rgba(255,255,255,0.08))' }}>
-                <label style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 12, display: 'block', marginBottom: 6 }}>
+            <div style={{ padding: 12, borderTop: `1px solid ${COLOR_BORDER}` }}>
+                <label style={{ color: COLOR_TEXT_MUTED, fontSize: 12 }}>
                     Mensaje (usá {'{nombre}'} para personalizar)
                 </label>
                 <textarea
-                    className="clean-input no-resize"
                     value={plantilla}
                     onChange={e => setPlantilla(e.target.value)}
                     rows={3}
-                    style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }} />
+                    className="clean-input no-resize"
+                    style={{ width: '100%', marginTop: 6, resize: 'vertical', fontFamily: 'inherit' }} />
                 <button
                     onClick={enviar}
                     disabled={enviando || seleccionados.size === 0 || !deviceId}
-                    className="btn-modal btn-confirm"
-                    style={{ width: '100%', marginTop: 10, background: '#f59e0b', color: '#000' }}>
+                    style={{ ...btnPrimary, width: '100%', marginTop: 8 }}>
                     {enviando
                         ? <><i className="fas fa-spinner fa-spin"></i> Encolando...</>
                         : <><i className="fas fa-paper-plane"></i> Enviar campaña ({seleccionados.size})</>}
@@ -225,11 +259,12 @@ ContactosPanel.propTypes = {
     onReload: PropTypes.func.isRequired,
 };
 
-// ─── Panel chat (bandeja + conversación) ─────────────────────────────────────
-function ChatPanel({ deviceId, bandeja, contactoActivo, mensajes, onSelectContacto, onResponder }) {
+// ─── Panel derecho: bandeja + conversación ────────────────────────────────────
+function ChatPanel({ bandeja, contactoActivo, mensajes, onSelectContacto, onResponder }) {
     const [borrador, setBorrador] = useState('');
     const [enviando, setEnviando] = useState(false);
     const msgEndRef = useRef(null);
+    const toast = useToast();
 
     useEffect(() => {
         msgEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -241,112 +276,126 @@ function ChatPanel({ deviceId, bandeja, contactoActivo, mensajes, onSelectContac
         try {
             await onResponder(contactoActivo.contactoId, borrador);
             setBorrador('');
+        } catch (err) {
+            toast('Error', err.response?.data?.error || 'Error enviando', COLOR_RED);
         } finally { setEnviando(false); }
     };
 
     return (
-        <div className="device-card" style={{ display: 'flex', minHeight: 0, padding: 0, overflow: 'hidden' }}>
-            {/* Bandeja */}
-            <div style={{ width: 280, borderRight: '1px solid var(--border-glass, rgba(255,255,255,0.08))', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-glass, rgba(255,255,255,0.08))' }}>
-                    <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-main, #fff)' }}>
-                        <i className="fas fa-inbox" style={{ marginRight: 8, color: '#f59e0b' }}></i>
-                        Chats activos
-                    </h3>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted, #94a3b8)' }}>
-                        {bandeja.length} conversación{bandeja.length === 1 ? '' : 'es'}
-                    </p>
+        <div style={{ ...panelStyle, flex: 1.4 }}>
+            <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+                {/* Bandeja */}
+                <div style={{
+                    width: 260,
+                    borderRight: `1px solid ${COLOR_BORDER}`,
+                    display: 'flex', flexDirection: 'column', minHeight: 0
+                }}>
+                    <div style={panelHeaderStyle}>
+                        <span><i className="fas fa-inbox" style={{ color: COLOR_AMBER, marginRight: 8 }}></i> Chats activos</span>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                        {bandeja.length === 0 && (
+                            <p style={{ padding: 16, color: COLOR_TEXT_MUTED, fontSize: 13, textAlign: 'center' }}>
+                                Cuando alguien responda a la campaña aparecerá acá.
+                            </p>
+                        )}
+                        {bandeja.map(item => (
+                            <div key={item.contactoId}
+                                onClick={() => onSelectContacto(item)}
+                                style={{
+                                    padding: '10px 14px', cursor: 'pointer',
+                                    background: contactoActivo?.contactoId === item.contactoId ? COLOR_AMBER_SOFT : 'transparent',
+                                    borderLeft: contactoActivo?.contactoId === item.contactoId
+                                        ? `3px solid ${COLOR_AMBER}` : '3px solid transparent',
+                                    borderBottom: `1px solid ${COLOR_BORDER_SOFT}`
+                                }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ color: COLOR_TEXT, fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {item.nombre}
+                                    </div>
+                                    {item.noLeidos > 0 && (
+                                        <span style={{
+                                            background: COLOR_GREEN, color: '#000', fontSize: 11, fontWeight: 700,
+                                            padding: '2px 7px', borderRadius: 10
+                                        }}>{item.noLeidos}</span>
+                                    )}
+                                </div>
+                                <div style={{ color: COLOR_TEXT_MUTED, fontSize: 12, fontFamily: 'monospace' }}>{item.telefono}</div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {bandeja.length === 0 && (
-                        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted, #94a3b8)', fontSize: 13 }}>
-                            <i className="fas fa-comment-slash" style={{ fontSize: 28, opacity: 0.3, display: 'block', marginBottom: 10 }}></i>
-                            Cuando alguien responda a la campaña aparecerá acá.
+
+                {/* Conversación */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    {!contactoActivo && (
+                        <div style={{
+                            flex: 1, display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center', color: COLOR_TEXT_MUTED
+                        }}>
+                            <i className="fas fa-comments" style={{ fontSize: 48, opacity: 0.25 }}></i>
+                            <p style={{ marginTop: 12 }}>Seleccioná un chat de la bandeja</p>
                         </div>
                     )}
-                    {bandeja.map(item => (
-                        <div key={item.contactoId}
-                            onClick={() => onSelectContacto(item)}
-                            style={{
-                                padding: '12px 20px', cursor: 'pointer',
-                                background: contactoActivo?.contactoId === item.contactoId
-                                    ? 'rgba(245,158,11,0.10)' : 'transparent',
-                                borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                borderLeft: contactoActivo?.contactoId === item.contactoId
-                                    ? '3px solid #f59e0b' : '3px solid transparent'
-                            }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                                <div style={{ color: 'var(--text-main, #fff)', fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {item.nombre}
+                    {contactoActivo && (
+                        <>
+                            <div style={{ ...panelHeaderStyle, justifyContent: 'flex-start' }}>
+                                <div>
+                                    <div style={{ color: COLOR_TEXT, fontSize: 14, fontWeight: 600 }}>{contactoActivo.nombre}</div>
+                                    <div style={{ color: COLOR_TEXT_MUTED, fontSize: 12, fontFamily: 'monospace' }}>{contactoActivo.telefono}</div>
                                 </div>
-                                {item.noLeidos > 0 && (
-                                    <span style={{ background: '#10b981', color: '#000', fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 10 }}>
-                                        {item.noLeidos}
-                                    </span>
-                                )}
                             </div>
-                            <div style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 12, fontFamily: 'monospace', marginTop: 2 }}>
-                                {item.telefono}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Conversación */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                {!contactoActivo && (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted, #64748b)' }}>
-                        <i className="fas fa-comments" style={{ fontSize: 56, opacity: 0.2 }}></i>
-                        <p style={{ marginTop: 14, fontSize: 14 }}>Seleccioná un chat de la bandeja</p>
-                    </div>
-                )}
-                {contactoActivo && (
-                    <>
-                        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-glass, rgba(255,255,255,0.08))' }}>
-                            <div style={{ color: 'var(--text-main, #fff)', fontSize: 15, fontWeight: 600 }}>{contactoActivo.nombre}</div>
-                            <div style={{ color: 'var(--text-muted, #94a3b8)', fontSize: 12, fontFamily: 'monospace' }}>{contactoActivo.telefono}</div>
-                        </div>
-                        <div style={{ flex: 1, overflowY: 'auto', padding: 16, background: 'rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {mensajes.map(m => (
-                                <div key={m.id} style={{ display: 'flex', justifyContent: m.direccion === 'OUT' ? 'flex-end' : 'flex-start' }}>
-                                    <div style={{
-                                        maxWidth: '72%',
-                                        background: m.direccion === 'OUT' ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.06)',
-                                        color: 'var(--text-main, #fff)',
-                                        padding: '8px 12px', borderRadius: 12,
-                                        fontSize: 14, wordBreak: 'break-word', whiteSpace: 'pre-wrap',
-                                        border: m.direccion === 'OUT' ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(255,255,255,0.08)'
+                            <div style={{
+                                flex: 1, overflowY: 'auto', padding: 14,
+                                background: 'rgba(0,0,0,0.15)', minHeight: 0,
+                                display: 'flex', flexDirection: 'column', gap: 6
+                            }}>
+                                {mensajes.map(m => (
+                                    <div key={m.id} style={{
+                                        display: 'flex',
+                                        justifyContent: m.direccion === 'OUT' ? 'flex-end' : 'flex-start'
                                     }}>
-                                        {m.texto}
-                                        <div style={{ fontSize: 10, opacity: 0.6, textAlign: 'right', marginTop: 4 }}>
-                                            {formatHora(m.fecha)}
+                                        <div style={{
+                                            maxWidth: '72%',
+                                            background: m.direccion === 'OUT' ? COLOR_GREEN_SOFT : 'rgba(255,255,255,0.06)',
+                                            border: m.direccion === 'OUT'
+                                                ? `1px solid rgba(16,185,129,0.3)`
+                                                : `1px solid ${COLOR_BORDER}`,
+                                            color: COLOR_TEXT,
+                                            padding: '8px 12px', borderRadius: 12,
+                                            fontSize: 14, wordBreak: 'break-word', whiteSpace: 'pre-wrap'
+                                        }}>
+                                            {m.texto}
+                                            <div style={{ fontSize: 10, opacity: 0.6, textAlign: 'right', marginTop: 4 }}>
+                                                {formatHora(m.fecha)}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
-                            <div ref={msgEndRef} />
-                        </div>
-                        <div style={{ padding: 12, borderTop: '1px solid var(--border-glass, rgba(255,255,255,0.08))', display: 'flex', gap: 8 }}>
-                            <input className="clean-input" type="text" value={borrador}
-                                onChange={e => setBorrador(e.target.value)}
-                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
-                                placeholder="Escribí un mensaje..."
-                                style={{ flex: 1 }} />
-                            <button onClick={enviar} disabled={enviando || !borrador.trim()}
-                                className="btn-modal btn-confirm"
-                                style={{ width: 48, padding: 0 }}>
-                                {enviando ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
-                            </button>
-                        </div>
-                    </>
-                )}
+                                ))}
+                                <div ref={msgEndRef} />
+                            </div>
+                            <div style={{
+                                padding: 10, borderTop: `1px solid ${COLOR_BORDER}`,
+                                display: 'flex', gap: 8
+                            }}>
+                                <input type="text" value={borrador}
+                                    onChange={e => setBorrador(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
+                                    placeholder="Escribí un mensaje..."
+                                    className="clean-input"
+                                    style={{ flex: 1, borderRadius: 20 }} />
+                                <button onClick={enviar} disabled={enviando || !borrador.trim()} style={btnPrimary}>
+                                    {enviando ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paper-plane"></i>}
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );
 }
 ChatPanel.propTypes = {
-    deviceId: PropTypes.number,
     bandeja: PropTypes.array.isRequired,
     contactoActivo: PropTypes.object,
     mensajes: PropTypes.array.isRequired,
@@ -356,50 +405,33 @@ ChatPanel.propTypes = {
 
 // ─── Página principal ────────────────────────────────────────────────────────
 export default function Spam() {
-    const { t } = useLanguage();
     const toast = useToast();
     const { agenciaId } = useUser();
 
     const [devices, setDevices] = useState([]);
     const [deviceActivoId, setDeviceActivoId] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [showAddModal, setShowAddModal] = useState(false);
     const [contactos, setContactos] = useState([]);
     const [bandeja, setBandeja] = useState([]);
     const [contactoActivo, setContactoActivo] = useState(null);
     const [mensajes, setMensajes] = useState([]);
 
-    // Modales
-    const [modalCrear, setModalCrear] = useState(false);
-    const [modalEliminar, setModalEliminar] = useState(false);
-    const [modalQr, setModalQr] = useState(false);
-    const [alias, setAlias] = useState('');
-    const [creando, setCreando] = useState(false);
-    const [eliminando, setEliminando] = useState(false);
-    const [pendingDeviceId, setPendingDeviceId] = useState(null);
-    const [qrSrc, setQrSrc] = useState(null);
-    const [qrLoading, setQrLoading] = useState(false);
-
-    const qrIntervalRef = useRef(null);
-    const qrModalOpenRef = useRef(false);
-
     // Refs espejo del estado: el callback de useWebSocket sólo se ejecuta una
     // vez por conexión, así que sin refs lee valores stale del primer render.
-    const deviceActivoIdRef = useRef(deviceActivoId);
-    const contactoActivoRef = useRef(contactoActivo);
+    const deviceActivoIdRef = useRef(null);
+    const contactoActivoRef = useRef(null);
     useEffect(() => { deviceActivoIdRef.current = deviceActivoId; }, [deviceActivoId]);
     useEffect(() => { contactoActivoRef.current = contactoActivo; }, [contactoActivo]);
 
     // ── Loaders ──────────────────────────────────────────────────────────────
-    // Sin dep deviceActivoId: usamos el setter funcional para auto-seleccionar
-    // el primer device, así el callback es estable y los WS closures no quedan stale.
     const loadDevices = useCallback(async () => {
         try {
             const { data } = await api.get('/campania/devices');
             setDevices(data || []);
             setDeviceActivoId(prev => prev || (data?.[0]?.id ?? null));
         } catch {
-            toast('Error', 'No se pudieron cargar los números', '#ef4444');
-        } finally { setLoading(false); }
+            toast('Error', 'No se pudieron cargar los números', COLOR_RED);
+        }
     }, [toast]);
 
     const loadContactos = useCallback(async (devId) => {
@@ -407,7 +439,7 @@ export default function Spam() {
         try {
             const { data } = await api.get(`/campania/devices/${devId}/contactos`);
             setContactos(data || []);
-        } catch { /* silencio: no contamina la vista */ }
+        } catch { /* silencio */ }
     }, []);
 
     const loadBandeja = useCallback(async (devId) => {
@@ -437,10 +469,8 @@ export default function Spam() {
         }
     }, [deviceActivoId, loadContactos, loadBandeja]);
 
-    // ── WebSocket: estado de devices + eventos de campaña ────────────────────
+    // ── WebSocket: tiempo real para estado de devices + chats ────────────────
     useWebSocket(agenciaId, () => { }, (client) => {
-        // Cambios de estado de devices (CONNECTED/DISCONNECTED) — mismo topic
-        // que usa /whatsapp-vincular; acá filtramos solo los CAMPANIAS conocidos.
         client.subscribe(`/topic/bot/${agenciaId}`, (msg) => {
             try {
                 const payload = JSON.parse(msg.body);
@@ -448,17 +478,13 @@ export default function Spam() {
                     setDevices(prev => prev.map(d => d.sessionId === payload.sessionId
                         ? { ...d, estado: payload.status || payload.tipo || d.estado }
                         : d));
-                    // Si era el QR que estábamos esperando y conectó, cerrar modal
-                    if (payload.status === 'CONNECTED' && qrModalOpenRef.current) {
-                        cerrarQr();
-                        toast('Vinculado', 'Número conectado correctamente', '#10b981');
+                    if (payload.status === 'CONNECTED') {
                         loadDevices(); // refresca para obtener numeroTelefono
                     }
                 }
             } catch { /* ignorar */ }
         });
 
-        // Eventos del propio CampaniaService: MENSAJE_IN, MENSAJE_OUT, ENVIO_PROCESADO
         client.subscribe(`/topic/campania/${agenciaId}`, (msg) => {
             try {
                 const payload = JSON.parse(msg.body);
@@ -470,273 +496,163 @@ export default function Spam() {
                         loadMensajes(payload.contactoId);
                     }
                 }
-                // ENVIO_PROCESADO: no necesita acción visual por ahora, los conteos se ven al
-                // enviar siguiente campaña; podría disparar un toast si querés feedback.
             } catch { /* ignorar */ }
         });
     });
 
-    // ── Acciones devices ─────────────────────────────────────────────────────
-    const crearDevice = async () => {
-        if (!alias.trim()) return;
-        setCreando(true);
+    // ── Acciones ─────────────────────────────────────────────────────────────
+    const eliminarDevice = async (deviceId) => {
+        if (!confirm('¿Eliminar este número de campaña? Se borran sus contactos, chats y plantillas.')) return;
         try {
-            const { data } = await api.post('/campania/devices', { alias: alias.trim() });
-            toast('Listo', 'Número creado. Escaneá el QR para vincular.', '#10b981');
-            setAlias('');
-            setModalCrear(false);
-            await loadDevices();
-            setDeviceActivoId(data.id);
-            abrirQr(data.id);
-        } catch (err) {
-            toast('Error', err.response?.data?.error || 'No se pudo crear', '#ef4444');
-        } finally { setCreando(false); }
-    };
-
-    const confirmarEliminar = async () => {
-        setEliminando(true);
-        try {
-            await api.delete(`/campania/devices/${pendingDeviceId}`);
-            toast('Eliminado', 'Número y sus chats borrados', '#10b981');
-            setModalEliminar(false);
-            if (deviceActivoId === pendingDeviceId) {
+            await api.delete(`/campania/devices/${deviceId}`);
+            toast('Eliminado', 'Número y sus chats borrados', COLOR_GREEN);
+            if (deviceActivoId === deviceId) {
                 setDeviceActivoId(null);
                 setContactos([]); setBandeja([]); setContactoActivo(null); setMensajes([]);
             }
             loadDevices();
-        } catch { toast('Error', 'No se pudo eliminar', '#ef4444'); }
-        finally { setEliminando(false); }
+        } catch (err) {
+            toast('Error', err.response?.data?.error || 'Error eliminando', COLOR_RED);
+        }
     };
 
-    // ── QR flow (idéntico a WhatsAppVincular) ────────────────────────────────
-    const fetchQr = useCallback(async (deviceId) => {
-        try {
-            const { data } = await api.get(`/whatsapp/${deviceId}/qr`);
-            if (data.status === 'SCAN_QR' && data.qr) {
-                setQrSrc(data.qr);
-                setQrLoading(false);
-            } else if (data.status === 'CONNECTED') {
-                cerrarQr();
-                // El WS también lo va a notificar, pero por las dudas refrescamos
-                setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, estado: 'CONNECTED' } : d));
-                loadDevices();
-            }
-        } catch { /* silencio: seguimos polleando */ }
-    }, [loadDevices]);
-
-    const abrirQr = (deviceId) => {
-        setPendingDeviceId(deviceId);
-        qrModalOpenRef.current = true;
-        setQrSrc(null);
-        setQrLoading(true);
-        setModalQr(true);
-        fetchQr(deviceId);
-        // Polling del QR cada 3s (el QR rota, no es polling de estado)
-        qrIntervalRef.current = setInterval(() => fetchQr(deviceId), 3000);
-    };
-
-    const cerrarQr = useCallback(() => {
-        if (qrIntervalRef.current) clearInterval(qrIntervalRef.current);
-        qrIntervalRef.current = null;
-        qrModalOpenRef.current = false;
-        setModalQr(false);
-        setQrSrc(null);
-    }, []);
-
-    // ── Acciones chat ────────────────────────────────────────────────────────
     const seleccionarContacto = (item) => {
         setContactoActivo(item);
         loadMensajes(item.contactoId);
     };
 
     const responder = async (contactoId, texto) => {
-        try {
-            await api.post(`/campania/contactos/${contactoId}/responder`, { texto });
-            loadMensajes(contactoId);
-            // el WS va a refrescar la bandeja, pero como fallback hacemos load
-            if (deviceActivoId) loadBandeja(deviceActivoId);
-        } catch (err) {
-            toast('Error', err.response?.data?.error || 'No se pudo enviar', '#ef4444');
-            throw err;
-        }
+        await api.post(`/campania/contactos/${contactoId}/responder`, { texto });
+        loadMensajes(contactoId);
+        if (deviceActivoId) loadBandeja(deviceActivoId);
     };
 
     // ── Render ───────────────────────────────────────────────────────────────
-    const deviceActivo = devices.find(d => d.id === deviceActivoId);
-    const hayDeviceConectado = deviceActivo?.estado === 'CONNECTED';
-
     return (
-        // Layout vertical de altura completa: header (auto) + cuerpo (flex 1).
-        // Las secciones internas tienen scroll propio así nunca se sale del viewport.
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-            <div className="header-top" style={{ justifyContent: 'space-between', padding: '20px 25px', flexShrink: 0 }}>
-                <div>
-                    <h2 style={{ margin: 0, fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <i className="fas fa-bullhorn" style={{ color: '#f59e0b' }}></i>
-                        Campañas
-                    </h2>
-                    <p style={{ margin: '5px 0 0', color: 'var(--text-sec, #94a3b8)', fontSize: '0.95rem' }}>
-                        Sector aislado del embudo principal. Usá un chip aparte para evitar baneos.
-                    </p>
+        <div style={{
+            display: 'flex', flexDirection: 'column',
+            height: '100vh', padding: 16, gap: 12,
+            background: 'var(--bg-main, #0b0b0e)'
+        }}>
+            {/* Header */}
+            <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: COLOR_CARD_BG, padding: '12px 16px', borderRadius: 12,
+                border: `1px solid ${COLOR_BORDER}`, flexShrink: 0
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <i className="fas fa-bullhorn" style={{ color: COLOR_AMBER, fontSize: 22 }}></i>
+                    <div>
+                        <h2 style={{ color: COLOR_TEXT, margin: 0, fontSize: 18 }}>Campañas</h2>
+                        <p style={{ color: COLOR_TEXT_MUTED, margin: 0, fontSize: 12 }}>
+                            Sector aislado del embudo principal. Usá un chip aparte.
+                        </p>
+                    </div>
                 </div>
-                <NotificationBell />
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    {devices.length > 0 && (
+                        <select
+                            value={deviceActivoId || ''}
+                            onChange={e => setDeviceActivoId(Number(e.target.value))}
+                            style={{
+                                padding: '8px 12px', borderRadius: 8,
+                                background: 'rgba(255,255,255,0.06)', color: COLOR_TEXT,
+                                border: `1px solid ${COLOR_BORDER}`, cursor: 'pointer'
+                            }}>
+                            {devices.map(d => (
+                                <option key={d.id} value={d.id}>
+                                    {d.alias} {d.numeroTelefono ? `(${d.numeroTelefono})` : '(sin vincular)'} — {d.estado}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    {deviceActivoId && (
+                        <button onClick={() => eliminarDevice(deviceActivoId)} style={btnDanger} title="Eliminar número activo">
+                            <i className="fas fa-trash-alt"></i>
+                        </button>
+                    )}
+                    <button onClick={() => setShowAddModal(true)} style={btnPrimary}>
+                        <i className="fas fa-plus"></i> Agregar número
+                    </button>
+                </div>
             </div>
 
-            {/* Cuerpo: ocupa lo que queda del viewport, sin scroll global */}
-            <div style={{
-                flex: 1, minHeight: 0,
-                display: 'flex', flexDirection: 'column',
-                padding: '10px 30px 20px', gap: 20
-            }}>
-                {/* Sección 1 — Devices: scroll horizontal/vertical interno si crecen */}
-                <div style={{
-                    flexShrink: 0,
-                    maxHeight: deviceActivoId ? 320 : '100%',  // colapsada cuando hay workspace (1 fila visible, scroll si crece)
-                    overflowY: 'auto',
-                    paddingRight: 4,
-                }}>
-                    {loading && <div style={{ padding: 40 }}><div className="spinner"></div></div>}
-                    {!loading && (
-                        <div className="devices-grid" style={{ paddingBottom: 4 }}>
-                            <button type="button" className="ghost-column-placeholder add-device-card"
-                                style={{ minHeight: 200, height: 'auto', width: '100%' }}
-                                onClick={() => { setAlias(''); setModalCrear(true); }}>
-                                <div className="add-icon-circle"><i className="fas fa-plus"></i></div>
-                                <span style={{ fontWeight: 500 }}>Agregar número de campaña</span>
-                            </button>
-                            {devices.map(d => (
-                                <DeviceCard key={d.id} device={d}
-                                    isActive={d.id === deviceActivoId}
-                                    onSelect={setDeviceActivoId}
-                                    onConectar={abrirQr}
-                                    onEliminar={(id) => { setPendingDeviceId(id); setModalEliminar(true); }} />
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Sección 2 — Workspace: ocupa el resto del viewport */}
-                {deviceActivoId && (
+            {/* Contenido principal */}
+            <div style={{ display: 'flex', flex: 1, gap: 12, minHeight: 0 }}>
+                {devices.length === 0 ? (
                     <div style={{
-                        flex: 1, minHeight: 0,
-                        display: 'flex', flexDirection: 'column',
-                        gap: 12,
+                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexDirection: 'column', color: COLOR_TEXT_MUTED,
+                        background: COLOR_CARD_BG, borderRadius: 12,
+                        border: `1px dashed ${COLOR_BORDER}`
                     }}>
-                        <h3 style={{
-                            margin: 0, fontSize: '1.1rem', color: 'var(--text-main, #fff)',
-                            display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0
-                        }}>
-                            <i className="fas fa-stream" style={{ color: '#f59e0b' }}></i>
-                            Workspace · {deviceActivo?.alias}
-                            {!hayDeviceConectado && (
-                                <span className="status-badge status-disconnected" style={{ marginLeft: 8 }}>
-                                    Sin vincular
-                                </span>
-                            )}
-                        </h3>
-
-                        {!hayDeviceConectado && (
-                            <div className="device-card" style={{
-                                flex: 1, minHeight: 0,
-                                display: 'flex', flexDirection: 'column',
-                                alignItems: 'center', justifyContent: 'center',
-                                textAlign: 'center', padding: 30
-                            }}>
-                                <i className="fas fa-qrcode" style={{ fontSize: 48, color: '#f59e0b', opacity: 0.5 }}></i>
-                                <p style={{ marginTop: 14, color: 'var(--text-sec, #94a3b8)' }}>
-                                    Vinculá el número escaneando el QR antes de importar contactos o mandar campañas.
-                                </p>
-                                <button className="btn-modal btn-confirm" style={{ marginTop: 14 }}
-                                    onClick={() => abrirQr(deviceActivoId)}>
-                                    <i className="fas fa-qrcode"></i> Escanear QR
-                                </button>
-                            </div>
-                        )}
-
-                        {hayDeviceConectado && (
-                            <div style={{
-                                flex: 1, minHeight: 0,
-                                display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 20
-                            }}>
-                                <ContactosPanel deviceId={deviceActivoId}
-                                    contactos={contactos}
-                                    onReload={() => loadContactos(deviceActivoId)} />
-                                <ChatPanel deviceId={deviceActivoId}
-                                    bandeja={bandeja}
-                                    contactoActivo={contactoActivo}
-                                    mensajes={mensajes}
-                                    onSelectContacto={seleccionarContacto}
-                                    onResponder={responder} />
-                            </div>
-                        )}
+                        <i className="fas fa-bullhorn" style={{ fontSize: 56, opacity: 0.3, color: COLOR_AMBER }}></i>
+                        <h3 style={{ color: COLOR_TEXT, marginTop: 16 }}>Sin números de campaña</h3>
+                        <p style={{ maxWidth: 380, textAlign: 'center', fontSize: 14 }}>
+                            Agregá un número aparte (no el principal del negocio) para mandar campañas masivas.
+                            Cuando alguien responda, vas a poder chatear acá y pasarle el número principal cuando madure el lead.
+                        </p>
+                        <button onClick={() => setShowAddModal(true)} style={{ ...btnPrimary, marginTop: 12 }}>
+                            <i className="fas fa-plus"></i> Agregar primer número
+                        </button>
                     </div>
+                ) : (
+                    <>
+                        <ContactosPanel deviceId={deviceActivoId} contactos={contactos}
+                            onReload={() => loadContactos(deviceActivoId)} />
+                        <ChatPanel bandeja={bandeja} contactoActivo={contactoActivo}
+                            mensajes={mensajes}
+                            onSelectContacto={seleccionarContacto}
+                            onResponder={responder} />
+                    </>
                 )}
             </div>
 
-            {/* Modal: crear device */}
-            <Modal active={modalCrear} onClose={() => setModalCrear(false)}>
-                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    Nuevo número de campaña
-                </h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20 }}>
-                    Usá un chip aparte, no el número principal del negocio. Si lo banean, perdés solo este.
-                </p>
-                <input className="clean-input" autoFocus style={{ width: '100%', marginBottom: 20 }}
-                    placeholder="Alias (ej: Burner-01)" value={alias} autoComplete="off"
-                    onChange={e => setAlias(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && crearDevice()} />
-                <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={() => setModalCrear(false)}>{t('common.cancel') || 'Cancelar'}</button>
-                    <button className="btn-modal btn-confirm" onClick={crearDevice} disabled={creando}>
-                        {creando ? <i className="fas fa-spinner fa-spin"></i> : 'Crear'}
-                    </button>
-                </div>
-            </Modal>
-
-            {/* Modal: eliminar device */}
-            <Modal active={modalEliminar} onClose={() => setModalEliminar(false)}>
-                <div style={{ textAlign: 'center' }}>
-                    <div className="icon-trash-bg" style={{ margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#ef4444' }}>
-                        <i className="fas fa-trash-alt"></i>
-                    </div>
-                    <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>Eliminar número</h3>
-                    <p style={{ color: '#94a3b8', marginBottom: 20 }}>
-                        Se borran sus contactos, chats y plantillas. Esta acción es irreversible.
-                    </p>
-                </div>
-                <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={() => setModalEliminar(false)}>{t('common.cancel') || 'Cancelar'}</button>
-                    <button className="btn-modal btn-confirm-danger" onClick={confirmarEliminar} disabled={eliminando}>
-                        {eliminando ? <i className="fas fa-spinner fa-spin"></i> : 'Eliminar'}
-                    </button>
-                </div>
-            </Modal>
-
-            {/* Modal: QR */}
-            <Modal active={modalQr} onClose={cerrarQr}>
-                <h3 style={{ margin: '0 0 15px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    Vincular WhatsApp
-                </h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 18 }}>
-                    Abrí WhatsApp en el chip → Configuración → Dispositivos vinculados → Vincular un dispositivo.
-                </p>
-                <div style={{ textAlign: 'center' }}>
-                    {qrLoading && (
-                        <div style={{ padding: 40 }}>
-                            <div className="spinner"></div>
-                            <p style={{ marginTop: 20, color: '#888' }}>Cargando QR...</p>
-                        </div>
-                    )}
-                    {qrSrc && (
-                        <img src={qrSrc}
-                            style={{ width: 260, height: 260, borderRadius: 12, border: '4px solid white', margin: '0 auto', display: 'block' }}
-                            alt="QR WhatsApp" />
-                    )}
-                </div>
-                <div className="modal-actions" style={{ marginTop: 24 }}>
-                    <button className="btn-modal btn-cancel" onClick={cerrarQr}>Cerrar</button>
-                </div>
-            </Modal>
+            <AddDeviceModal active={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onCreated={loadDevices} />
         </div>
     );
 }
+
+// ─── Estilos inline con paleta del CRM ────────────────────────────────────────
+const panelStyle = {
+    flex: 1,
+    background: COLOR_CARD_BG,
+    border: `1px solid ${COLOR_BORDER}`,
+    borderRadius: 12,
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    minHeight: 0,
+};
+const panelHeaderStyle = {
+    padding: '10px 14px',
+    borderBottom: `1px solid ${COLOR_BORDER}`,
+    color: '#cbd5e1',
+    fontSize: 14,
+    fontWeight: 500,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'space-between',
+    flexShrink: 0,
+};
+const btnPrimary = {
+    padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    background: COLOR_AMBER, color: '#000', fontWeight: 600,
+    display: 'inline-flex', alignItems: 'center', gap: 8,
+};
+const btnSmall = {
+    padding: '6px 10px', borderRadius: 6, border: `1px solid ${COLOR_BORDER}`,
+    background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12,
+};
+const btnDanger = {
+    padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+    background: COLOR_RED, color: '#fff',
+};
+const contactoRowStyle = {
+    display: 'flex', alignItems: 'center', padding: '10px 14px', cursor: 'pointer',
+    borderBottom: `1px solid ${COLOR_BORDER_SOFT}`, transition: 'background 0.15s',
+};
