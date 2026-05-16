@@ -3,7 +3,7 @@
   "version": "2.2.0",
   "description": "Bot de WhatsApp Enterprise para CRM + Realtime Presence + Stability Patch",
   "main": "index.js",
-  "packageManager": "pnpm@11.1.2",
+  "packageManager": "pnpm@9.15.4",
   "scripts": {
     "preinstall": "node ./scripts/check-package-manager.js",
     "setup": "pnpm install --config.blockExoticSubdeps=false",
@@ -22,7 +22,7 @@
   },
   "engines": {
     "node": ">=20.0.0",
-    "pnpm": ">=10"
+    "pnpm": ">=9"
   },
   "pnpm": {
     "blockExoticSubdeps": false,
