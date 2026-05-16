@@ -19,6 +19,13 @@ COPY scripts ./scripts
 # oficial de WhiskeySockets, no está en npm registry). El flag CLI es la única
 # forma confiable en pnpm 11.x — el setting de package.json/.npmrc no se respeta.
 RUN pnpm install --frozen-lockfile --prod --config.blockExoticSubdeps=false
+
+# pnpm 10+ bloquea scripts de install de paquetes nativos por defecto (anti
+# supply chain). Necesitamos baileys, protobufjs y sharp con sus scripts
+# corridos para que funcionen. El setting onlyBuiltDependencies del package.json
+# tampoco se respeta en pnpm 11.x — approve-builds --all es no-interactivo y
+# ejecuta los scripts pendientes.
+RUN pnpm approve-builds --all
 COPY . .
 
 ENV NODE_ENV=production
