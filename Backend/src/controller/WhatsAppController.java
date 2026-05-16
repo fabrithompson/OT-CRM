@@ -99,8 +99,12 @@ public class WhatsAppController {
     public ResponseEntity<List<Map<String, Object>>> listarDispositivos(@AuthenticationPrincipal UserDetails userDetails) {
         Usuario usuario = getUsuarioOrThrow(userDetails);
         if (usuario.getAgencia() == null) return ResponseEntity.ok(List.of());
+        // Solo devices PRINCIPAL: los CAMPAÑAS se gestionan desde /spam
         List<Map<String, Object>> dtos = dispositivoRepository
-                .findByAgenciaIdAndPlataformaAndVisibleTrue(usuario.getAgencia().getId(), Dispositivo.Plataforma.WHATSAPP)
+                .findByAgenciaIdAndPlataformaAndVisibleTrueAndProposito(
+                        usuario.getAgencia().getId(),
+                        Dispositivo.Plataforma.WHATSAPP,
+                        Dispositivo.Proposito.PRINCIPAL)
                 .stream()
                 .map(DispositivoMapper::toDto)
                 .collect(Collectors.toList());
