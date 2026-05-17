@@ -82,6 +82,7 @@ public class CalentamientoService {
     // CRUD DE PLANES
     // ════════════════════════════════════════════════════════════════════════
 
+    @SuppressWarnings("null")
     @Transactional
     public PlanCalentamiento crearPlan(Agencia agencia,
                                        String nombre,
@@ -307,6 +308,7 @@ public class CalentamientoService {
         return textos.get(ThreadLocalRandom.current().nextInt(textos.size()));
     }
 
+    @SuppressWarnings("null")
     private boolean enviarAlBot(Dispositivo dispositivo, String telefono, String texto) {
         try {
             Map<String, Object> body = new HashMap<>();

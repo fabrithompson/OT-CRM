@@ -27,6 +27,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -179,6 +180,7 @@ public class CampaniaService {
         return contactoRepo.findByDispositivoIdOrderByFechaImportadoDesc(dispositivoId);
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public void eliminarContacto(Long contactoId, Long agenciaId) {
         contactoRepo.findById(contactoId)
@@ -204,6 +206,7 @@ public class CampaniaService {
         return plantillaRepo.findByAgenciaIdOrderByFechaCreacionDesc(agenciaId);
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public void eliminarPlantilla(Long plantillaId, Long agenciaId) {
         plantillaRepo.findById(plantillaId)
@@ -222,6 +225,7 @@ public class CampaniaService {
      *
      * @return resumen {encolados, salteados}
      */
+    @SuppressWarnings("null")
     @Transactional
     public Map<String, Object> encolarCampania(Dispositivo dispositivo,
                                                Agencia agencia,
@@ -265,7 +269,7 @@ public class CampaniaService {
         log.info("Campaña encolada: device={} encolados={} salteados={}",
                 dispositivo.getId(), encolados, salteados);
 
-        return Map.of("encolados", encolados, "salteados", salteados);
+        return Map.<String, Object>of("encolados", encolados, "salteados", salteados);
     }
 
     /**
@@ -289,6 +293,7 @@ public class CampaniaService {
         }
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public void procesarTick() {
         long ahora = System.currentTimeMillis();
@@ -336,13 +341,14 @@ public class CampaniaService {
             // Notificar al frontend
             if (d.getAgencia() != null) {
                 messaging.convertAndSend("/topic/campania/" + d.getAgencia().getId(),
-                        Map.of("tipo", "ENVIO_PROCESADO",
+                        Map.<String, Object>of("tipo", "ENVIO_PROCESADO",
                                "envioId", envio.getId(),
                                "estado", envio.getEstado().name()));
             }
         }
     }
 
+    @SuppressWarnings("null")
     private boolean enviarAlBot(Dispositivo dispositivo, String telefono, String texto) {
         try {
             Map<String, Object> body = new HashMap<>();
@@ -356,8 +362,9 @@ public class CampaniaService {
             headers.set(API_KEY_HEADER, botSecretKey);
 
             HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> resp = http.exchange(
-                    nodeBotUrl + "/send-message", HttpMethod.POST, req, Map.class);
+            ResponseEntity<Map<String, Object>> resp = http.exchange(
+                    nodeBotUrl + "/send-message", HttpMethod.POST, req,
+                    new ParameterizedTypeReference<>() {});
             return resp.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
             log.warn("Fallo enviando campaña a {}: {}", telefono, e.getMessage());
@@ -391,6 +398,7 @@ public class CampaniaService {
         return bandeja;
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public List<MensajeCampania> listarMensajes(Long contactoId, Long agenciaId) {
         ContactoCampania c = contactoRepo.findById(contactoId)
@@ -405,6 +413,7 @@ public class CampaniaService {
      * Respuesta manual del operador a un contacto de campaña.
      * No pasa por la cola: se envía inmediatamente (no es spam, es 1-a-1).
      */
+    @SuppressWarnings("null")
     @Transactional
     public MensajeCampania responderManual(Long contactoId, Long agenciaId, String texto) {
         ContactoCampania c = contactoRepo.findById(contactoId)
@@ -426,7 +435,7 @@ public class CampaniaService {
 
         if (c.getAgencia() != null) {
             messaging.convertAndSend("/topic/campania/" + c.getAgencia().getId(),
-                    Map.of("tipo", "MENSAJE_OUT", "contactoId", c.getId()));
+                    Map.<String, Object>of("tipo", "MENSAJE_OUT", "contactoId", c.getId()));
         }
         return m;
     }
@@ -437,6 +446,7 @@ public class CampaniaService {
      * antes de que el bot reciba el ACK de envío, o si alguien le escribe sin
      * que figure en la lista importada).
      */
+    @SuppressWarnings("null")
     @Transactional
     public void procesarMensajeEntrante(Dispositivo dispositivo,
                                         String telefonoFrom,
@@ -474,11 +484,11 @@ public class CampaniaService {
 
         if (dispositivo.getAgencia() != null) {
             messaging.convertAndSend("/topic/campania/" + dispositivo.getAgencia().getId(),
-                    Map.of("tipo", "MENSAJE_IN",
+                    Map.<String, Object>of("tipo", "MENSAJE_IN",
                            "contactoId", c.getId(),
                            "telefono", telefonoFrom,
                            "nombre", c.getNombre(),
-                           "texto", texto));
+                           "texto", texto != null ? texto : ""));
         }
     }
 
@@ -497,7 +507,7 @@ public class CampaniaService {
         return soloNumeros ? value.replaceAll("\\D", "") : value.trim();
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "null"})
     private Dispositivo requireDispositivo(Long dispositivoId, Long agenciaId) {
         return dispositivoRepo.findById(dispositivoId)
                 .filter(d -> d.getAgencia() != null && d.getAgencia().getId().equals(agenciaId))
