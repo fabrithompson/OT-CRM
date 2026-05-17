@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
 import { useUser } from '../context/UserContext';
@@ -654,10 +655,123 @@ CalentamientoPanel.propTypes = {
     devices: PropTypes.array.isRequired, showModal: PropTypes.bool.isRequired, onCloseModal: PropTypes.func.isRequired,
 };
 
+// ─── UpgradeWall: bloqueo para plan FREE ─────────────────────────────────────
+function UpgradeWall() {
+    const navigate = useNavigate();
+
+    const features = [
+        { icon: 'fa-paper-plane', text: 'Campañas masivas a miles de contactos' },
+        { icon: 'fa-fire',        text: 'Calentamiento automático de líneas' },
+        { icon: 'fa-comments',    text: 'Bandeja de respuestas de campaña' },
+        { icon: 'fa-shield-alt',  text: 'Anti-ban con delays aleatorios y límites diarios' },
+    ];
+
+    return (
+        <div style={{
+            height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: '#07070a', fontFamily: "'Montserrat', sans-serif", padding: 24,
+        }}>
+            <div style={{
+                background: 'rgba(20,20,25,0.80)',
+                backdropFilter: BLUR, WebkitBackdropFilter: BLUR,
+                border: '1px solid rgba(245,158,11,0.22)',
+                borderRadius: 22, padding: '48px 52px',
+                maxWidth: 500, width: '100%', textAlign: 'center',
+                position: 'relative', overflow: 'hidden',
+            }}>
+                {/* Glow decorativo */}
+                <div style={{
+                    position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)',
+                    width: 280, height: 180, borderRadius: '50%',
+                    background: 'radial-gradient(ellipse, rgba(245,158,11,0.12) 0%, transparent 70%)',
+                    pointerEvents: 'none',
+                }} />
+
+                {/* Ícono */}
+                <div style={{
+                    width: 68, height: 68, borderRadius: 18, margin: '0 auto 22px',
+                    background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                    <i className="fas fa-lock" style={{ color: C_AMBER, fontSize: '1.6rem' }} />
+                </div>
+
+                {/* Badge de plan */}
+                <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`,
+                    borderRadius: 20, padding: '4px 14px', marginBottom: 16,
+                    fontSize: '0.72rem', fontWeight: 700, color: C_AMBER,
+                    textTransform: 'uppercase', letterSpacing: '0.08em',
+                }}>
+                    <i className="fas fa-bolt" style={{ fontSize: '0.65rem' }} /> Disponible desde Plan PRO
+                </div>
+
+                <h2 style={{ color: C_TEXT, fontSize: '1.4rem', fontWeight: 800, margin: '0 0 10px', lineHeight: 1.3 }}>
+                    Campañas masivas
+                </h2>
+                <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem', margin: '0 0 28px', lineHeight: 1.6 }}>
+                    Enviá mensajes a miles de contactos, calentá tus líneas automáticamente
+                    y gestioná las respuestas desde un solo lugar.
+                </p>
+
+                {/* Features */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32, textAlign: 'left' }}>
+                    {features.map((f, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                                background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <i className={`fas ${f.icon}`} style={{ color: C_AMBER, fontSize: '0.75rem' }} />
+                            </div>
+                            <span style={{ color: 'rgba(255,255,255,0.70)', fontSize: '0.85rem' }}>{f.text}</span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* CTA */}
+                <button
+                    onClick={() => navigate('/planes')}
+                    style={{
+                        width: '100%', padding: '13px 0', borderRadius: 12, border: 'none',
+                        cursor: 'pointer', fontFamily: "'Montserrat', sans-serif",
+                        background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 60%, #fbbf24 100%)',
+                        color: '#000', fontWeight: 800, fontSize: '0.95rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        boxShadow: '0 4px 20px rgba(245,158,11,0.30)',
+                        transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 28px rgba(245,158,11,0.45)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 20px rgba(245,158,11,0.30)'; }}
+                >
+                    <i className="fas fa-arrow-up" /> Ver planes y mejorar
+                </button>
+
+                <p style={{ color: 'rgba(255,255,255,0.22)', fontSize: '0.75rem', marginTop: 14 }}>
+                    Podés empezar desde <strong style={{ color: 'rgba(255,255,255,0.40)' }}>Plan PRO</strong> · Cancelás cuando quieras
+                </p>
+            </div>
+        </div>
+    );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function Spam() {
-    const toast       = useToast();
-    const { agenciaId } = useUser();
+    const toast               = useToast();
+    const { agenciaId, usuario, loading: loadingUser } = useUser();
+
+    // ── Gate: solo PRO, BUSINESS y ENTERPRISE tienen acceso a campañas ─────────
+    if (loadingUser) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#07070a' }}>
+                <div className="spinner" />
+            </div>
+        );
+    }
+    const planNombre = usuario?.plan?.nombre || 'FREE';
+    if (planNombre === 'FREE') return <UpgradeWall />;
 
     const [tab, setTab]               = useState('campanas');
     const [devices, setDevices]       = useState([]);
