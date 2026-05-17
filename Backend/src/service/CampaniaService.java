@@ -76,6 +76,7 @@ public class CampaniaService {
     private final DispositivoRepository dispositivoRepo;
     private final SimpMessagingTemplate messaging;
     private final RestTemplate http;
+    private CalentamientoService calentamientoService;
 
     /**
      * Por sessionId, el timestamp epoch-ms del próximo momento en que se
@@ -104,6 +105,12 @@ public class CampaniaService {
         this.dispositivoRepo = dispositivoRepo;
         this.messaging = messaging;
         this.http = restTemplate;
+    }
+
+    // Setter injection para romper dependencia circular (CalentamientoService → CampaniaService nunca)
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setCalentamientoService(CalentamientoService calentamientoService) {
+        this.calentamientoService = calentamientoService;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -436,6 +443,15 @@ public class CampaniaService {
                                         String nombre,
                                         String texto) {
         if (dispositivo.getProposito() != Dispositivo.Proposito.CAMPANIAS) return;
+
+        // Si el mensaje viene de otro dispositivo propio (calentamiento), intentar auto-responder.
+        // Se hace antes de guardar el contacto para no generar ruido en la bandeja cuando
+        // es un intercambio interno. Si hay auto-respuesta se retorna sin registrar el mensaje.
+        if (calentamientoService != null) {
+            boolean esCalentamiento = calentamientoService.intentarAutorespuesta(
+                    dispositivo.getId(), telefonoFrom);
+            if (esCalentamiento) return;
+        }
 
         ContactoCampania c = contactoRepo
                 .findByDispositivoIdAndTelefono(dispositivo.getId(), telefonoFrom)
