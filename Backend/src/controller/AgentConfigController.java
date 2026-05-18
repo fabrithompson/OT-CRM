@@ -126,6 +126,7 @@ public class AgentConfigController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
+    @SuppressWarnings("null")
     @Transactional
     @PostMapping("/chat")
     public ResponseEntity<?> chat(@AuthenticationPrincipal UserDetails userDetails,

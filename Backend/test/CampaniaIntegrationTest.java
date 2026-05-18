@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
@@ -374,6 +375,7 @@ class CampaniaIntegrationTest extends BaseIntegrationTest {
         assertThat(campaniaService.listarPlantillas(agencia.getId())).isEmpty();
     }
 
+    @SuppressWarnings("null")
     @Test
     @DisplayName("Eliminar plantilla de otra agencia no la borra (multi-tenant)")
     void plantillas_otraAgenciaNoBorra() {
@@ -413,24 +415,25 @@ class CampaniaIntegrationTest extends BaseIntegrationTest {
         }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"null", "unchecked"})
     private void mockBotResponde2xx() {
-        ResponseEntity okResponse = ResponseEntity.ok(Map.of("status", "SENT", "id", "WA_123"));
+        ResponseEntity<Map<String, Object>> okResponse =
+                ResponseEntity.ok(Map.<String, Object>of("status", "SENT", "id", "WA_123"));
         when(restTemplate.exchange(
                 contains("/send-message"),
                 eq(HttpMethod.POST),
                 any(),
-                eq(Map.class)
+                any(ParameterizedTypeReference.class)
         )).thenReturn(okResponse);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"null", "unchecked"})
     private void mockBotFalla() {
         when(restTemplate.exchange(
                 contains("/send-message"),
                 eq(HttpMethod.POST),
                 any(),
-                eq(Map.class)
+                any(ParameterizedTypeReference.class)
         )).thenThrow(new RuntimeException("Bot offline"));
     }
 }

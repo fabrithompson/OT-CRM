@@ -194,6 +194,7 @@ public class CampaniaController {
             List<Long> contactoIds
     ) {}
 
+    @SuppressWarnings("null")
     @PostMapping("/enviar")
     public ResponseEntity<?> enviar(@AuthenticationPrincipal UserDetails ud,
                                     @RequestBody EnviarCampaniaRequest req) {
@@ -271,7 +272,7 @@ public class CampaniaController {
         return agencia;
     }
 
-    private Dispositivo requireDeviceCampania(UserDetails ud, Long deviceId) {
+    private Dispositivo requireDeviceCampania(UserDetails ud, @NonNull Long deviceId) {
         Agencia agencia = requireAgencia(ud);
         Optional<Dispositivo> opt = dispositivoRepo.findById(deviceId);
         return opt.filter(d -> d.getAgencia() != null && Objects.equals(d.getAgencia().getId(), agencia.getId()))
