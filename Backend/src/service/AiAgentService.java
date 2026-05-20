@@ -77,8 +77,9 @@ public class AiAgentService {
         if (cliente == null || cliente.getAgencia() == null) return false;
 
         Plan plan = subscriptionValidationService.getPlanEfectivoAgencia(cliente.getAgencia());
-        if (!"ENTERPRISE".equals(plan.getNombre())) {
-            log.debug("AI agent skipped for cliente {} — plan is {}", clienteId, plan.getNombre());
+        if (!plan.isAgenteIaHabilitado()) {
+            log.debug("AI agent skipped for cliente {} — plan {} no incluye Agente IA",
+                    clienteId, plan.getNombre());
             return false;
         }
 

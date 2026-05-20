@@ -89,15 +89,38 @@ public class DataInitializer implements CommandLineRunner {
 
     @SuppressWarnings("null")
     private void inicializarPlanes() {
-        if (planRepository.count() == 0) {
-            logger.info("Creando planes de suscripcion en DB...");
-            planRepository.saveAll(List.of(
-                new Plan("FREE",       1,  25,            0.0, "Plan gratuito"),
-                new Plan("PRO",        5,  75,   planPricePro, "Plan profesional"),
-                new Plan("BUSINESS",  10, 250, planPriceBusiness, "Plan empresarial"),
-                new Plan("ENTERPRISE", -1, -1, planPriceEnterprise, "Plan Ilimitado")
-            ));
-            logger.info("Planes creados exitosamente.");
+        // FREE: solo embudo, sin campañas, equipo de 2 (admin + 1)
+        upsertPlan("FREE",        1,  0,    25,  2, false, false, 0.0,                "Plan gratuito");
+        // PRO: campañas habilitadas, equipo 5
+        upsertPlan("PRO",         3,  2,   500,  5, false, true,  planPricePro,       "Plan profesional");
+        // BUSINESS: campañas y más capacidad, equipo 10
+        upsertPlan("BUSINESS",    6,  5,  2000, 10, false, true,  planPriceBusiness,  "Plan empresarial");
+        // ENTERPRISE: todo ilimitado + Agente IA
+        upsertPlan("ENTERPRISE", -1, -1,    -1, -1, true,  true,  planPriceEnterprise,"Plan Ilimitado");
+    }
+
+    @SuppressWarnings("null")
+    private void upsertPlan(String nombre, int maxDisp, int maxDispCamp, int maxCont,
+                            int maxMiembros, boolean iaHabilitada, boolean campaniasHab,
+                            double precio, String desc) {
+        Plan plan = planRepository.findByNombre(nombre).orElseGet(Plan::new);
+        boolean isNew = plan.getId() == null;
+        plan.setNombre(nombre);
+        plan.setMaxDispositivos(maxDisp);
+        plan.setMaxDispositivosCampanias(maxDispCamp);
+        plan.setMaxContactos(maxCont);
+        plan.setMaxMiembrosEquipo(maxMiembros);
+        plan.setAgenteIaHabilitado(iaHabilitada);
+        plan.setCampaniasHabilitadas(campaniasHab);
+        // El precio puede haber sido sobreescrito por PlanPriceScheduler — solo
+        // pisar si es plan nuevo o si seguía en 0 (recién creado sin precio).
+        if (isNew || plan.getPrecioMensual() == 0.0) {
+            plan.setPrecioMensual(precio);
+        }
+        plan.setDescripcion(desc);
+        planRepository.save(plan);
+        if (isNew) {
+            logger.info("Plan '{}' creado en DB.", nombre);
         }
     }
 

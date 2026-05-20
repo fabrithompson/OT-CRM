@@ -44,6 +44,7 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final SubscriptionValidationService subscriptionValidationService;
     private final SecureRandom secureRandom;
 
     public UsuarioService(UsuarioRepository usuarioRepository,
@@ -52,7 +53,8 @@ public class UsuarioService {
                           PlanRepository planRepository,
                           PasswordEncoder passwordEncoder,
                           EmailService emailService,
-                          SimpMessagingTemplate messagingTemplate) {
+                          SimpMessagingTemplate messagingTemplate,
+                          SubscriptionValidationService subscriptionValidationService) {
         this.usuarioRepository = usuarioRepository;
         this.agenciaRepository = agenciaRepository;
         this.solicitudUnionEquipoRepository = solicitudUnionEquipoRepository;
@@ -60,6 +62,7 @@ public class UsuarioService {
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.messagingTemplate = messagingTemplate;
+        this.subscriptionValidationService = subscriptionValidationService;
         this.secureRandom = new SecureRandom();
     }
 
@@ -333,6 +336,11 @@ public class UsuarioService {
         }
 
         if (aprobar) {
+            if (!subscriptionValidationService.puedeAgregarMiembro(solicitud.getAgenciaDestino())) {
+                throw new RegistroException(
+                        "El equipo alcanzó el máximo de miembros permitidos por tu plan.");
+            }
+
             Usuario usuario = solicitud.getUsuarioSolicitante();
             usuario.setAgencia(solicitud.getAgenciaDestino());
             usuario.setRol(ROLE_USER);

@@ -770,8 +770,11 @@ export default function Spam() {
             </div>
         );
     }
+    // Fallback al nombre si el backend (versión vieja) aún no envía el flag.
     const planNombre = usuario?.plan?.nombre || 'FREE';
-    if (planNombre === 'FREE') return <UpgradeWall />;
+    const campaniasHabilitadas = usuario?.plan?.campaniasHabilitadas === true
+        || (planNombre !== 'FREE' && usuario?.plan?.campaniasHabilitadas !== false);
+    if (!campaniasHabilitadas) return <UpgradeWall />;
 
     const [tab, setTab]               = useState('campanas');
     const [devices, setDevices]       = useState([]);

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import model.Dispositivo;
 import model.Dispositivo.Plataforma;
+import model.Dispositivo.Proposito;
 import model.Plan;
 import model.Usuario;
 import repository.DispositivoRepository;
@@ -44,17 +45,28 @@ public class PlanService {
 
     @Transactional(readOnly = true)
     public boolean puedeConectarDispositivo(Long usuarioId, Plataforma plataforma) {
+        return puedeConectarDispositivo(usuarioId, plataforma, Proposito.PRINCIPAL);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean puedeConectarDispositivo(Long usuarioId, Plataforma plataforma, Proposito proposito) {
         @SuppressWarnings("null")
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         Plan planEfectivo = getPlanEfectivoAgencia(usuario);
-
         if (planEfectivo == null) {
             return false;
         }
 
-        int limite = planEfectivo.getMaxDispositivos();
+        // Para CAMPANIAS, la feature requiere flag habilitada antes del límite.
+        if (proposito == Proposito.CAMPANIAS && !planEfectivo.isCampaniasHabilitadas()) {
+            return false;
+        }
+
+        int limite = (proposito == Proposito.CAMPANIAS)
+                ? planEfectivo.getMaxDispositivosCampanias()
+                : planEfectivo.getMaxDispositivos();
 
         if (limite == -1) {
             return true;
@@ -62,7 +74,10 @@ public class PlanService {
 
         Long agenciaId = usuario.getAgencia().getId();
         long dispositivosActivos = dispositivoRepository
-                .countByAgenciaIdAndPlataforma(agenciaId, plataforma);
+                .findByAgenciaIdAndVisibleTrue(agenciaId).stream()
+                .filter(d -> d.getPlataforma() == plataforma)
+                .filter(d -> d.getProposito() == proposito)
+                .count();
 
         return dispositivosActivos < limite;
     }
@@ -108,7 +123,7 @@ public class PlanService {
 
         usuarioRepository.save(usuario);
 
-        if ("ADMIN".equals(usuario.getRol())) {
+        if ("ADMIN".equals(usuario.getRol()) || "OWNER".equals(usuario.getRol())) {
             propagarPlanAEquipo(usuario, nuevoPlan);
         }
     }
@@ -137,7 +152,7 @@ public class PlanService {
 
         usuarioRepository.save(usuario);
 
-        if ("ADMIN".equals(usuario.getRol())) {
+        if ("ADMIN".equals(usuario.getRol()) || "OWNER".equals(usuario.getRol())) {
             propagarPlanAEquipo(usuario, nuevoPlan);
         }
     }
@@ -163,9 +178,24 @@ public class PlanService {
         usuario.setProveedorPago(null);
         usuarioRepository.save(usuario);
 
-        if ("ADMIN".equals(usuario.getRol())) {
+        if ("ADMIN".equals(usuario.getRol()) || "OWNER".equals(usuario.getRol())) {
             propagarPlanAEquipo(usuario, planFree);
         }
+    }
+
+    /**
+     * Recalcula y propaga el plan del admin al equipo. Útil cuando el plan_id
+     * fue cambiado externamente (e.g. en la base de datos), para que los
+     * miembros del equipo y el cache se sincronicen.
+     */
+    @CacheEvict(value = "planEfectivo", allEntries = true)
+    @Transactional
+    public void resincronizarPlanAgencia(Long agenciaId) {
+        usuarioRepository.findAdminByAgenciaId(agenciaId).ifPresent(admin -> {
+            if (admin.getPlan() != null) {
+                propagarPlanAEquipo(admin, admin.getPlan());
+            }
+        });
     }
 
     @Cacheable("planFree")

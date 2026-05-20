@@ -10,6 +10,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -32,6 +33,7 @@ import repository.EtiquetaRepository;
 import repository.RespuestaRapidaRepository;
 import repository.UsuarioRepository;
 import service.CrmAgentTools;
+import service.SubscriptionValidationService;
 
 @RestController
 @RequestMapping("/api/v1/agent-config")
@@ -72,6 +74,7 @@ public class AgentConfigController {
     private final EtapaRepository etapaRepository;
     private final EtiquetaRepository etiquetaRepository;
     private final RespuestaRapidaRepository respuestaRapidaRepository;
+    private final SubscriptionValidationService subscriptionValidationService;
 
     public AgentConfigController(ChatClient chatClient,
                                   AgentConfigRepository agentConfigRepository,
@@ -79,7 +82,8 @@ public class AgentConfigController {
                                   ClienteRepository clienteRepository,
                                   EtapaRepository etapaRepository,
                                   EtiquetaRepository etiquetaRepository,
-                                  RespuestaRapidaRepository respuestaRapidaRepository) {
+                                  RespuestaRapidaRepository respuestaRapidaRepository,
+                                  SubscriptionValidationService subscriptionValidationService) {
         this.chatClient = chatClient;
         this.agentConfigRepository = agentConfigRepository;
         this.usuarioRepository = usuarioRepository;
@@ -87,6 +91,7 @@ public class AgentConfigController {
         this.etapaRepository = etapaRepository;
         this.etiquetaRepository = etiquetaRepository;
         this.respuestaRapidaRepository = respuestaRapidaRepository;
+        this.subscriptionValidationService = subscriptionValidationService;
     }
 
     record ImageData(String base64, String mimeType) {}
@@ -113,6 +118,11 @@ public class AgentConfigController {
             return ResponseEntity.badRequest().body(Map.of("error", "Sin agencia"));
         }
         Agencia agencia = usuario.getAgencia();
+        // Solo planes con Agente IA habilitado pueden activar la configuración.
+        if (req.enabled() && !subscriptionValidationService.puedeUsarAgenteIA(agencia)) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                    .body(Map.of("error", "Tu plan no incluye Agente IA. Actualizá a ENTERPRISE."));
+        }
         AgentConfig config = agentConfigRepository.findByAgenciaId(agencia.getId())
                 .orElseGet(() -> {
                     AgentConfig c = new AgentConfig();
