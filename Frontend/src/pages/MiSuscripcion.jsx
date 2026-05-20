@@ -23,11 +23,19 @@ const formatVencimiento = (v, noDateLabel) => {
 
 const capitalize = (s) => s ? s.charAt(0) + s.slice(1).toLowerCase() : '';
 
+// "X / max" o "X / ∞" si el máximo es -1
+const fmtUso = (used, max, unlimitedLabel) => {
+    if (max === -1) return `${used ?? 0} / ${unlimitedLabel || '∞'}`;
+    return `${used ?? 0} / ${max ?? 0}`;
+};
+
 export default function MiSuscripcion() {
     const { t } = useLanguage();
     const { usuario: perfil, agenciaId, refresh: refreshUser } = useUser();
     const [equipo, setEquipo] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [okMsg, setOkMsg] = useState('');
 
     const loadData = useCallback(async () => {
         try {
@@ -52,9 +60,6 @@ export default function MiSuscripcion() {
     }, [loadData, refreshUser]);
 
     useWebSocket(agenciaId, handleWSEvent, (client) => {
-        // Subscribe only needed; the hook auto-subscribes to global-notifications
-        // and the agencia topic subscription happens via onEvent in Kanban
-        // Here we need to explicitly subscribe to agencia topic for plan events
         client.subscribe(`/topic/agencia/${agenciaId}`, (msg) => {
             try {
                 const data = JSON.parse(msg.body);
@@ -64,6 +69,23 @@ export default function MiSuscripcion() {
             } catch { /* ignore */ }
         });
     });
+
+    const handleRefresh = async () => {
+        if (refreshing) return;
+        setRefreshing(true);
+        setOkMsg('');
+        try {
+            await api.post('/planes/refresh');
+            await loadData();
+            await refreshUser();
+            setOkMsg(t('suscripcion.planRefreshed'));
+            setTimeout(() => setOkMsg(''), 3000);
+        } catch (e) {
+            console.error('Error refrescando plan', e);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -78,27 +100,60 @@ export default function MiSuscripcion() {
     const planCfg = PLAN_ICON[planNombre] || PLAN_ICON.FREE;
     const miembros = equipo?.miembros || [];
     const esEquipo = miembros.length > 1;
-    const esAdmin = perfil?.rol === 'ADMIN';
+    const esAdmin = perfil?.rol === 'ADMIN' || perfil?.rol === 'OWNER';
     const proveedor = planEfectivo.proveedorPago || perfil?.proveedorPago || null;
     const vencimiento = planEfectivo.vencimiento || null;
+    const uso = equipo?.uso || {};
+    const unlimited = t('suscripcion.unlimited');
 
     return (
         <section className="page-wrapper" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="dashboard-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center', padding: '40px 20px', alignItems: 'center' }}>
+            <div className="dashboard-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center', padding: '40px 20px', alignItems: 'flex-start' }}>
                 <div style={{ maxWidth: 650, width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                     {/* Plan Card */}
                     <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
-                        <div style={{ padding: '24px 28px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <h2 style={{ color: '#fff', margin: 0, fontSize: '1.4rem', fontWeight: 700 }}>
-                                {t('suscripcion.title')}
-                            </h2>
-                            <p style={{ color: '#9ca3af', margin: '5px 0 0', fontSize: '0.88rem' }}>
-                                {esEquipo
-                                    ? `Plan "${equipo.agenciaNombre}" — ${miembros.length} ${miembros.length !== 1 ? t('suscripcion.members') : t('suscripcion.member')}`
-                                    : t('suscripcion.currentPlanInfo')}
-                            </p>
+                        <div style={{ padding: '24px 28px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                            <div>
+                                <h2 style={{ color: '#fff', margin: 0, fontSize: '1.4rem', fontWeight: 700 }}>
+                                    {t('suscripcion.title')}
+                                </h2>
+                                <p style={{ color: '#9ca3af', margin: '5px 0 0', fontSize: '0.88rem' }}>
+                                    {esEquipo
+                                        ? `Plan "${equipo.agenciaNombre}" — ${miembros.length} ${miembros.length !== 1 ? t('suscripcion.members') : t('suscripcion.member')}`
+                                        : t('suscripcion.currentPlanInfo')}
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleRefresh}
+                                disabled={refreshing}
+                                title={t('suscripcion.refreshPlan')}
+                                style={{
+                                    background: 'rgba(16,185,129,0.1)',
+                                    border: '1px solid rgba(16,185,129,0.25)',
+                                    color: '#10b981',
+                                    padding: '8px 12px',
+                                    borderRadius: 8,
+                                    cursor: refreshing ? 'wait' : 'pointer',
+                                    fontSize: '0.82rem',
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <i className={`fas ${refreshing ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`} />
+                                {refreshing ? t('suscripcion.refreshing') : t('suscripcion.refreshPlan')}
+                            </button>
                         </div>
+
+                        {okMsg && (
+                            <div style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981', padding: '10px 28px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <i className="fas fa-check-circle" />
+                                {okMsg}
+                            </div>
+                        )}
 
                         <div style={{ padding: 28 }}>
                             {/* Active Plan */}
@@ -122,7 +177,7 @@ export default function MiSuscripcion() {
                                 )}
                             </div>
 
-                            {/* Stats Grid */}
+                            {/* Stats Grid: vencimiento + estado */}
                             <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
                                     <span style={{ color: '#9ca3af', fontSize: '0.72rem', display: 'block', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>{t('suscripcion.nextExpiry')}</span>
@@ -194,6 +249,24 @@ export default function MiSuscripcion() {
                         </div>
                     </div>
 
+                    {/* Limits Card */}
+                    {planEfectivo.id && (
+                        <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
+                            <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                <h3 style={{ color: '#fff', margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{t('suscripcion.limitsTitle')}</h3>
+                                <p style={{ color: '#9ca3af', margin: '3px 0 0', fontSize: '0.8rem' }}>{t('suscripcion.limitsSubtitle')}</p>
+                            </div>
+                            <div style={{ padding: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                                <LimitItem icon="fa-users" label={t('suscripcion.limitContactos')} value={fmtUso(uso.contactos, planEfectivo.maxContactos, unlimited)} color={planCfg.color} />
+                                <LimitItem icon="fa-mobile-alt" label={t('suscripcion.limitDispEmbudo')} value={fmtUso(uso.dispositivosEmbudo, planEfectivo.maxDispositivos, unlimited)} color={planCfg.color} />
+                                <LimitItem icon="fa-bullhorn" label={t('suscripcion.limitDispCampanias')} value={fmtUso(uso.dispositivosCampanias, planEfectivo.maxDispositivosCampanias, unlimited)} color={planCfg.color} />
+                                <LimitItem icon="fa-user-friends" label={t('suscripcion.limitMiembros')} value={fmtUso(uso.miembros, planEfectivo.maxMiembrosEquipo, unlimited)} color={planCfg.color} />
+                                <FeatureItem icon="fa-robot" label={t('suscripcion.featAgenteIA')} enabled={planEfectivo.agenteIaHabilitado} tIncluded={t('suscripcion.included')} tNot={t('suscripcion.notIncluded')} />
+                                <FeatureItem icon="fa-paper-plane" label={t('suscripcion.featCampanias')} enabled={planEfectivo.campaniasHabilitadas} tIncluded={t('suscripcion.included')} tNot={t('suscripcion.notIncluded')} />
+                            </div>
+                        </div>
+                    )}
+
                     {/* Team Members Card */}
                     {esEquipo && (
                         <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
@@ -225,7 +298,6 @@ export default function MiSuscripcion() {
                                                 transition: 'background 0.15s',
                                             }}
                                         >
-                                            {/* Avatar */}
                                             {m.fotoUrl ? (
                                                 <img
                                                     src={m.fotoUrl}
@@ -242,7 +314,6 @@ export default function MiSuscripcion() {
                                                 </div>
                                             )}
 
-                                            {/* Info */}
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                     <span style={{ color: '#fff', fontSize: '0.92rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -253,11 +324,10 @@ export default function MiSuscripcion() {
                                                     )}
                                                 </div>
                                                 <span style={{ color: '#6b7280', fontSize: '0.78rem' }}>
-                                                    {m.rol === 'ADMIN' ? t('suscripcion.admin') : t('suscripcion.collaborator')}
+                                                    {(m.rol === 'ADMIN' || m.rol === 'OWNER') ? t('suscripcion.admin') : t('suscripcion.collaborator')}
                                                 </span>
                                             </div>
 
-                                            {/* Plan Badge */}
                                             <div style={{
                                                 display: 'flex', alignItems: 'center', gap: 6,
                                                 background: `${mCfg.color}15`,
@@ -281,5 +351,33 @@ export default function MiSuscripcion() {
                 </div>
             </div>
         </section>
+    );
+}
+
+function LimitItem({ icon, label, value, color }) {
+    return (
+        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '14px 16px', borderRadius: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9ca3af', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: 6 }}>
+                <i className={`fas ${icon}`} style={{ color }} />
+                {label}
+            </div>
+            <strong style={{ color: '#fff', fontSize: '1.05rem' }}>{value}</strong>
+        </div>
+    );
+}
+
+function FeatureItem({ icon, label, enabled, tIncluded, tNot }) {
+    const c = enabled ? '#10b981' : '#6b7280';
+    return (
+        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '14px 16px', borderRadius: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9ca3af', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: 6 }}>
+                <i className={`fas ${icon}`} style={{ color: c }} />
+                {label}
+            </div>
+            <strong style={{ color: c, fontSize: '0.95rem' }}>
+                <i className={`fas ${enabled ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ marginRight: 6 }} />
+                {enabled ? tIncluded : tNot}
+            </strong>
+        </div>
     );
 }

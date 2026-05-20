@@ -35,6 +35,7 @@ import repository.PlantillaCampaniaRepository;
 import repository.UsuarioRepository;
 import service.CampaniaService;
 import service.PlanService;
+import service.SubscriptionValidationService;
 import service.WhatsAppService;
 import util.DispositivoMapper;
 
@@ -55,19 +56,22 @@ public class CampaniaController {
     private final CampaniaService campaniaService;
     private final WhatsAppService whatsAppService;
     private final PlanService planService;
+    private final SubscriptionValidationService subscriptionValidationService;
 
     public CampaniaController(UsuarioRepository usuarioRepo,
                               DispositivoRepository dispositivoRepo,
                               PlantillaCampaniaRepository plantillaRepo,
                               CampaniaService campaniaService,
                               WhatsAppService whatsAppService,
-                              PlanService planService) {
+                              PlanService planService,
+                              SubscriptionValidationService subscriptionValidationService) {
         this.usuarioRepo = usuarioRepo;
         this.dispositivoRepo = dispositivoRepo;
         this.plantillaRepo = plantillaRepo;
         this.campaniaService = campaniaService;
         this.whatsAppService = whatsAppService;
         this.planService = planService;
+        this.subscriptionValidationService = subscriptionValidationService;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -93,9 +97,14 @@ public class CampaniaController {
                                          @RequestBody CreateDeviceRequest body) {
         Usuario usuario = requireUsuario(ud);
         Agencia agencia = requireAgencia(ud);
-        if (!planService.puedeConectarDispositivo(usuario.getId(), Dispositivo.Plataforma.WHATSAPP)) {
+        if (!subscriptionValidationService.puedeUsarCampanias(agencia)) {
             return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
-                    .body(Map.of("error", "Limite de dispositivos alcanzado."));
+                    .body(Map.of("error", "Tu plan no incluye Campañas. Actualizá a PRO o superior."));
+        }
+        if (!planService.puedeConectarDispositivo(
+                usuario.getId(), Dispositivo.Plataforma.WHATSAPP, Dispositivo.Proposito.CAMPANIAS)) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                    .body(Map.of("error", "Límite de dispositivos de campañas alcanzado para tu plan."));
         }
         String alias = (body.alias() == null || body.alias().isBlank()) ? "Spam" : body.alias();
         Dispositivo d = whatsAppService.crearDispositivoConProposito(
@@ -204,6 +213,10 @@ public class CampaniaController {
         }
         Dispositivo d = requireDeviceCampania(ud, req.dispositivoId());
         Agencia agencia = d.getAgencia();
+        if (!subscriptionValidationService.puedeUsarCampanias(agencia)) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                    .body(Map.of("error", "Tu plan no incluye Campañas. Actualizá a PRO o superior."));
+        }
 
         PlantillaCampania plantilla = null;
         if (req.plantillaId() != null) {

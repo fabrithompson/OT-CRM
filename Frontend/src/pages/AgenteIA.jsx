@@ -12,7 +12,9 @@ export default function AgenteIA() {
     const { t } = useLanguage();
     const { usuario, agenciaId, loading: userLoading } = useUser();
 
-    const isEnterprise = usuario?.plan?.nombre === 'ENTERPRISE';
+    // Fallback al chequeo por nombre si el backend (versión vieja) no envía el flag.
+    const isEnterprise = usuario?.plan?.agenteIaHabilitado === true
+        || usuario?.plan?.nombre === 'ENTERPRISE';
 
     const [instructions, setInstructions] = useState('');
     const [businessContext, setBusinessContext] = useState('');

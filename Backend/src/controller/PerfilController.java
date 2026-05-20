@@ -68,7 +68,11 @@ public class PerfilController {
             planMap.put("id", planEfectivo.getId());
             planMap.put("nombre", planEfectivo.getNombre());
             planMap.put("maxDispositivos", planEfectivo.getMaxDispositivos());
+            planMap.put("maxDispositivosCampanias", planEfectivo.getMaxDispositivosCampanias());
             planMap.put("maxContactos", planEfectivo.getMaxContactos());
+            planMap.put("maxMiembrosEquipo", planEfectivo.getMaxMiembrosEquipo());
+            planMap.put("agenteIaHabilitado", planEfectivo.isAgenteIaHabilitado());
+            planMap.put("campaniasHabilitadas", planEfectivo.isCampaniasHabilitadas());
             planMap.put("precioMensual", planEfectivo.getPrecioMensual());
             response.put("plan", planMap);
         }

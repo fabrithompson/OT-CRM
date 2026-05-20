@@ -200,7 +200,8 @@ class WhatsAppWebhookIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Limite de contactos del plan rechaza clientes nuevos")
     void limiteContactosRechazaNuevoCliente() {
         // Plan con maxContactos = 2
-        Plan planLimitado = new Plan("TEST_LIMIT_" + System.nanoTime(), 1, 2, 0.0, "Plan test");
+        // (nombre, maxDispositivos, maxDispCampanias, maxContactos, maxMiembros, agenteIA, campañas, precio, descripción)
+        Plan planLimitado = new Plan("TEST_LIMIT_" + System.nanoTime(), 1, 0, 2, 1, false, false, 0.0, "Plan test");
         planLimitado = planRepo.save(planLimitado);
 
         Usuario admin = usuarioRepo.findByAgenciaId(agencia.getId()).stream()

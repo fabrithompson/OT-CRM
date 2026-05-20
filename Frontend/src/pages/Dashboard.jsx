@@ -112,7 +112,9 @@ function KpiCardV2({ icon, label, value, trend, trendDir, gradient, sparkData, g
                 <div style={{ fontSize: '2rem', fontWeight: 800, color: 'white', lineHeight: 1 }}>{value}</div>
                 <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.72)', marginTop: 5 }}>{label}</div>
             </div>
-            <div style={{ marginLeft: -22, marginRight: -22, marginTop: 8 }}>
+            {/* pointerEvents:none evita que recharts dispare tooltips/activeDots al hacer click
+                en la card, que es lo que generaba el "círculo blanco" y el cuadrito feo. */}
+            <div style={{ marginLeft: -22, marginRight: -22, marginTop: 8, pointerEvents: 'none' }}>
                 <ResponsiveContainer width="100%" height={44}>
                     <AreaChart data={sparkData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                         <defs>
@@ -121,7 +123,12 @@ function KpiCardV2({ icon, label, value, trend, trendDir, gradient, sparkData, g
                                 <stop offset="95%" stopColor="rgba(255,255,255,0)" />
                             </linearGradient>
                         </defs>
-                        <Area type="monotone" dataKey="v" stroke="rgba(255,255,255,0.65)" strokeWidth={1.5} fill={`url(#${gradId})`} dot={false} />
+                        <Area
+                            type="monotone" dataKey="v"
+                            stroke="rgba(255,255,255,0.65)" strokeWidth={1.5}
+                            fill={`url(#${gradId})`}
+                            dot={false} activeDot={false} isAnimationActive={false}
+                        />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
@@ -480,7 +487,25 @@ export default function Dashboard() {
         padding: '20px 22px',
         boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
     };
-    const ttStyle = { background: 'rgba(8,8,16,0.96)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, fontSize: '0.77rem' };
+    const ttStyle = {
+        background: 'rgba(15,16,28,0.97)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        borderRadius: 12,
+        fontSize: '0.78rem',
+        padding: '10px 14px',
+        boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(10px)',
+        outline: 'none',
+    };
+    const ttLabelStyle = {
+        color: 'rgba(255,255,255,0.55)',
+        fontWeight: 700,
+        fontSize: '0.72rem',
+        marginBottom: 6,
+        letterSpacing: '0.04em',
+        textTransform: 'uppercase',
+    };
+    const ttItemStyle = { fontSize: '0.78rem', padding: '2px 0', lineHeight: 1.4 };
     const secTitle = { margin: 0, fontSize: '0.98rem', fontWeight: 700, color: 'white' };
     const secSub   = { margin: 0, fontSize: '0.73rem', color: 'rgba(255,255,255,0.38)' };
 
@@ -649,7 +674,7 @@ export default function Dashboard() {
                             </span>
                         </div>
                     </div>
-                    <div style={{ marginLeft:-22, marginRight:-22, marginTop:8 }}>
+                    <div style={{ marginLeft:-22, marginRight:-22, marginTop:8, pointerEvents:'none' }}>
                         <ResponsiveContainer width="100%" height={44}>
                             <AreaChart data={sparkCarga} margin={{ top:0, right:0, left:0, bottom:0 }}>
                                 <defs>
@@ -658,7 +683,12 @@ export default function Dashboard() {
                                         <stop offset="95%" stopColor="rgba(255,255,255,0)" />
                                     </linearGradient>
                                 </defs>
-                                <Area type="monotone" dataKey="v" stroke="rgba(255,255,255,0.65)" strokeWidth={1.5} fill="url(#sg3)" dot={false} />
+                                <Area
+                                    type="monotone" dataKey="v"
+                                    stroke="rgba(255,255,255,0.65)" strokeWidth={1.5}
+                                    fill="url(#sg3)"
+                                    dot={false} activeDot={false} isAnimationActive={false}
+                                />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -722,7 +752,11 @@ export default function Dashboard() {
                                 width={38}
                             />
                             <Tooltip
-                                contentStyle={ttStyle} labelStyle={{ color:'rgba(255,255,255,0.45)' }}
+                                contentStyle={ttStyle}
+                                labelStyle={ttLabelStyle}
+                                itemStyle={ttItemStyle}
+                                cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1, strokeDasharray: '3 3' }}
+                                wrapperStyle={{ outline: 'none' }}
                                 formatter={(value, name) => name === 'Ingresos' ? [`$${value.toLocaleString()}`, name] : [value, name]}
                             />
                             <Area yAxisId="left"  type="monotone" dataKey="leads"    stroke="#10b981" strokeWidth={2} fill="url(#wg1)" dot={false} name="Leads" />
@@ -756,7 +790,12 @@ export default function Dashboard() {
                                     <Cell key={i} fill={e.color} />
                                 ))}
                             </Pie>
-                            <Tooltip contentStyle={ttStyle} />
+                            <Tooltip
+                                contentStyle={ttStyle}
+                                labelStyle={ttLabelStyle}
+                                itemStyle={ttItemStyle}
+                                wrapperStyle={{ outline: 'none' }}
+                            />
                         </PieChart>
                         <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', textAlign:'center', pointerEvents:'none' }}>
                             <div style={{ fontSize:'1.45rem', fontWeight:800, color:'white' }}>{(data.waLeads + data.tgLeads).toLocaleString()}</div>
