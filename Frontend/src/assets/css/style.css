@@ -1719,8 +1719,7 @@ img[src$=".webp"], .msg-sticker {
     height: 100%; padding-bottom: 0 !important;
 }
 .glass-table-card {
-    background: var(--bg-glass);
-    backdrop-filter: blur(15px);
+    background: var(--bg-card);
     border: 1px solid var(--border-glass);
     border-radius: 16px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
