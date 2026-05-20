@@ -5,10 +5,10 @@ import { useLanguage } from '../context/LangContext';
 
 
 const PLAN_CONFIG = {
-    FREE:       { icon: 'fa-seedling', clase: 'free',       badge: null,      ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-check','fa-check'],       benGolden: [false,false,false,false] },
-    PRO:        { icon: 'fa-bolt',     clase: 'pro',        badge: 'popular', ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-check','fa-check'],       benGolden: [false,false,false,false] },
-    BUSINESS:   { icon: 'fa-building', clase: 'business',   badge: null,      ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-check','fa-check'],       benGolden: [false,false,false,false] },
-    ENTERPRISE: { icon: 'fa-gem',      clase: 'enterprise', badge: 'vip',     ilimitado: true,  benIconos: ['fa-infinity',  'fa-check','fa-check','fa-check'],      benGolden: [true, false,false,false] },
+    FREE:       { icon: 'fa-seedling', clase: 'free',       badge: null,      ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-th-list',    'fa-ban'],         benGolden: [false,false,false,false] },
+    PRO:        { icon: 'fa-bolt',     clase: 'pro',        badge: 'popular', ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-paper-plane','fa-check'],       benGolden: [false,false,false,false] },
+    BUSINESS:   { icon: 'fa-building', clase: 'business',   badge: null,      ilimitado: false, benIconos: ['fa-user-plus','fa-users','fa-chart-pie',  'fa-check'],       benGolden: [false,false,false,false] },
+    ENTERPRISE: { icon: 'fa-gem',      clase: 'enterprise', badge: 'vip',     ilimitado: true,  benIconos: ['fa-infinity', 'fa-robot','fa-paper-plane','fa-check'],       benGolden: [true, true, false,false] },
 };
 
 
