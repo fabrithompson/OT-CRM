@@ -74,7 +74,12 @@ export default function Landing() {
       precio: null,
       dispositivos: t('landing.pricing.free.dispositivos'),
       badge: null,
-      beneficios: [t('landing.pricing.free.b1'), t('landing.pricing.free.b2'), t('landing.pricing.free.b3'), t('landing.pricing.free.b4')],
+      beneficios: [
+        { icon: 'fa-user-plus',  texto: t('landing.pricing.free.b1') },
+        { icon: 'fa-users',      texto: t('landing.pricing.free.b2') },
+        { icon: 'fa-th-list',    texto: t('landing.pricing.free.b3') },
+        { icon: 'fa-ban',        texto: t('landing.pricing.free.b4'), muted: true },
+      ],
       cta: t('landing.pricing.free.cta'), ctaClass: 'btn-outline',
     },
     {
@@ -83,7 +88,12 @@ export default function Landing() {
       precio: '35.000',
       dispositivos: t('landing.pricing.pro.dispositivos'),
       badge: 'popular',
-      beneficios: [t('landing.pricing.pro.b1'), t('landing.pricing.pro.b2'), t('landing.pricing.pro.b3'), t('landing.pricing.pro.b4')],
+      beneficios: [
+        { icon: 'fa-user-plus',   texto: t('landing.pricing.pro.b1') },
+        { icon: 'fa-users',       texto: t('landing.pricing.pro.b2') },
+        { icon: 'fa-paper-plane', texto: t('landing.pricing.pro.b3') },
+        { icon: 'fa-check',       texto: t('landing.pricing.pro.b4') },
+      ],
       cta: t('landing.pricing.pro.cta'), ctaClass: 'btn-blue',
     },
     {
@@ -92,7 +102,12 @@ export default function Landing() {
       precio: '80.000',
       dispositivos: t('landing.pricing.business.dispositivos'),
       badge: 'business',
-      beneficios: [t('landing.pricing.business.b1'), t('landing.pricing.business.b2'), t('landing.pricing.business.b3'), t('landing.pricing.business.b4')],
+      beneficios: [
+        { icon: 'fa-user-plus',  texto: t('landing.pricing.business.b1') },
+        { icon: 'fa-users',      texto: t('landing.pricing.business.b2') },
+        { icon: 'fa-chart-pie',  texto: t('landing.pricing.business.b3') },
+        { icon: 'fa-check',      texto: t('landing.pricing.business.b4') },
+      ],
       cta: t('landing.pricing.business.cta'), ctaClass: 'btn-violet',
     },
     {
@@ -101,7 +116,12 @@ export default function Landing() {
       precio: '160.000',
       dispositivos: t('landing.pricing.enterprise.dispositivos'),
       badge: 'vip',
-      beneficios: [t('landing.pricing.enterprise.b1'), t('landing.pricing.enterprise.b2'), t('landing.pricing.enterprise.b3'), t('landing.pricing.enterprise.b4')],
+      beneficios: [
+        { icon: 'fa-infinity',    texto: t('landing.pricing.enterprise.b1'), golden: true },
+        { icon: 'fa-robot',       texto: t('landing.pricing.enterprise.b2'), golden: true },
+        { icon: 'fa-paper-plane', texto: t('landing.pricing.enterprise.b3') },
+        { icon: 'fa-check',       texto: t('landing.pricing.enterprise.b4') },
+      ],
       cta: t('landing.pricing.enterprise.cta'), ctaClass: 'btn-gold',
     },
   ];
@@ -323,10 +343,10 @@ export default function Landing() {
                   {plan.dispositivos}
                 </div>
                 <ul className="plan-benefits">
-                  {plan.beneficios.map(b => (
-                    <li key={b}>
-                      <i className="fas fa-check" />
-                      <span>{b}</span>
+                  {plan.beneficios.map((b, i) => (
+                    <li key={i} className={b.muted ? 'plan-benefit-muted' : b.golden ? 'plan-benefit-golden' : ''}>
+                      <i className={`fas ${b.icon}`} />
+                      <span>{b.texto}</span>
                     </li>
                   ))}
                 </ul>

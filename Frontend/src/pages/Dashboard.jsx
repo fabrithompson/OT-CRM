@@ -112,22 +112,37 @@ function KpiCardV2({ icon, label, value, trend, trendDir, gradient, sparkData, g
                 <div style={{ fontSize: '2rem', fontWeight: 800, color: 'white', lineHeight: 1 }}>{value}</div>
                 <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.72)', marginTop: 5 }}>{label}</div>
             </div>
-            {/* pointerEvents:none evita que recharts dispare tooltips/activeDots al hacer click
-                en la card, que es lo que generaba el "círculo blanco" y el cuadrito feo. */}
-            <div style={{ marginLeft: -22, marginRight: -22, marginTop: 8, pointerEvents: 'none' }}>
+            <div style={{ marginLeft: -22, marginRight: -22, marginTop: 8 }}>
                 <ResponsiveContainer width="100%" height={44}>
-                    <AreaChart data={sparkData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <AreaChart data={sparkData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%"  stopColor="rgba(255,255,255,0.35)" />
                                 <stop offset="95%" stopColor="rgba(255,255,255,0)" />
                             </linearGradient>
                         </defs>
+                        <Tooltip
+                            cursor={{ stroke: 'rgba(255,255,255,0.25)', strokeWidth: 1, strokeDasharray: '2 3' }}
+                            contentStyle={{
+                                background: 'rgba(15,16,28,0.97)',
+                                border: '1px solid rgba(255,255,255,0.15)',
+                                borderRadius: 8, padding: '4px 9px',
+                                fontSize: '0.72rem',
+                                boxShadow: '0 6px 16px rgba(0,0,0,0.4)',
+                            }}
+                            labelStyle={{ display: 'none' }}
+                            itemStyle={{ color: '#fff', padding: 0, fontWeight: 600 }}
+                            wrapperStyle={{ outline: 'none', zIndex: 10 }}
+                            formatter={(v) => [v, '']}
+                            separator=""
+                        />
                         <Area
                             type="monotone" dataKey="v"
                             stroke="rgba(255,255,255,0.65)" strokeWidth={1.5}
                             fill={`url(#${gradId})`}
-                            dot={false} activeDot={false} isAnimationActive={false}
+                            dot={false}
+                            activeDot={{ r: 3, stroke: 'rgba(255,255,255,0.9)', strokeWidth: 1, fill: 'rgba(255,255,255,0.9)' }}
+                            isAnimationActive={false}
                         />
                     </AreaChart>
                 </ResponsiveContainer>
@@ -674,20 +689,37 @@ export default function Dashboard() {
                             </span>
                         </div>
                     </div>
-                    <div style={{ marginLeft:-22, marginRight:-22, marginTop:8, pointerEvents:'none' }}>
+                    <div style={{ marginLeft:-22, marginRight:-22, marginTop:8 }}>
                         <ResponsiveContainer width="100%" height={44}>
-                            <AreaChart data={sparkCarga} margin={{ top:0, right:0, left:0, bottom:0 }}>
+                            <AreaChart data={sparkCarga} margin={{ top:4, right:0, left:0, bottom:0 }}>
                                 <defs>
                                     <linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%"  stopColor="rgba(255,255,255,0.35)" />
                                         <stop offset="95%" stopColor="rgba(255,255,255,0)" />
                                     </linearGradient>
                                 </defs>
+                                <Tooltip
+                                    cursor={{ stroke: 'rgba(255,255,255,0.25)', strokeWidth: 1, strokeDasharray: '2 3' }}
+                                    contentStyle={{
+                                        background: 'rgba(15,16,28,0.97)',
+                                        border: '1px solid rgba(255,255,255,0.15)',
+                                        borderRadius: 8, padding: '4px 9px',
+                                        fontSize: '0.72rem',
+                                        boxShadow: '0 6px 16px rgba(0,0,0,0.4)',
+                                    }}
+                                    labelStyle={{ display: 'none' }}
+                                    itemStyle={{ color: '#fff', padding: 0, fontWeight: 600 }}
+                                    wrapperStyle={{ outline: 'none', zIndex: 10 }}
+                                    formatter={(v) => [v, '']}
+                                    separator=""
+                                />
                                 <Area
                                     type="monotone" dataKey="v"
                                     stroke="rgba(255,255,255,0.65)" strokeWidth={1.5}
                                     fill="url(#sg3)"
-                                    dot={false} activeDot={false} isAnimationActive={false}
+                                    dot={false}
+                                    activeDot={{ r: 3, stroke: 'rgba(255,255,255,0.9)', strokeWidth: 1, fill: 'rgba(255,255,255,0.9)' }}
+                                    isAnimationActive={false}
                                 />
                             </AreaChart>
                         </ResponsiveContainer>
@@ -759,9 +791,9 @@ export default function Dashboard() {
                                 wrapperStyle={{ outline: 'none' }}
                                 formatter={(value, name) => name === 'Ingresos' ? [`$${value.toLocaleString()}`, name] : [value, name]}
                             />
-                            <Area yAxisId="left"  type="monotone" dataKey="leads"    stroke="#10b981" strokeWidth={2} fill="url(#wg1)" dot={false} name="Leads" />
-                            <Area yAxisId="left"  type="monotone" dataKey="mensajes" stroke="#818cf8" strokeWidth={2} fill="url(#wg2)" dot={false} name="Mensajes" />
-                            <Area yAxisId="right" type="monotone" dataKey="ingresos" stroke="#ec4899" strokeWidth={1.5} fill="url(#wg3)" dot={false} name="Ingresos" />
+                            <Area yAxisId="left"  type="monotone" dataKey="leads"    stroke="#10b981" strokeWidth={2}   fill="url(#wg1)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#10b981', stroke: '#0a0a14' }} name="Leads" />
+                            <Area yAxisId="left"  type="monotone" dataKey="mensajes" stroke="#818cf8" strokeWidth={2}   fill="url(#wg2)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#818cf8', stroke: '#0a0a14' }} name="Mensajes" />
+                            <Area yAxisId="right" type="monotone" dataKey="ingresos" stroke="#ec4899" strokeWidth={1.5} fill="url(#wg3)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#ec4899', stroke: '#0a0a14' }} name="Ingresos" />
                         </AreaChart>
                     </ResponsiveContainer>
                     <div style={{ display:'flex', gap:18, marginTop:6 }}>

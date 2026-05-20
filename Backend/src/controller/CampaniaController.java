@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -57,6 +58,7 @@ public class CampaniaController {
     private final WhatsAppService whatsAppService;
     private final PlanService planService;
     private final SubscriptionValidationService subscriptionValidationService;
+    private final SimpMessagingTemplate messaging;
 
     public CampaniaController(UsuarioRepository usuarioRepo,
                               DispositivoRepository dispositivoRepo,
@@ -64,7 +66,8 @@ public class CampaniaController {
                               CampaniaService campaniaService,
                               WhatsAppService whatsAppService,
                               PlanService planService,
-                              SubscriptionValidationService subscriptionValidationService) {
+                              SubscriptionValidationService subscriptionValidationService,
+                              SimpMessagingTemplate messaging) {
         this.usuarioRepo = usuarioRepo;
         this.dispositivoRepo = dispositivoRepo;
         this.plantillaRepo = plantillaRepo;
@@ -72,6 +75,16 @@ public class CampaniaController {
         this.whatsAppService = whatsAppService;
         this.planService = planService;
         this.subscriptionValidationService = subscriptionValidationService;
+        this.messaging = messaging;
+    }
+
+    /** Atajo para publicar al topic de la agencia. */
+    private void emit(Long agenciaId, String tipo, Map<String, Object> payload) {
+        if (agenciaId == null) return;
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("tipo", tipo);
+        if (payload != null) body.putAll(payload);
+        messaging.convertAndSend("/topic/campania/" + agenciaId, body);
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -109,14 +122,18 @@ public class CampaniaController {
         String alias = (body.alias() == null || body.alias().isBlank()) ? "Spam" : body.alias();
         Dispositivo d = whatsAppService.crearDispositivoConProposito(
                 agencia, alias, Dispositivo.Proposito.CAMPANIAS);
-        return ResponseEntity.ok(DispositivoMapper.toDto(d));
+        Map<String, Object> dto = DispositivoMapper.toDto(d);
+        emit(agencia.getId(), "DEVICE_ADDED", Map.of("device", dto));
+        return ResponseEntity.ok(dto);
     }
 
     @DeleteMapping("/devices/{deviceId}")
     public ResponseEntity<?> eliminarDevice(@AuthenticationPrincipal UserDetails ud,
                                             @PathVariable @NonNull Long deviceId) {
         Dispositivo d = requireDeviceCampania(ud, deviceId);
+        Long agenciaId = d.getAgencia() != null ? d.getAgencia().getId() : null;
         whatsAppService.eliminarDispositivoCompleto(d.getId());
+        emit(agenciaId, "DEVICE_DELETED", Map.of("deviceId", deviceId));
         return ResponseEntity.ok(Map.of("message", "Eliminado"));
     }
 
@@ -132,6 +149,8 @@ public class CampaniaController {
             Dispositivo d = requireDeviceCampania(ud, deviceId);
             Map<String, Object> resumen = campaniaService.importarContactosDesdeExcel(
                     d, d.getAgencia(), file);
+            emit(d.getAgencia().getId(), "CONTACTOS_IMPORTADOS",
+                    Map.of("deviceId", deviceId, "resumen", resumen));
             return ResponseEntity.ok(resumen);
         } catch (Exception e) {
             log.error("Error importando contactos campaña: {}", e.getMessage(), e);
@@ -154,6 +173,7 @@ public class CampaniaController {
                                               @PathVariable @NonNull Long contactoId) {
         Agencia agencia = requireAgencia(ud);
         campaniaService.eliminarContacto(contactoId, agencia.getId());
+        emit(agencia.getId(), "CONTACTO_ELIMINADO", Map.of("contactoId", contactoId));
         return ResponseEntity.ok(Map.of("message", "Eliminado"));
     }
 
@@ -181,7 +201,9 @@ public class CampaniaController {
         }
         Agencia agencia = requireAgencia(ud);
         PlantillaCampania p = campaniaService.crearPlantilla(agencia, body.nombre(), body.cuerpo());
-        return ResponseEntity.ok(plantillaToDto(p));
+        Map<String, Object> dto = plantillaToDto(p);
+        emit(agencia.getId(), "PLANTILLA_CREADA", Map.of("plantilla", dto));
+        return ResponseEntity.ok(dto);
     }
 
     @DeleteMapping("/plantillas/{plantillaId}")
@@ -189,6 +211,7 @@ public class CampaniaController {
                                                @PathVariable @NonNull Long plantillaId) {
         Agencia agencia = requireAgencia(ud);
         campaniaService.eliminarPlantilla(plantillaId, agencia.getId());
+        emit(agencia.getId(), "PLANTILLA_ELIMINADA", Map.of("plantillaId", plantillaId));
         return ResponseEntity.ok(Map.of("message", "Eliminada"));
     }
 
@@ -227,6 +250,8 @@ public class CampaniaController {
 
         Map<String, Object> resumen = campaniaService.encolarCampania(
                 d, agencia, req.contactoIds(), req.cuerpo(), plantilla);
+        emit(agencia.getId(), "CAMPANIA_INICIADA",
+                Map.of("deviceId", d.getId(), "resumen", resumen));
         return ResponseEntity.ok(resumen);
     }
 

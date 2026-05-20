@@ -108,7 +108,7 @@ export default function MiSuscripcion() {
 
     return (
         <section className="page-wrapper" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="dashboard-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', justifyContent: 'center', padding: '40px 20px', alignItems: 'flex-start' }}>
+            <div className="dashboard-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
                 <div style={{ maxWidth: 650, width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                     {/* Plan Card */}

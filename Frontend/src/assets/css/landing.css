@@ -1004,11 +1004,28 @@
   line-height: 1.45;
 }
 
-.plan-benefits li .fa-check {
+.plan-benefits li .fas {
   color: #10b981;
   flex-shrink: 0;
   margin-top: 2px;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
+  width: 14px;
+  text-align: center;
+}
+
+.plan-benefits li.plan-benefit-muted {
+  color: rgba(255, 255, 255, 0.42);
+}
+.plan-benefits li.plan-benefit-muted .fas {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.plan-benefits li.plan-benefit-golden {
+  color: #fde68a;
+  font-weight: 600;
+}
+.plan-benefits li.plan-benefit-golden .fas {
+  color: #f59e0b;
 }
 
 .plan-cta {
