@@ -820,23 +820,81 @@ export default function Spam() {
     }, [deviceActivoId, loadContactos, loadBandeja]);
 
     useWebSocket(agenciaId, () => { }, (client) => {
+        // Estado de los dispositivos (SCAN_QR / CONNECTED / DISCONNECTED) vía /topic/bot
         client.subscribe(`/topic/bot/${agenciaId}`, (msg) => {
             try {
                 const p = JSON.parse(msg.body);
-                if (p?.sessionId) {
-                    setDevices(prev => prev.map(d => d.sessionId === p.sessionId ? { ...d, estado: p.status || p.tipo || d.estado } : d));
-                    if (p.status === 'CONNECTED') loadDevices();
-                }
+                if (!p?.sessionId) return;
+                setDevices(prev => {
+                    const exists = prev.some(d => d.sessionId === p.sessionId);
+                    if (!exists) { loadDevices(); return prev; }
+                    return prev.map(d =>
+                        d.sessionId === p.sessionId
+                            ? { ...d, estado: p.status || p.tipo || d.estado }
+                            : d
+                    );
+                });
+                // CONNECTED recarga para tomar el número de teléfono detectado por el bot
+                if (p.status === 'CONNECTED' || p.tipo === 'CONNECTED') loadDevices();
             } catch { /* ignorar */ }
         });
+
+        // Eventos del módulo de campañas vía /topic/campania
         client.subscribe(`/topic/campania/${agenciaId}`, (msg) => {
             try {
                 const p = JSON.parse(msg.body);
-                if (p.tipo === 'MENSAJE_IN' || p.tipo === 'MENSAJE_OUT') {
+                const tipo = p.tipo;
+
+                if (tipo === 'MENSAJE_IN' || tipo === 'MENSAJE_OUT') {
                     const devId = devActivoRef.current;
                     const ctId  = ctActivoRef.current?.contactoId;
                     if (devId) loadBandeja(devId);
                     if (ctId === p.contactoId) loadMensajes(p.contactoId);
+                    if (tipo === 'MENSAJE_IN') {
+                        toast('Nuevo mensaje', p.nombre || p.telefono || '', C_AMBER);
+                    }
+                    return;
+                }
+                if (tipo === 'MENSAJE_LEIDO') {
+                    setBandeja(prev => prev.map(b =>
+                        b.contactoId === p.contactoId ? { ...b, noLeidos: 0 } : b));
+                    return;
+                }
+                if (tipo === 'DEVICE_ADDED' && p.device) {
+                    setDevices(prev => prev.some(d => d.id === p.device.id)
+                        ? prev : [...prev, p.device]);
+                    setDevActivo(prev => prev || p.device.id);
+                    return;
+                }
+                if (tipo === 'DEVICE_DELETED') {
+                    setDevices(prev => prev.filter(d => d.id !== p.deviceId));
+                    if (devActivoRef.current === p.deviceId) {
+                        setDevActivo(null);
+                        setContactos([]); setBandeja([]); setCtActivo(null); setMensajes([]);
+                    }
+                    return;
+                }
+                if (tipo === 'CONTACTOS_IMPORTADOS') {
+                    if (devActivoRef.current === p.deviceId) loadContactos(p.deviceId);
+                    return;
+                }
+                if (tipo === 'CONTACTO_ELIMINADO') {
+                    setContactos(prev => prev.filter(c => c.id !== p.contactoId));
+                    setBandeja(prev => prev.filter(b => b.contactoId !== p.contactoId));
+                    if (ctActivoRef.current?.contactoId === p.contactoId) {
+                        setCtActivo(null); setMensajes([]);
+                    }
+                    return;
+                }
+                if (tipo === 'CAMPANIA_INICIADA') {
+                    const r = p.resumen || {};
+                    toast('Campaña encolada',
+                        `${r.encolados || 0} mensajes · ${r.salteados || 0} salteados`, C_GREEN);
+                    return;
+                }
+                if (tipo === 'ENVIO_PROCESADO') {
+                    if (devActivoRef.current === p.deviceId) loadBandeja(p.deviceId);
+                    return;
                 }
             } catch { /* ignorar */ }
         });

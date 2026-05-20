@@ -343,6 +343,8 @@ public class CampaniaService {
                 messaging.convertAndSend("/topic/campania/" + d.getAgencia().getId(),
                         Map.<String, Object>of("tipo", "ENVIO_PROCESADO",
                                "envioId", envio.getId(),
+                               "deviceId", d.getId(),
+                               "contactoId", envio.getContacto().getId(),
                                "estado", envio.getEstado().name()));
             }
         }
@@ -405,7 +407,15 @@ public class CampaniaService {
                 .filter(x -> x.getAgencia().getId().equals(agenciaId))
                 .orElseThrow(() -> new IllegalArgumentException("Contacto no encontrado"));
         List<MensajeCampania> mensajes = mensajeRepo.findByContactoIdOrderByFechaAsc(c.getId());
-        mensajeRepo.marcarLeidosByContacto(c.getId());
+        int marcados = mensajeRepo.marcarLeidosByContacto(c.getId());
+        // Notificar a la agencia (otros browsers/usuarios del equipo) que el contacto
+        // pasó a leído, así pueden bajar el contador no leídos sin recargar.
+        if (marcados > 0 && c.getAgencia() != null) {
+            messaging.convertAndSend("/topic/campania/" + c.getAgencia().getId(),
+                    Map.<String, Object>of("tipo", "MENSAJE_LEIDO",
+                           "contactoId", c.getId(),
+                           "marcados", marcados));
+        }
         return mensajes;
     }
 
