@@ -17,6 +17,7 @@ import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,7 +197,7 @@ public class ExcelService {
         logger.info("Iniciando importación de Excel: {}", file.getOriginalFilename());
         logger.info("Tamaño del archivo: {} bytes", file.getSize());
 
-        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             return procesarFilasExcel(sheet);
         } catch (Exception e) {
@@ -289,16 +290,16 @@ public class ExcelService {
         }
 
         String value = switch (cell.getCellType()) {
-            case STRING ->
-                    cell.getStringCellValue();
-            case NUMERIC ->
-                    String.valueOf((long) cell.getNumericCellValue());
-            case BOOLEAN ->
-                    String.valueOf(cell.getBooleanCellValue());
-            case FORMULA ->
-                    cell.getCellFormula();
-            default ->
-                    "";
+            case STRING -> cell.getStringCellValue();
+            case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case FORMULA -> switch (cell.getCachedFormulaResultType()) {
+                case STRING -> cell.getStringCellValue();
+                case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
+                case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+                default -> "";
+            };
+            default -> "";
         };
 
         return soloNumeros ? value.replaceAll("\\D", "") : value.trim();

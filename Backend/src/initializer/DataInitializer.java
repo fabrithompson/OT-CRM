@@ -87,7 +87,6 @@ public class DataInitializer implements CommandLineRunner {
         crearDatosIniciales();
     }
 
-    @SuppressWarnings("null")
     private void inicializarPlanes() {
         // FREE: solo embudo, sin campañas, equipo de 2 (admin + 1)
         upsertPlan("FREE",        1,  0,    25,  2, false, false, 0.0,                "Plan gratuito");
@@ -99,7 +98,6 @@ public class DataInitializer implements CommandLineRunner {
         upsertPlan("ENTERPRISE", -1, -1,    -1, -1, true,  true,  planPriceEnterprise,"Plan Ilimitado");
     }
 
-    @SuppressWarnings("null")
     private void upsertPlan(String nombre, int maxDisp, int maxDispCamp, int maxCont,
                             int maxMiembros, boolean iaHabilitada, boolean campaniasHab,
                             double precio, String desc) {

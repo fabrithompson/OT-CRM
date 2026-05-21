@@ -24,6 +24,7 @@ public class CacheConfig {
      * Los endpoints que cambian el plan a través del CRM siguen llamando
      * @CacheEvict, así que para esos casos la actualización es inmediata.
      */
+    @SuppressWarnings("null")
     @Primary
     @Bean
     public CacheManager cacheManager() {
