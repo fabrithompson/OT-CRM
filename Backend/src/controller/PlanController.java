@@ -93,8 +93,9 @@ public class PlanController {
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshPlan(@AuthenticationPrincipal UserDetails userDetails) {
         Usuario usuario = getUsuarioOrThrow(userDetails);
-        if (cacheManager.getCache("planEfectivo") != null) {
-            cacheManager.getCache("planEfectivo").clear();
+        var planCache = cacheManager.getCache("planEfectivo");
+        if (planCache != null) {
+            planCache.clear();
         }
         if (usuario.getAgencia() != null) {
             // Propaga al equipo si plan_id cambió en DB y emite WS PLAN_EQUIPO_ACTUALIZADO.

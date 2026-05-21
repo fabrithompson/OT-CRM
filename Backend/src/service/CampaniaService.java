@@ -18,7 +18,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -130,7 +130,7 @@ public class CampaniaService {
         int duplicados = 0;
         int invalidos = 0;
 
-        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             Iterator<Row> rows = sheet.iterator();
             if (rows.hasNext()) rows.next(); // saltar header
@@ -139,6 +139,15 @@ public class CampaniaService {
                 Row row = rows.next();
                 String nombre = leerCelda(row.getCell(0), false);
                 String telefono = leerCelda(row.getCell(1), true);
+
+                // Soporte para Excel de una sola columna (solo números de teléfono)
+                if (telefono.length() < 10 && !nombre.isBlank()) {
+                    String soloDigitos = nombre.replaceAll("\\D", "");
+                    if (soloDigitos.length() >= 10) {
+                        telefono = soloDigitos;
+                        nombre = soloDigitos;
+                    }
+                }
 
                 if (telefono == null || telefono.length() < 10) {
                     invalidos++;
@@ -465,12 +474,9 @@ public class CampaniaService {
         if (dispositivo.getProposito() != Dispositivo.Proposito.CAMPANIAS) return;
 
         // Si el mensaje viene de otro dispositivo propio (calentamiento), intentar auto-responder.
-        // Se hace antes de guardar el contacto para no generar ruido en la bandeja cuando
-        // es un intercambio interno. Si hay auto-respuesta se retorna sin registrar el mensaje.
+        // El mensaje siempre se guarda en la bandeja para que sea visible.
         if (calentamientoService != null) {
-            boolean esCalentamiento = calentamientoService.intentarAutorespuesta(
-                    dispositivo.getId(), telefonoFrom);
-            if (esCalentamiento) return;
+            calentamientoService.intentarAutorespuesta(dispositivo.getId(), telefonoFrom);
         }
 
         ContactoCampania c = contactoRepo
@@ -512,6 +518,12 @@ public class CampaniaService {
             case STRING -> cell.getStringCellValue();
             case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
             case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case FORMULA -> switch (cell.getCachedFormulaResultType()) {
+                case STRING -> cell.getStringCellValue();
+                case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
+                case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+                default -> "";
+            };
             default -> "";
         };
         return soloNumeros ? value.replaceAll("\\D", "") : value.trim();
