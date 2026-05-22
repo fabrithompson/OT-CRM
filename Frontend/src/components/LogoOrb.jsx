@@ -10,7 +10,7 @@ export default function LogoOrb({ size = 42, width, height, showText = true, cla
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
       <img
-        src="/logonew.png"
+        src="/logobandw.webp"
         alt="OT CRM"
         className="logo-img"
         style={{ width: imgWidth, height: imgHeight, objectFit: 'contain' }}
