@@ -2,6 +2,9 @@ package model;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -37,6 +40,7 @@ public class AiAuditReport {
     @Column(columnDefinition = "TEXT")
     private String resumen;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "hallazgos_json", columnDefinition = "jsonb")
     private String hallazgosJson;
 

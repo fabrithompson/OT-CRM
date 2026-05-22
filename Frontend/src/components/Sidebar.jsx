@@ -13,6 +13,7 @@ const NAV_ITEMS = [
     { to: '/spam',               icon: 'fa-bullhorn',       labelKey: 'nav.spam',        accent: 'nav-amber',  requiereFlag: 'campaniasHabilitadas', minPlan: 'PRO' },
     { to: '/planes',             icon: 'fa-crown',          labelKey: 'nav.suscripcion', accent: 'nav-gold',   suscripcion: true },
     { to: '/agente-ia',          icon: 'fa-robot',          labelKey: 'nav.agente',      accent: 'nav-indigo', requiereFlag: 'agenteIaHabilitado', minPlan: 'ENTERPRISE' },
+    { to: '/auditoria',          icon: 'fa-magnifying-glass-chart', labelKey: 'nav.auditoria', accent: 'nav-purple', requiereFlag: 'agenteIaHabilitado', minPlan: 'ENTERPRISE' },
     { to: '/perfil',             icon: 'fa-circle-user',    labelKey: 'nav.cuenta',      accent: 'nav-teal'   },
 ];
 

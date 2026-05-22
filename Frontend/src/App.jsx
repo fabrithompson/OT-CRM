@@ -12,6 +12,7 @@ const PAGE_TITLES = {
   '/planes':            'Suscripción',
   '/mi-suscripcion':    'Mi Suscripción',
   '/agente-ia':         'Agente IA',
+  '/auditoria':         'Auditoría IA',
   '/perfil':            'Cuenta',
 };
 
@@ -44,6 +45,7 @@ const Planes = lazy(() => import('./pages/Planes'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const MiSuscripcion = lazy(() => import('./pages/MiSuscripcion'));
 const AgenteIA = lazy(() => import('./pages/AgenteIA'));
+const Auditoria = lazy(() => import('./pages/Auditoria'));
 const Spam = lazy(() => import('./pages/Spam'));
 
 function App() {
@@ -70,6 +72,7 @@ function App() {
               <Route path="/checkout"        element={<Checkout />} />
               <Route path="/mi-suscripcion"  element={<MiSuscripcion />} />
               <Route path="/agente-ia"       element={<AgenteIA />} />
+              <Route path="/auditoria"       element={<Auditoria />} />
               <Route path="/spam"            element={<Spam />} />
             </Route>
           </Routes>
