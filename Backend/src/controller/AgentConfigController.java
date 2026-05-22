@@ -161,6 +161,7 @@ public class AgentConfigController {
         return ResponseEntity.ok(toAuditMap(config, agencia));
     }
 
+    @SuppressWarnings("null")
     @Transactional
     @PutMapping("/audit")
     public ResponseEntity<?> saveAuditConfig(@AuthenticationPrincipal UserDetails userDetails,

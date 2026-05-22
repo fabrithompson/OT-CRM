@@ -61,6 +61,7 @@ public class AiAuditService {
         this.objectMapper = objectMapper;
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public AiAuditReport auditarAgencia(Long agenciaId, LocalDateTime desde, LocalDateTime hasta) {
         AgentConfig config = agentConfigRepository.findByAgenciaId(agenciaId).orElse(null);
@@ -172,6 +173,7 @@ public class AiAuditService {
         return r;
     }
 
+    @SuppressWarnings("null")
     private String buildConversacionesContext(List<Long> clienteIds, LocalDateTime desde, LocalDateTime hasta) {
         StringBuilder sb = new StringBuilder();
         for (Long clienteId : clienteIds) {
