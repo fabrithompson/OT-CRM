@@ -708,13 +708,39 @@ const startSession = async (sessionId, phoneNumber = null) => {
 
         handlers.messagesUpsert = (m) => {
             for (const msg of m.messages) {
-                if (msg.key.fromMe || !msg.message) continue;
+                if (!msg.message) continue;
+
+                const remoteJid = msg.key.remoteJid;
+                if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') continue;
+
+                if (msg.key.fromMe) {
+                    // Mensajes enviados desde el celular del vendedor (no por el bot del CRM).
+                    // Solo texto — media saliente desde el celular no se captura.
+                    const texto = msg.message?.conversation
+                        || msg.message?.extendedTextMessage?.text
+                        || '';
+                    if (!texto) continue;
+                    const to = getRealNumber(remoteJid);
+                    if (!to) continue;
+                    const outKey = 'out_' + msg.key.id;
+                    if (processedMsgIds.get(outKey)) continue;
+                    processedMsgIds.set(outKey, true);
+                    axiosWithRetry({
+                        method: 'post',
+                        url: `${getBaseUrl()}/outbound-external`,
+                        data: { sessionId, to, body: texto, whatsappId: msg.key.id },
+                        headers: { 'X-Bot-Token': SECRET_KEY },
+                        timeout: 15000
+                    }, 2, 500).catch(err =>
+                        logger.warn({ to, error: err.message }, 'Error reenviando mensaje saliente externo a Java')
+                    );
+                    continue;
+                }
 
                 const msgId = msg.key.id;
                 if (processedMsgIds.get(msgId)) continue;
                 processedMsgIds.set(msgId, true);
 
-                const remoteJid = msg.key.remoteJid;
                 enqueueMessage(remoteJid, () => processIncomingMessage(msg, sessionId, sock));
             }
         };

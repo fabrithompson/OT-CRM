@@ -57,6 +57,7 @@ public class WhatsAppWebhookController {
     public record WebhookPayload(String from, String body, String name, String sessionId,
                                  String profilePicUrl, String origen, String mediaUrl, String mimeType) {}
     public record StatusPayload(String sessionId, String status, String phone, String qr) {}
+    public record OutboundExternalPayload(String sessionId, String to, String body, String whatsappId) {}
 
     // ─── Mensajes entrantes ───────────────────────────────────────────────────
 
@@ -109,6 +110,27 @@ public class WhatsAppWebhookController {
                         Map.of("tipo", payload.status(),
                                 "status", payload.status(),
                                 "sessionId", payload.sessionId()));
+            }
+        });
+        return ResponseEntity.ok("OK");
+    }
+
+    // ─── Mensajes salientes desde el celular del vendedor ────────────────────
+
+    @PostMapping("/api/webhook/whatsapp/outbound-external")
+    public ResponseEntity<String> recibirMensajeSalidaExterno(
+            @RequestHeader(value = HEADER_API_KEY, required = false) String apiKey,
+            @RequestBody OutboundExternalPayload payload) {
+
+        if (!SecurityUtil.constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (payload == null || payload.sessionId() == null) return ResponseEntity.badRequest().body("Payload invalido");
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                whatsAppService.guardarMensajeSalidaExterno(
+                        payload.sessionId(), payload.to(), payload.body(), payload.whatsappId());
+            } catch (Exception e) {
+                log.error("Error guardando mensaje saliente externo: {}", e.getMessage());
             }
         });
         return ResponseEntity.ok("OK");
