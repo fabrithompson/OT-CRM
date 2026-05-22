@@ -73,4 +73,14 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
 
     @Query("SELECT m.cliente.etapa.id, COUNT(m) FROM Mensaje m WHERE m.cliente.agencia.id = :agenciaId AND m.cliente.etapa IS NOT NULL GROUP BY m.cliente.etapa.id")
     List<Object[]> countMensajesByEtapaAndAgencia(@Param("agenciaId") Long agenciaId);
+
+    @Query(value = "SELECT DISTINCT m.cliente_id FROM mensaje m "
+        + "JOIN clientes c ON c.id = m.cliente_id "
+        + "WHERE c.agencia_id = :agenciaId "
+        + "AND m.fecha_hora BETWEEN :desde AND :hasta", nativeQuery = true)
+    List<Long> findClienteIdsActivosEnPeriodo(
+        @Param("agenciaId") Long agenciaId,
+        @Param("desde") LocalDateTime desde,
+        @Param("hasta") LocalDateTime hasta,
+        Pageable pageable);
 }
