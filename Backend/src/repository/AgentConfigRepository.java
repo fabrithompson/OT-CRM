@@ -1,5 +1,6 @@
 package repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,4 +12,6 @@ import model.AgentConfig;
 public interface AgentConfigRepository extends JpaRepository<AgentConfig, Long> {
 
     Optional<AgentConfig> findByAgenciaId(Long agenciaId);
+
+    List<AgentConfig> findByAuditEnabledTrue();
 }

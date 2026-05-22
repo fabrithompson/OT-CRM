@@ -246,6 +246,12 @@ public class WhatsAppService {
         return false;
     }
 
+    public boolean enviarTextoANumero(String numero, String texto, model.Dispositivo dispositivo) {
+        if (numero == null || numero.isBlank() || dispositivo == null) return false;
+        String to = limpiarTelefono(numero);
+        return enviarARobot(to, texto, dispositivo.getSessionId(), null, null) != null;
+    }
+
     @Transactional
     public void enviarArchivoDesdeCrm(Cliente cliente, MultipartFile file, String nombreOriginal, String urlLocal,
             String autor) {
