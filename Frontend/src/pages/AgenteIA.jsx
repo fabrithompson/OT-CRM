@@ -21,6 +21,17 @@ export default function AgenteIA() {
     const [enabled, setEnabled] = useState(false);
     const [saveStatus, setSaveStatus] = useState('idle');
 
+    // Auditor IA
+    const [auditEnabled, setAuditEnabled] = useState(false);
+    const [auditProcedures, setAuditProcedures] = useState('');
+    const [auditEmail, setAuditEmail] = useState('');
+    const [auditWhatsappPhone, setAuditWhatsappPhone] = useState('');
+    const [auditDispositivoId, setAuditDispositivoId] = useState('');
+    const [horarioInicio, setHorarioInicio] = useState('09:00');
+    const [horarioFin, setHorarioFin] = useState('18:00');
+    const [dispositivos, setDispositivos] = useState([]);
+    const [auditSaveStatus, setAuditSaveStatus] = useState('idle');
+
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [chatLoading, setChatLoading] = useState(false);
@@ -56,6 +67,24 @@ export default function AgenteIA() {
             setInstructions(res.data.instructions || '');
             setBusinessContext(res.data.businessContext || '');
             setEnabled(res.data.enabled || false);
+        }).catch(() => {});
+    }, [isEnterprise, userLoading]);
+
+    // Load audit config + devices
+    useEffect(() => {
+        if (!isEnterprise || userLoading) return;
+        api.get('/agent-config/audit').then(res => {
+            const d = res.data;
+            setAuditEnabled(d.auditEnabled || false);
+            setAuditProcedures(d.auditProcedures || '');
+            setAuditEmail(d.auditEmail || '');
+            setAuditWhatsappPhone(d.auditWhatsappPhone || '');
+            setAuditDispositivoId(d.auditDispositivoId ? String(d.auditDispositivoId) : '');
+            setHorarioInicio(d.horarioInicio || '09:00');
+            setHorarioFin(d.horarioFin || '18:00');
+        }).catch(() => {});
+        api.get('/whatsapp').then(res => {
+            setDispositivos(Array.isArray(res.data) ? res.data : []);
         }).catch(() => {});
     }, [isEnterprise, userLoading]);
 
@@ -130,6 +159,25 @@ export default function AgenteIA() {
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    };
+
+    const saveAuditConfig = async () => {
+        setAuditSaveStatus('saving');
+        try {
+            await api.put('/agent-config/audit', {
+                auditEnabled,
+                auditProcedures,
+                auditEmail,
+                auditWhatsappPhone,
+                auditDispositivoId: auditDispositivoId ? Number(auditDispositivoId) : null,
+                horarioInicio,
+                horarioFin,
+            });
+            setAuditSaveStatus('saved');
+            setTimeout(() => setAuditSaveStatus('idle'), 2000);
+        } catch {
+            setAuditSaveStatus('idle');
+        }
     };
 
     const saveConfig = async () => {
@@ -469,6 +517,151 @@ export default function AgenteIA() {
                             {saveStatus === 'saving' ? t('agente.saving') : saveStatus === 'saved' ? t('agente.saved') : t('agente.save')}
                         </button>
                     </div>
+                    {/* Auditor de procedimientos */}
+                    <div className="db-card" style={{ gap: 14 }}>
+                        <div className="db-card-title" style={{ margin: 0 }}>
+                            <i className="fa-solid fa-magnifying-glass-chart" style={{ color: '#a78bfa' }} />
+                            Auditor de procedimientos
+                        </div>
+
+                        {/* Toggle auditor */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <label style={{
+                                position: 'relative', display: 'inline-block',
+                                width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
+                            }}>
+                                <input
+                                    type="checkbox"
+                                    checked={auditEnabled}
+                                    onChange={e => setAuditEnabled(e.target.checked)}
+                                    style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                                />
+                                <span style={{
+                                    position: 'absolute', inset: 0, borderRadius: 13,
+                                    background: auditEnabled ? '#a78bfa' : 'rgba(255,255,255,0.15)',
+                                    transition: '0.2s',
+                                }}>
+                                    <span style={{
+                                        position: 'absolute', top: 3, left: auditEnabled ? 23 : 3,
+                                        width: 20, height: 20, borderRadius: '50%',
+                                        background: '#fff', transition: '0.2s',
+                                    }} />
+                                </span>
+                            </label>
+                            <div>
+                                <div style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.80)', fontWeight: 600 }}>
+                                    Activar auditoría diaria
+                                </div>
+                                <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>
+                                    Envía un reporte a las 07:00 todos los días
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Procedimientos */}
+                        <div>
+                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
+                                Procedimientos a controlar
+                            </div>
+                            <textarea
+                                value={auditProcedures}
+                                onChange={e => setAuditProcedures(e.target.value)}
+                                placeholder={'Ej: Los vendedores deben responder en menos de 1 hora. No pueden prometer descuentos sin autorización. Siempre deben pedir el nombre del cliente al inicio...'}
+                                style={{ width: '100%', resize: 'none', height: 110, fontSize: '0.83rem', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        {/* Horario laboral */}
+                        <div>
+                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
+                                Horario laboral (solo se auditan mensajes dentro de este rango)
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                <input
+                                    type="time"
+                                    value={horarioInicio}
+                                    onChange={e => setHorarioInicio(e.target.value)}
+                                    style={{ flex: 1, fontSize: '0.83rem', padding: '7px 10px',
+                                        background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.10)',
+                                        borderRadius: 8, color: '#fff', outline: 'none' }}
+                                />
+                                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>a</span>
+                                <input
+                                    type="time"
+                                    value={horarioFin}
+                                    onChange={e => setHorarioFin(e.target.value)}
+                                    style={{ flex: 1, fontSize: '0.83rem', padding: '7px 10px',
+                                        background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.10)',
+                                        borderRadius: 8, color: '#fff', outline: 'none' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Email destino */}
+                        <div>
+                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
+                                Email del reporte
+                            </div>
+                            <input
+                                type="email"
+                                value={auditEmail}
+                                onChange={e => setAuditEmail(e.target.value)}
+                                placeholder="gerente@empresa.com"
+                                style={{ width: '100%', fontSize: '0.83rem', padding: '7px 10px',
+                                    background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.10)',
+                                    borderRadius: 8, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        {/* WhatsApp destino */}
+                        <div>
+                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
+                                WhatsApp para resumen ejecutivo
+                            </div>
+                            <input
+                                type="tel"
+                                value={auditWhatsappPhone}
+                                onChange={e => setAuditWhatsappPhone(e.target.value)}
+                                placeholder="5491112345678"
+                                style={{ width: '100%', fontSize: '0.83rem', padding: '7px 10px',
+                                    background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.10)',
+                                    borderRadius: 8, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        {/* Dispositivo para enviar el resumen */}
+                        <div>
+                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
+                                Dispositivo que envía el resumen por WhatsApp
+                            </div>
+                            <select
+                                value={auditDispositivoId}
+                                onChange={e => setAuditDispositivoId(e.target.value)}
+                                style={{ width: '100%', fontSize: '0.83rem', padding: '7px 10px',
+                                    background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.10)',
+                                    borderRadius: 8, color: auditDispositivoId ? '#fff' : 'rgba(255,255,255,0.35)',
+                                    outline: 'none', boxSizing: 'border-box' }}
+                            >
+                                <option value="">Sin envío por WhatsApp</option>
+                                {dispositivos.map(d => (
+                                    <option key={d.id} value={String(d.id)}>
+                                        {d.alias || d.sessionId} {d.estado === 'CONNECTED' ? '●' : '○'}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <button
+                            onClick={saveAuditConfig}
+                            disabled={auditSaveStatus === 'saving'}
+                            className="btn-primary"
+                            style={{ width: '100%', marginTop: 4, background: auditSaveStatus === 'saved' ? 'rgba(167,139,250,0.8)' : undefined }}
+                        >
+                            <i className={`fa-solid ${auditSaveStatus === 'saving' ? 'fa-spinner fa-spin' : auditSaveStatus === 'saved' ? 'fa-check' : 'fa-floppy-disk'}`} style={{ marginRight: 6 }} />
+                            {auditSaveStatus === 'saving' ? 'Guardando...' : auditSaveStatus === 'saved' ? 'Guardado' : 'Guardar configuración del auditor'}
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </div>

@@ -40,6 +40,22 @@ public class AgentConfig {
     @Column(nullable = false)
     private boolean enabled = false;
 
+    @Column(name = "audit_enabled", nullable = false)
+    private boolean auditEnabled = false;
+
+    @Column(name = "audit_procedures", columnDefinition = "TEXT")
+    private String auditProcedures;
+
+    @Column(name = "audit_email", length = 255)
+    private String auditEmail;
+
+    @Column(name = "audit_whatsapp_phone", length = 50)
+    private String auditWhatsappPhone;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "audit_dispositivo_id")
+    private Dispositivo auditDispositivo;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -76,6 +92,21 @@ public class AgentConfig {
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+    public boolean isAuditEnabled() { return auditEnabled; }
+    public void setAuditEnabled(boolean auditEnabled) { this.auditEnabled = auditEnabled; }
+
+    public String getAuditProcedures() { return auditProcedures; }
+    public void setAuditProcedures(String auditProcedures) { this.auditProcedures = auditProcedures; }
+
+    public String getAuditEmail() { return auditEmail; }
+    public void setAuditEmail(String auditEmail) { this.auditEmail = auditEmail; }
+
+    public String getAuditWhatsappPhone() { return auditWhatsappPhone; }
+    public void setAuditWhatsappPhone(String auditWhatsappPhone) { this.auditWhatsappPhone = auditWhatsappPhone; }
+
+    public Dispositivo getAuditDispositivo() { return auditDispositivo; }
+    public void setAuditDispositivo(Dispositivo auditDispositivo) { this.auditDispositivo = auditDispositivo; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
