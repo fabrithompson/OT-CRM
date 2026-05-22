@@ -23,11 +23,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalTime;
+
 import model.AgentConfig;
 import model.Agencia;
+import model.Dispositivo;
 import model.Usuario;
+import repository.AgenciaRepository;
 import repository.AgentConfigRepository;
 import repository.ClienteRepository;
+import repository.DispositivoRepository;
 import repository.EtapaRepository;
 import repository.EtiquetaRepository;
 import repository.RespuestaRapidaRepository;
@@ -75,6 +80,8 @@ public class AgentConfigController {
     private final EtiquetaRepository etiquetaRepository;
     private final RespuestaRapidaRepository respuestaRapidaRepository;
     private final SubscriptionValidationService subscriptionValidationService;
+    private final DispositivoRepository dispositivoRepository;
+    private final AgenciaRepository agenciaRepository;
 
     public AgentConfigController(ChatClient chatClient,
                                   AgentConfigRepository agentConfigRepository,
@@ -83,7 +90,9 @@ public class AgentConfigController {
                                   EtapaRepository etapaRepository,
                                   EtiquetaRepository etiquetaRepository,
                                   RespuestaRapidaRepository respuestaRapidaRepository,
-                                  SubscriptionValidationService subscriptionValidationService) {
+                                  SubscriptionValidationService subscriptionValidationService,
+                                  DispositivoRepository dispositivoRepository,
+                                  AgenciaRepository agenciaRepository) {
         this.chatClient = chatClient;
         this.agentConfigRepository = agentConfigRepository;
         this.usuarioRepository = usuarioRepository;
@@ -92,12 +101,18 @@ public class AgentConfigController {
         this.etiquetaRepository = etiquetaRepository;
         this.respuestaRapidaRepository = respuestaRapidaRepository;
         this.subscriptionValidationService = subscriptionValidationService;
+        this.dispositivoRepository = dispositivoRepository;
+        this.agenciaRepository = agenciaRepository;
     }
 
     record ImageData(String base64, String mimeType) {}
     record ChatMessage(String role, String content, List<ImageData> images) {}
     record ChatRequest(List<ChatMessage> messages) {}
     record AgentConfigRequest(String instructions, String businessContext, boolean enabled) {}
+    record AuditConfigRequest(boolean auditEnabled, String auditProcedures,
+                               String auditEmail, String auditWhatsappPhone,
+                               Long auditDispositivoId,
+                               String horarioInicio, String horarioFin) {}
 
     @Transactional(readOnly = true)
     @GetMapping
@@ -133,6 +148,65 @@ public class AgentConfigController {
         config.setBusinessContext(req.businessContext());
         config.setEnabled(req.enabled());
         agentConfigRepository.save(config);
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    @Transactional(readOnly = true)
+    @GetMapping("/audit")
+    public ResponseEntity<?> getAuditConfig(@AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null) return ResponseEntity.ok(defaultAuditConfig());
+        AgentConfig config = agentConfigRepository.findByAgenciaId(usuario.getAgencia().getId()).orElse(null);
+        Agencia agencia = usuario.getAgencia();
+        return ResponseEntity.ok(toAuditMap(config, agencia));
+    }
+
+    @Transactional
+    @PutMapping("/audit")
+    public ResponseEntity<?> saveAuditConfig(@AuthenticationPrincipal UserDetails userDetails,
+                                              @RequestBody AuditConfigRequest req) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null) return ResponseEntity.badRequest().body(Map.of("error", "Sin agencia"));
+
+        Agencia agencia = usuario.getAgencia();
+        if (!subscriptionValidationService.puedeUsarAgenteIA(agencia)) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                    .body(Map.of("error", "Tu plan no incluye Agente IA. Actualizá a ENTERPRISE."));
+        }
+
+        AgentConfig config = agentConfigRepository.findByAgenciaId(agencia.getId())
+                .orElseGet(() -> {
+                    AgentConfig c = new AgentConfig();
+                    c.setAgencia(agencia);
+                    return c;
+                });
+
+        config.setAuditEnabled(req.auditEnabled());
+        config.setAuditProcedures(req.auditProcedures());
+        config.setAuditEmail(req.auditEmail());
+        config.setAuditWhatsappPhone(req.auditWhatsappPhone());
+
+        if (req.auditDispositivoId() != null) {
+            Dispositivo disp = dispositivoRepository.findById(req.auditDispositivoId()).orElse(null);
+            config.setAuditDispositivo(disp != null && agencia.getId().equals(
+                    disp.getAgencia() != null ? disp.getAgencia().getId() : null) ? disp : null);
+        } else {
+            config.setAuditDispositivo(null);
+        }
+
+        agentConfigRepository.save(config);
+
+        // Guardar horario laboral en la agencia
+        try {
+            agencia.setHorarioLaboralInicio(req.horarioInicio() != null && !req.horarioInicio().isBlank()
+                    ? LocalTime.parse(req.horarioInicio()) : null);
+            agencia.setHorarioLaboralFin(req.horarioFin() != null && !req.horarioFin().isBlank()
+                    ? LocalTime.parse(req.horarioFin()) : null);
+            agenciaRepository.save(agencia);
+        } catch (Exception e) {
+            // Formato de hora inválido — ignorar y no bloquear el guardado
+        }
+
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -203,6 +277,30 @@ public class AgentConfigController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    private Map<String, Object> toAuditMap(AgentConfig c, Agencia agencia) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("auditEnabled",       c != null && c.isAuditEnabled());
+        m.put("auditProcedures",    c != null && c.getAuditProcedures() != null ? c.getAuditProcedures() : "");
+        m.put("auditEmail",         c != null && c.getAuditEmail() != null ? c.getAuditEmail() : "");
+        m.put("auditWhatsappPhone", c != null && c.getAuditWhatsappPhone() != null ? c.getAuditWhatsappPhone() : "");
+        m.put("auditDispositivoId", c != null && c.getAuditDispositivo() != null ? c.getAuditDispositivo().getId() : null);
+        m.put("horarioInicio",      agencia.getHorarioLaboralInicio() != null ? agencia.getHorarioLaboralInicio().toString() : "");
+        m.put("horarioFin",         agencia.getHorarioLaboralFin() != null ? agencia.getHorarioLaboralFin().toString() : "");
+        return m;
+    }
+
+    private Map<String, Object> defaultAuditConfig() {
+        Map<String, Object> m = new HashMap<>();
+        m.put("auditEnabled", false);
+        m.put("auditProcedures", "");
+        m.put("auditEmail", "");
+        m.put("auditWhatsappPhone", "");
+        m.put("auditDispositivoId", null);
+        m.put("horarioInicio", "");
+        m.put("horarioFin", "");
+        return m;
     }
 
     private Map<String, Object> defaultConfig() {

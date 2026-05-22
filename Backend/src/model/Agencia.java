@@ -1,5 +1,6 @@
 package model;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,6 +57,12 @@ public class Agencia {
     private String whatsappSessionId;
     private String numeroConectado;
     private String estadoConexion;
+
+    @Column(name = "horario_laboral_inicio")
+    private LocalTime horarioLaboralInicio;
+
+    @Column(name = "horario_laboral_fin")
+    private LocalTime horarioLaboralFin;
 
     public Agencia() {
     }
