@@ -53,6 +53,6 @@
       document.head.appendChild(link);
     } catch(e) { console.warn('favicon-white error:', e); }
   };
-  img.onerror = function() { console.warn('favicon-white: no se encontró /logonew.png'); };
-  img.src = '/logonew.png';
+  img.onerror = function() { console.warn('favicon-white: no se encontró /logobandw.webp'); };
+  img.src = '/logobandw.webp';
 })();
