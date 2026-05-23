@@ -234,7 +234,7 @@ export default function Landing() {
             <div className="hero-visual">
               <div className="hero-img-glow" aria-hidden="true" />
               <img
-                src="/chicaconpc.PNG"
+                src="/chicaconpc.webp"
                 alt={t('landing.hero.imgAlt')}
                 className="hero-img"
                 draggable={false}

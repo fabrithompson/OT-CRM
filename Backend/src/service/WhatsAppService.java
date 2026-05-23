@@ -533,14 +533,17 @@ public class WhatsAppService {
     }
 
     @Transactional
-    public void desvincularSesion(@NonNull Long dispositivoId) {
-        Dispositivo d = dispositivoRepository.findById(dispositivoId)
-                .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
-        callNodeReset(d.getSessionId());
-        d.setEstado(ESTADO_DISCONNECTED);
-        d.setNumeroTelefono(null);
-        dispositivoRepository.save(d);
-    }
+public void desvincularSesion(@NonNull Long dispositivoId) {
+    Dispositivo d = dispositivoRepository.findById(dispositivoId)
+            .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
+    callNodeReset(d.getSessionId());
+    d.setEstado(ESTADO_DISCONNECTED);
+    d.setNumeroTelefono(null);
+    String nuevoSessionId = "agencia_" + d.getAgencia().getId() + "_" + UUID.randomUUID().toString().substring(0, 8);
+    d.setSessionId(nuevoSessionId);
+    
+    dispositivoRepository.save(d);
+}
 
     private void callNodeReset(String sessionId) {
         try {

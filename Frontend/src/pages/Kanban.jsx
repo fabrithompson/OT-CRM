@@ -74,7 +74,7 @@ export default function Kanban() {
                 resC.data.forEach(c => c.etiquetas?.forEach(t => tagMap.set(t.id, t)));
                 setEtiquetas([...tagMap.values()]);
             }
-        } catch (e) {
+        } catch {
             toast('Error', 'No se pudo cargar el tablero', '#ef4444');
         } finally {
             setLoading(false);

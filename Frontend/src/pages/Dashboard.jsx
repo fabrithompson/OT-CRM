@@ -9,6 +9,7 @@ import useWebSocket from '../hooks/useWebSocket';
 import useAudio from '../hooks/useAudio';
 import NotificationBell from '../components/kanban/NotificationBell';
 import { useLanguage } from '../context/LangContext';
+import { useToast } from '../context/ToastContext';
 import { getDisplayName } from '../utils/userUtils';
 
 /* ─────────────────────────────────────────────
@@ -253,6 +254,7 @@ function TeamAvatars({ equipo, usuarioActual, onlineUsers, rol, agenciaId, onLea
 export default function Dashboard() {
     const navigate = useNavigate();
     const { t }    = useLanguage();
+    const toast    = useToast();
 
     const [loading, setLoading]       = useState(true);
     const [dateRange, setDateRange]   = useState('today');
@@ -321,16 +323,6 @@ export default function Dashboard() {
         }
         return params;
     }, []);
-
-    const fetchTopStats = useCallback(async (range, from, to) => {
-        const params = buildTopParams(range, from, to);
-        try {
-            const res = await api.get('/dashboard/top-stats', { params });
-            setTopStats(res.data || { topClientes: [], topAgentes: [] });
-        } catch (e) {
-            console.error('top-stats fetch error', e);
-        }
-    }, [buildTopParams]);
 
     const fetchData = async (silent = false, range = dateRange, from = customFrom, to = customTo) => {
         if (!silent) setLoading(true);
@@ -441,7 +433,7 @@ export default function Dashboard() {
             await api.post('/dashboard/equipo/abandonar');
             setModalAbandonar(false);
             fetchData(true);
-        } catch { alert('No se pudo abandonar el equipo.'); }
+        } catch { toast('Error', 'No se pudo abandonar el equipo.', '#ef4444'); }
     };
 
     /* ── Derived data (memoized & deterministic) ── */
@@ -449,25 +441,14 @@ export default function Dashboard() {
         [data.mensajesHoy, data.nuevosLeads, data.totalCarga, dateRange]);
     const leadOrigin = useMemo(() => buildLeadOrigin(data.waLeads, data.tgLeads), [data.waLeads, data.tgLeads]);
     const funnelData = useMemo(() => buildFunnel(data.totalLeads), [data.totalLeads]);
-    const heatmap    = useMemo(() => buildHeatmap(data.mensajesHoy), [data.mensajesHoy]);
     const sparkLeads = useMemo(() => buildSparkLine(data.nuevosLeads, data.totalLeads), [data.nuevosLeads, data.totalLeads]);
     const sparkMsgs  = useMemo(() => buildSparkLine(data.mensajesHoy, data.totalMensajes), [data.mensajesHoy, data.totalMensajes]);
     const sparkCarga = useMemo(() => buildSparkLine(data.totalCarga, data.totalCarga * 5), [data.totalCarga]);
     const sparkLeer  = useMemo(() => buildSparkLine(data.leadsSinLeer, data.totalLeads), [data.leadsSinLeer, data.totalLeads]);
 
-    const cerrados = funnelData[4]?.count ?? 0;
     const convPct  = data.totalLeads > 0 ? (((data.clientesConCarga ?? 0) / data.totalLeads) * 100).toFixed(1) : '0.0';
 
-    const objVentas   = Math.min(99, 72 + (data.nuevosLeads  % 20));
-    const objIngresos = Math.min(99, 78 + (data.mensajesHoy  % 15));
-    const objLeads    = Math.min(99, 75 + (data.totalLeads   % 18));
-
     const AGENT_COLORS = ['#10b981','#818cf8','#f59e0b','#ec4899'];
-    const getInitials  = (u) => {
-        const n = u.nombreCompleto || u.username || '?';
-        const p = n.trim().split(' ');
-        return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : n.slice(0, 2).toUpperCase();
-    };
 
     const originLabel = dateRange !== 'custom'
         ? (t(`dashboard.metrics.range${dateRange.charAt(0).toUpperCase() + dateRange.slice(1)}`) || t('dashboard.metrics.rangeCustom'))
@@ -624,7 +605,7 @@ export default function Dashboard() {
                                 const a = document.createElement('a');
                                 a.href = url; a.download = 'reporte.xlsx'; a.click();
                                 URL.revokeObjectURL(url);
-                            } catch { alert('Error al descargar el reporte.'); }
+                            } catch { toast('Error', 'Error al descargar el reporte.', '#ef4444'); }
                         }}>
                         <i className="fa-solid fa-file-arrow-down" />
                         <span className="texto-btn">{t('dashboard.report')}</span>

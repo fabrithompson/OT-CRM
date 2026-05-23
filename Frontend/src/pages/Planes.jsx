@@ -130,7 +130,7 @@ export default function Planes() {
             } else {
                 setErrorPago('No se pudo generar el link de PayPal.');
             }
-        } catch (err) {
+        } catch {
             setErrorPago('Error de conexión con PayPal. Intentá de nuevo.');
         } finally {
             setProcesando(null);

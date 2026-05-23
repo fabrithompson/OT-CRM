@@ -8,7 +8,8 @@ const {
     makeCacheableSignalKeyStore,
     jidDecode,
     delay,
-    downloadMediaMessage
+    downloadMediaMessage,
+    Browsers
 } = require('@whiskeysockets/baileys');
 const express = require('express');
 const cors = require('cors');
@@ -624,7 +625,7 @@ const startSession = async (sessionId, phoneNumber = null) => {
             },
             printQRInTerminal: false,
             logger: pino({ level: 'error' }),
-            browser: ["Ubuntu", "Chrome", "20.0.04"],
+            browser: Browsers.macOS('Desktop'),
             generateHighQualityLinkPreview: true,
             syncFullHistory: false,
             markOnlineOnConnect: false,

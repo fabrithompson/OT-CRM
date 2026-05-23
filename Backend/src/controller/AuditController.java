@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,34 +23,50 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import model.AgentConfig;
 import model.AiAuditReport;
 import model.Agencia;
+import model.Dispositivo;
 import model.Usuario;
+import repository.AgentConfigRepository;
 import repository.AiAuditReportRepository;
 import repository.UsuarioRepository;
 import service.AiAuditService;
+import service.EmailService;
 import service.SubscriptionValidationService;
+import service.WhatsAppService;
 
 @RestController
 @RequestMapping("/api/v1/audit")
 public class AuditController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuditController.class);
 
     private final AiAuditService auditService;
     private final UsuarioRepository usuarioRepository;
     private final AiAuditReportRepository auditReportRepository;
     private final SubscriptionValidationService subscriptionValidationService;
     private final ObjectMapper objectMapper;
+    private final AgentConfigRepository agentConfigRepository;
+    private final EmailService emailService;
+    private final WhatsAppService whatsAppService;
 
     public AuditController(AiAuditService auditService,
                            UsuarioRepository usuarioRepository,
                            AiAuditReportRepository auditReportRepository,
                            SubscriptionValidationService subscriptionValidationService,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           AgentConfigRepository agentConfigRepository,
+                           EmailService emailService,
+                           WhatsAppService whatsAppService) {
         this.auditService = auditService;
         this.usuarioRepository = usuarioRepository;
         this.auditReportRepository = auditReportRepository;
         this.subscriptionValidationService = subscriptionValidationService;
         this.objectMapper = objectMapper;
+        this.agentConfigRepository = agentConfigRepository;
+        this.emailService = emailService;
+        this.whatsAppService = whatsAppService;
     }
 
     @PostMapping("/run-now")
@@ -68,12 +86,65 @@ public class AuditController {
             LocalDateTime hasta = LocalDateTime.now();
             LocalDateTime desde = hasta.minusHours(24);
             AiAuditReport report = auditService.auditarAgencia(agencia.getId(), desde, hasta);
-            return ResponseEntity.ok(toMap(report));
+
+            // Envío inmediato del reporte (independiente del scheduler diario).
+            // El endpoint no espera la confirmación del envío para no bloquear al usuario:
+            // email es @Async, y WhatsApp se intenta de forma síncrona pero capturamos errores.
+            boolean sentEmail = false;
+            boolean sentWhatsapp = false;
+            AgentConfig config = agentConfigRepository.findByAgenciaId(agencia.getId()).orElse(null);
+            if (config != null) {
+                String email = config.getAuditEmail();
+                if (email != null && !email.isBlank()) {
+                    try {
+                        emailService.enviarReporteAuditoria(email, report);
+                        sentEmail = true;
+                    } catch (Exception e) {
+                        log.warn("[Audit/run-now] Falló envío email para agencia {}: {}",
+                                agencia.getId(), e.getMessage());
+                    }
+                }
+                String phone = config.getAuditWhatsappPhone();
+                Dispositivo disp = config.getAuditDispositivo();
+                if (phone != null && !phone.isBlank() && disp != null) {
+                    try {
+                        String resumen = buildWhatsAppSummary(report);
+                        sentWhatsapp = whatsAppService.enviarTextoANumero(phone, resumen, disp);
+                    } catch (Exception e) {
+                        log.warn("[Audit/run-now] Falló envío WhatsApp para agencia {}: {}",
+                                agencia.getId(), e.getMessage());
+                    }
+                }
+            }
+
+            Map<String, Object> resp = new HashMap<>(toMap(report));
+            resp.put("sentEmail", sentEmail);
+            resp.put("sentWhatsapp", sentWhatsapp);
+            return ResponseEntity.ok(resp);
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    // Mismo formato que el del scheduler, para que el resumen por WhatsApp luzca consistente
+    // venga del envío programado o del botón "Auditar ahora".
+    private String buildWhatsAppSummary(AiAuditReport report) {
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm");
+        String periodo = report.getPeriodoInicio().format(fmt) + " al " + report.getPeriodoFin().format(fmt);
+        int total = report.getIncumplimientos();
+        StringBuilder sb = new StringBuilder();
+        sb.append("*Reporte de Auditoría IA — OT CRM*\n");
+        sb.append("Período: ").append(periodo).append("\n\n");
+        if (total == 0) {
+            sb.append("Sin incumplimientos detectados en el período analizado.");
+        } else {
+            sb.append("Se detectaron *").append(total).append(" incumplimiento(s)*.\n\n");
+            sb.append(report.getResumen() != null ? report.getResumen() : "");
+        }
+        sb.append("\n\n_Reporte completo disponible en el panel._");
+        return sb.toString();
     }
 
     @GetMapping("/reports")
@@ -105,17 +176,40 @@ public class AuditController {
         try {
             String json = report.getHallazgosJson() != null ? report.getHallazgosJson() : "[]";
             JsonNode root = objectMapper.readTree(json);
-            if (!root.isArray() || idx < 0 || idx >= root.size()) {
+
+            // Compatibilidad con reportes legacy (array directo) y formato nuevo
+            // (objeto { resumen_ejecutivo, procedimientos[], hallazgos[] }).
+            JsonNode hallazgosNode;
+            boolean isWrapper = root.isObject() && root.has("hallazgos") && root.get("hallazgos").isArray();
+            if (isWrapper) {
+                hallazgosNode = root.get("hallazgos");
+            } else if (root.isArray()) {
+                hallazgosNode = root;
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "Formato de hallazgos inválido"));
+            }
+
+            if (idx < 0 || idx >= hallazgosNode.size()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Índice inválido"));
             }
-            ObjectNode hallazgo = (ObjectNode) root.get(idx);
+            ObjectNode hallazgo = (ObjectNode) hallazgosNode.get(idx);
             boolean actual = hallazgo.has("false_positive") && hallazgo.get("false_positive").asBoolean();
             hallazgo.put("false_positive", !actual);
             report.setHallazgosJson(objectMapper.writeValueAsString(root));
 
+            // Recalcular conteo de incumplimientos: prioriza procedimientos con
+            // estado="incumplido"; si no hay, cae al conteo de hallazgos no marcados como FP.
             int realCount = 0;
-            for (JsonNode h : root) {
-                if (!h.has("false_positive") || !h.get("false_positive").asBoolean()) realCount++;
+            if (isWrapper && root.has("procedimientos") && root.get("procedimientos").isArray()) {
+                for (JsonNode p : root.get("procedimientos")) {
+                    String estado = p.has("estado") ? p.get("estado").asText("") : "";
+                    if ("incumplido".equalsIgnoreCase(estado)) realCount++;
+                }
+            }
+            if (realCount == 0) {
+                for (JsonNode h : hallazgosNode) {
+                    if (!h.has("false_positive") || !h.get("false_positive").asBoolean()) realCount++;
+                }
             }
             report.setIncumplimientos(realCount);
             auditReportRepository.save(report);
