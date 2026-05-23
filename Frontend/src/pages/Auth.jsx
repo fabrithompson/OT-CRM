@@ -37,7 +37,7 @@ export default function Auth() {
     const [resendCooldown, setResendCooldown] = useState(0);
 
     const navigate = useNavigate();
-    const { lang, toggleLang, t } = useLanguage();
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (resendCooldown <= 0) return;

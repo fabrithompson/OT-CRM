@@ -1,3 +1,4 @@
+/* global process */
 // Guard: solo se permite pnpm. npm fue comprometido (incidente cadena de suministro
 // 2026), así que se rechaza npm/yarn/bun. Si pnpm cambia de manos, actualizar esto.
 const ua = process.env.npm_config_user_agent || '';

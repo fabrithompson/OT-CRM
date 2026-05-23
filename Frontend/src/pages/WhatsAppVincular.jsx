@@ -203,8 +203,6 @@ export default function WhatsAppVincular() {
         finally { setGettingCode(false); }
     };
 
-    const pairBtnLabel = () => null; // handled inline with t()
-
     return (
         <div>
             <div className="header-top" style={{ justifyContent: 'space-between', padding: '20px 25px' }}>

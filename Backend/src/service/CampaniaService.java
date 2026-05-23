@@ -64,8 +64,8 @@ public class CampaniaService {
     private static final String API_KEY_HEADER = "X-Bot-Token";
 
     // ── Configuración anti-ban ────────────────────────────────────────────────
-    private static final long DELAY_MIN_MS = 8_000L;
-    private static final long DELAY_MAX_MS = 30_000L;
+    private static final long DELAY_MIN_MS = 25_000L;
+    private static final long DELAY_MAX_MS = 60_000L;
     private static final int  LIMITE_DIARIO_POR_DISPOSITIVO = 100;
     private static final int  SKIP_DIAS = 30;
     private static final ZoneId ZONE_AR = ZoneId.of("America/Argentina/Buenos_Aires");

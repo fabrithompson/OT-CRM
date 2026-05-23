@@ -203,6 +203,82 @@ Corre a las 07:00 todos los días (hora Argentina). Itera todas las agencias con
 
 ---
 
+### Fase 5 — Análisis profundo punto por punto + envío inmediato
+
+**Commit:** `feat(auditor-ia): fase 5`
+
+**Cambios:**
+
+**Prompt rediseñado (`AiAuditService.buildAuditSystemPrompt`):**
+Pasamos de un esquema simple (`resumen` + `hallazgos[]`) a un análisis detallado por cada punto del procedimiento. El nuevo prompt instruye al modelo a:
+
+1. Identificar cada línea/ítem de la lista de procedimientos como un punto de control separado.
+2. Indicar por cada punto el estado: `cumplido`, `parcial` o `incumplido`.
+3. Por cada evidencia incluir explícitamente: NOMBRE del vendedor (no su ID), HORARIO exacto (dd/MM HH:mm), CITA textual exacta entre comillas, CÓMO lo hizo (tono/formato/claridad) y — si es parcial/incumplido — ESPERADO vs OCURRIDO.
+4. Resumen ejecutivo de 2-3 párrafos mencionando vendedores destacados/críticos por nombre y recomendaciones.
+5. Reglas duras: no respuestas genéricas, descartar evidencias sin cita textual exacta.
+
+**Nuevo esquema almacenado en `hallazgos_json`:**
+```json
+{
+  "resumen_ejecutivo": "Párrafo 1...\n\nPárrafo 2...\n\nPárrafo 3...",
+  "procedimientos": [
+    {
+      "punto": "Saludar al cliente apenas escribe",
+      "estado": "cumplido" | "parcial" | "incumplido",
+      "justificacion": "Explicación detallada",
+      "evidencias": [
+        {
+          "vendedor": "María",
+          "cliente_id": 42,
+          "cuando": "14/05 10:32",
+          "como": "Saludo cordial y oportuno, siguió el script",
+          "cita_textual": "Hola, ¿en qué te ayudo?",
+          "esperado": "Solo si parcial/incumplido",
+          "ocurrido": "Solo si parcial/incumplido"
+        }
+      ]
+    }
+  ],
+  "hallazgos": [
+    /* mismo formato que antes — usado para los hallazgos individuales graves */
+  ]
+}
+```
+
+**Compatibilidad hacia atrás:** los reportes antiguos (formato array directo) siguen siendo legibles. `parseReportPayload` en `Auditoria.jsx` detecta el tipo y los envuelve automáticamente.
+
+**Conteo de incumplimientos:** prioriza la cantidad de `procedimientos[].estado === "incumplido"`; si no hay procedimientos (formato legacy), cae al conteo de hallazgos.
+
+**UI expandida (`Auditoria.jsx`):**
+- Sección **"Resumen ejecutivo"** muestra el texto extendido en 2-3 párrafos.
+- Sección **"Procedimientos auditados"** con cards colapsables por cada punto:
+  - Badge de estado con color e ícono: ✅ Cumplido / ⚠️ Parcial / ❌ Incumplido.
+  - Contador agregado en el header de la sección (X cumplidos / Y parciales / Z incumplidos).
+  - Por defecto se expanden automáticamente los puntos `parcial` e `incumplido`.
+  - Cada evidencia muestra: vendedor destacado en violeta, horario con ícono de reloj, descripción del "cómo", cita textual en blockquote, y bloques contrastantes "Esperado" vs "Ocurrido" cuando aplica.
+- Sección **"Hallazgos individuales"** se mantiene como antes (sirve como red flags + soporta toggling de falsos positivos).
+- Animación `fadeIn` al abrir/cerrar puntos de procedimiento.
+
+**Envío inmediato en "Auditar ahora" (`AuditController.runAuditNow`):**
+1. Ejecuta la auditoría sobre las últimas 24 hs (igual que antes).
+2. **NUEVO:** lee `AgentConfig` y, en el mismo request:
+   - Si hay `auditEmail` configurado → llama a `emailService.enviarReporteAuditoria` (async, no bloquea).
+   - Si hay `auditWhatsappPhone` + `auditDispositivo` → llama a `whatsAppService.enviarTextoANumero`.
+3. La respuesta JSON incluye dos flags nuevos: `sentEmail: bool` y `sentWhatsapp: bool`.
+4. El frontend usa esos flags para mostrar un toast diferenciado:
+   - Verde: "Email y WhatsApp despachados correctamente."
+   - Azul: cuando solo uno fue enviado (el otro no está configurado).
+   - Amarillo: cuando ningún destino está configurado.
+5. El scheduler diario (`AiAuditScheduler`) sigue funcionando intacto. Son dos envíos independientes.
+
+**Archivos modificados:**
+- `Backend/src/service/AiAuditService.java` — nuevo prompt + parseo del JSON extendido + storage como objeto.
+- `Backend/src/controller/AuditController.java` — envío inmediato post-auditoría + compat de `toggleFalsePositive` con el wrapper nuevo.
+- `Frontend/src/pages/Auditoria.jsx` — UI rediseñada con secciones colapsables, badges visuales y toast de confirmación de envío.
+
+---
+
 ## Configuración necesaria
 
 No se requieren variables de entorno nuevas — el módulo usa las ya existentes:

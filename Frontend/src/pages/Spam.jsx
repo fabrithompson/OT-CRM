@@ -69,9 +69,9 @@ const btnGhost = {
 };
 
 const btnDanger = {
-    padding: '7px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
+    padding: '7px 12px', borderRadius: 10, cursor: 'pointer',
     background: 'rgba(239,68,68,0.15)', color: C_RED,
-    border: `1px solid rgba(239,68,68,0.25)`,
+    border: '1px solid rgba(239,68,68,0.25)',
     display: 'inline-flex', alignItems: 'center',
 };
 

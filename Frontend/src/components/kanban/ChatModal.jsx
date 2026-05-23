@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
-import api, { formatTime, formatDate, getAuthHeaders } from '../../utils/api';
+import api, { formatTime, formatDate } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 import { useLanguage } from '../../context/LangContext';
 import useSlashCommands, { SlashMenu } from './SlashCommandMenu';
@@ -106,7 +106,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
             setMedia(msgs.filter(m => (m.tipo === 'IMAGEN' || m.tipo === 'VIDEO') && m.urlArchivo));
             markRead(id);
             subscribeWS(id);
-        } catch (e) {
+        } catch {
             if (attempt < 2) {
                 await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
                 return loadChat(id, attempt + 1);
@@ -196,7 +196,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
             recorder.start();
             mediaRecorderRef.current = recorder;
             setIsRecording(true);
-        } catch { alert('No se pudo acceder al micrófono'); }
+        } catch { toast('Error', 'No se pudo acceder al micrófono', '#ef4444'); }
     };
 
     const stopRecording = () => {
@@ -558,7 +558,6 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                             {media.length === 0 ? <div style={{ padding: 10, opacity: 0.5, color: '#94a3b8', fontSize: '0.8rem', gridColumn: '1/-1' }}>{t('chat.noMultimedia')}</div> : [...media].reverse().map((m) => (
                                 <button key={m.id || m.urlArchivo} className="media-item" style={{ aspectRatio: '1', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', background: '#111', border: 'none', padding: 0 }} onClick={() => window.open(m.urlArchivo)}>
                                     {m.tipo === 'VIDEO' ? (
-                                        // FIX SONARLINT S4084: Etiqueta track para accesibilidad
                                         <video src={m.urlArchivo} style={{ width: '100%', height: '100%', objectFit: 'cover' }}>
                                             <track kind="captions" />
                                         </video>
@@ -588,8 +587,7 @@ function MessageBubble({ msg }) {
     };
     const renderContent = () => {
         if ((msg.tipo === 'IMAGEN' || msg.tipo === 'STICKER') && msg.urlArchivo) return <button style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => window.open(msg.urlArchivo)}><img src={msg.urlArchivo} loading="lazy" className={msg.tipo === 'STICKER' ? 'msg-sticker' : 'msg-img'} style={msg.tipo === 'STICKER' ? { width: 120, height: 120, objectFit: 'contain' } : {}} alt="" /></button>;
-        
-        // FIX SONARLINT S4084
+
         if (msg.tipo === 'VIDEO' && msg.urlArchivo) return (
             <video controls preload="none" src={msg.urlArchivo} className="msg-video">
                 <track kind="captions" />
@@ -620,24 +618,22 @@ function AudioPlayer({ src, sent }) {
     const [progress, setProgress] = useState(0);
     const [duration, setDuration] = useState('0:00');
     
-    // FIX SONARLINT S2681: Expandido con llaves
-    const toggle = () => { 
-        if (!audioRef.current) return; 
-        if (playing) { 
-            audioRef.current.pause(); 
-            setPlaying(false); 
-        } else { 
-            audioRef.current.play(); 
-            setPlaying(true); 
-        } 
+    const toggle = () => {
+        if (!audioRef.current) return;
+        if (playing) {
+            audioRef.current.pause();
+            setPlaying(false);
+        } else {
+            audioRef.current.play();
+            setPlaying(true);
+        }
     };
 
-    // FIX SONARLINT S2681: Expandido con llaves
-    const onTimeUpdate = () => { 
-        if (!audioRef.current) return; 
-        setProgress((audioRef.current.currentTime / audioRef.current.duration) * 100 || 0); 
-        const s = Math.floor(audioRef.current.currentTime); 
-        setDuration(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`); 
+    const onTimeUpdate = () => {
+        if (!audioRef.current) return;
+        setProgress((audioRef.current.currentTime / audioRef.current.duration) * 100 || 0);
+        const s = Math.floor(audioRef.current.currentTime);
+        setDuration(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
     };
     
     const onEnded  = () => { setPlaying(false); setProgress(0); };
@@ -651,7 +647,6 @@ function AudioPlayer({ src, sent }) {
                 <input type="range" className="audio-slider" value={progress} max={100} onChange={onSeek} />
                 <span className="audio-timer">{duration}</span>
             </div>
-            {/* FIX SONARLINT S4084 */}
             <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={onEnded}>
                 <track kind="captions" />
             </audio>

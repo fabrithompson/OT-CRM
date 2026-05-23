@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import model.AgentConfig;
 import model.AiAuditReport;
@@ -119,7 +120,10 @@ public class AiAuditService {
             }
         }
 
-        String hallazgosJson = "[]";
+        // Estructura nueva: { resumen_ejecutivo, procedimientos[], hallazgos[] }
+        // Se guarda el objeto completo en hallazgos_json (JSONB). El frontend parsea
+        // defensivamente para soportar reportes legacy que eran arrays de hallazgos.
+        String hallazgosJson = "{\"procedimientos\":[],\"hallazgos\":[]}";
         String resumen = "";
         int incumplimientos = 0;
         try {
@@ -128,18 +132,60 @@ public class AiAuditService {
                 cleaned = cleaned.replaceAll("(?s)^```[a-z]*\\s*", "").replaceAll("```\\s*$", "").trim();
             }
             JsonNode root = objectMapper.readTree(cleaned);
-            JsonNode hallazgosNode = root.has("hallazgos") ? root.get("hallazgos") : root;
-            if (hallazgosNode.isArray()) {
-                ArrayNode filtered = objectMapper.createArrayNode();
+
+            // Si el modelo respondió directamente con un array (formato viejo),
+            // lo envolvemos en la estructura nueva sin perder data.
+            if (root.isArray()) {
+                ObjectNode wrapper = objectMapper.createObjectNode();
+                wrapper.set("hallazgos", root);
+                wrapper.putArray("procedimientos");
+                root = wrapper;
+            }
+
+            // 1) Hallazgos individuales (descarte de los que no traen cita_textual)
+            ObjectNode normalized = objectMapper.createObjectNode();
+            ArrayNode hallazgosOut = objectMapper.createArrayNode();
+            JsonNode hallazgosNode = root.has("hallazgos") ? root.get("hallazgos") : null;
+            if (hallazgosNode != null && hallazgosNode.isArray()) {
                 for (JsonNode h : hallazgosNode) {
                     String cita = h.has("cita_textual") ? h.get("cita_textual").asText("") : "";
-                    if (!cita.isBlank()) filtered.add(h);
+                    if (!cita.isBlank()) hallazgosOut.add(h);
                 }
-                hallazgosJson = objectMapper.writeValueAsString(filtered);
-                incumplimientos = filtered.size();
             }
-            if (root.has("resumen")) {
-                resumen = root.get("resumen").asText();
+            normalized.set("hallazgos", hallazgosOut);
+
+            // 2) Procedimientos (análisis punto por punto). Aceptamos cualquier
+            // procedimiento aun sin evidencias para mostrar el estado del control.
+            ArrayNode procsOut = objectMapper.createArrayNode();
+            JsonNode procsNode = root.has("procedimientos") ? root.get("procedimientos") : null;
+            int procsIncumplidos = 0;
+            if (procsNode != null && procsNode.isArray()) {
+                for (JsonNode p : procsNode) {
+                    procsOut.add(p);
+                    String estado = p.has("estado") ? p.get("estado").asText("") : "";
+                    if ("incumplido".equalsIgnoreCase(estado)) procsIncumplidos++;
+                }
+            }
+            normalized.set("procedimientos", procsOut);
+
+            // 3) Resumen ejecutivo extendido (2-3 párrafos) + resumen corto
+            String resumenEjecutivo = root.has("resumen_ejecutivo")
+                    ? root.get("resumen_ejecutivo").asText("")
+                    : (root.has("resumen") ? root.get("resumen").asText("") : "");
+            if (!resumenEjecutivo.isBlank()) {
+                normalized.put("resumen_ejecutivo", resumenEjecutivo);
+            }
+
+            hallazgosJson = objectMapper.writeValueAsString(normalized);
+
+            // El conteo de incumplimientos prioriza el análisis punto por punto;
+            // si no hay procedimientos, cae al conteo legacy de hallazgos.
+            incumplimientos = procsIncumplidos > 0 ? procsIncumplidos : hallazgosOut.size();
+
+            // Resumen corto: lo primero del resumen ejecutivo o un default
+            if (!resumenEjecutivo.isBlank()) {
+                String firstLine = resumenEjecutivo.split("\\R", 2)[0];
+                resumen = firstLine.length() > 280 ? firstLine.substring(0, 277) + "..." : firstLine;
             } else {
                 resumen = incumplimientos == 0
                         ? "No se detectaron incumplimientos en el período analizado."
@@ -167,7 +213,8 @@ public class AiAuditService {
         r.setPeriodoInicio(desde);
         r.setPeriodoFin(hasta);
         r.setResumen("No se encontraron conversaciones en el período analizado.");
-        r.setHallazgosJson("[]");
+        // Estructura nueva (wrapper) para que el frontend la parsee igual que un reporte real
+        r.setHallazgosJson("{\"resumen_ejecutivo\":\"No se encontraron conversaciones en el período analizado.\",\"procedimientos\":[],\"hallazgos\":[]}");
         r.setIncumplimientos(0);
         r.setTokensUsados(0);
         return r;
@@ -207,27 +254,65 @@ public class AiAuditService {
         return sb.toString();
     }
 
+    // Prompt detallado: el auditor debe producir un INFORME PUNTO POR PUNTO
+    // sobre la lista de procedimientos configurada, con quién/cómo/cuándo y
+    // comparación esperado vs. ocurrido cuando haya incumplimiento.
     private String buildAuditSystemPrompt(String procedures) {
-        return "Sos un auditor experto de conversaciones de ventas por WhatsApp. "
-                + "Tu tarea es analizar transcripciones de conversaciones entre vendedores y clientes "
-                + "y detectar incumplimientos a los procedimientos de atención establecidos.\n\n"
-                + "PROCEDIMIENTOS A AUDITAR:\n" + procedures + "\n\n"
-                + "INSTRUCCIONES:\n"
-                + "- Para cada incumplimiento, incluí OBLIGATORIAMENTE una cita textual del mensaje que lo evidencia.\n"
-                + "- Si no podés citar textualmente el mensaje, NO reportes el incumplimiento.\n"
-                + "- Evaluá solo lo que realmente ocurrió, no supongas intenciones.\n"
-                + "- Considerá el contexto: horario, si el cliente interrumpió, etc.\n\n"
-                + "FORMATO DE RESPUESTA (JSON puro, sin markdown, sin bloques de código):\n"
-                + "{\"resumen\": \"texto conciso del análisis (2-3 oraciones)\","
-                + "\"hallazgos\": [{\"tipo\": \"incumplimiento\" o \"advertencia\","
-                + "\"vendedor\": \"nombre o ID del autor\","
-                + "\"cliente_id\": 123,"
-                + "\"regla_violada\": \"descripción breve de la regla incumplida\","
-                + "\"cita_textual\": \"texto exacto del mensaje que lo evidencia\","
-                + "\"severidad\": \"alta\" o \"media\" o \"baja\","
-                + "\"confianza\": \"alta\" o \"media\" o \"baja\","
-                + "\"descripcion\": \"explicación detallada\"}]}\n\n"
-                + "Si no hay incumplimientos: {\"resumen\": \"No se detectaron incumplimientos.\", \"hallazgos\": []}\n"
-                + "IMPORTANTE: Respondé ÚNICAMENTE con el JSON. Sin texto adicional.";
+        return "Sos un auditor experto y exigente de conversaciones de ventas por WhatsApp. "
+                + "Tu tarea es producir un INFORME DETALLADO de cumplimiento, punto por punto, "
+                + "sobre la lista de procedimientos de atención configurada por la agencia.\n\n"
+                + "PROCEDIMIENTOS A AUDITAR (cada línea o ítem es un punto de control):\n"
+                + "\"\"\"\n" + procedures + "\n\"\"\"\n\n"
+                + "INSTRUCCIONES OBLIGATORIAS:\n"
+                + "1. Identificá cada punto/regla de la lista anterior como un elemento separado.\n"
+                + "2. Por CADA punto, indicá si se cumplió (\"cumplido\"), se cumplió parcialmente (\"parcial\") o no se cumplió (\"incumplido\"), y justificá con evidencia textual.\n"
+                + "3. Para CADA evidencia incluí, de forma explícita y no genérica:\n"
+                + "   • QUIÉN: el NOMBRE del vendedor que mandó el mensaje (no su ID), tal como aparece entre corchetes en la transcripción (VENDEDOR[nombre]).\n"
+                + "   • CUÁNDO: el horario exacto del mensaje en formato dd/MM HH:mm tal como aparece en la transcripción.\n"
+                + "   • CÓMO: descripción del modo en que actuó — tono usado, si siguió el formato/lenguaje del procedimiento, claridad, oportunidad.\n"
+                + "   • CITA TEXTUAL: el texto EXACTO del mensaje relevante, entre comillas, sin parafrasear.\n"
+                + "   • Si es parcial o incumplido: ESPERADO (qué dictaba el procedimiento) vs OCURRIDO (qué pasó en realidad).\n"
+                + "4. NO des respuestas genéricas, vagas ni del estilo \"se cumplió correctamente\". Siempre citá el mensaje o describí concretamente la acción.\n"
+                + "5. Si no podés citar el mensaje exacto, NO incluyas la evidencia.\n"
+                + "6. Si un mismo punto se manifiesta con varios vendedores o varias conversaciones, listá una evidencia separada por cada caso.\n"
+                + "7. Si para un punto no hay actividad relevante en el período, marcalo como \"parcial\" con justificación \"Sin evidencia suficiente en el período\" y dejá evidencias vacías.\n"
+                + "8. El resumen ejecutivo debe tener entre 2 y 3 párrafos: panorama general, vendedores destacados/críticos por nombre, y recomendaciones accionables.\n"
+                + "9. Además, listá los hallazgos individuales más graves (los \"red flags\") en el array \"hallazgos\" — un objeto por hallazgo grave.\n\n"
+                + "FORMATO DE RESPUESTA — JSON ESTRICTO, sin markdown, sin bloques de código, sin texto antes ni después:\n"
+                + "{\n"
+                + "  \"resumen_ejecutivo\": \"Párrafo 1 ... \\n\\nPárrafo 2 ... \\n\\nPárrafo 3 ...\",\n"
+                + "  \"procedimientos\": [\n"
+                + "    {\n"
+                + "      \"punto\": \"Texto breve del punto del procedimiento\",\n"
+                + "      \"estado\": \"cumplido\" | \"parcial\" | \"incumplido\",\n"
+                + "      \"justificacion\": \"Explicación detallada del estado, mencionando vendedores por nombre cuando corresponda\",\n"
+                + "      \"evidencias\": [\n"
+                + "        {\n"
+                + "          \"vendedor\": \"Nombre del vendedor (NO ID)\",\n"
+                + "          \"cliente_id\": 123,\n"
+                + "          \"cuando\": \"dd/MM HH:mm\",\n"
+                + "          \"como\": \"Cómo lo hizo: tono, formato, claridad\",\n"
+                + "          \"cita_textual\": \"Texto exacto del mensaje\",\n"
+                + "          \"esperado\": \"Qué dictaba el procedimiento (solo si parcial/incumplido)\",\n"
+                + "          \"ocurrido\": \"Qué pasó realmente (solo si parcial/incumplido)\"\n"
+                + "        }\n"
+                + "      ]\n"
+                + "    }\n"
+                + "  ],\n"
+                + "  \"hallazgos\": [\n"
+                + "    {\n"
+                + "      \"tipo\": \"incumplimiento\" | \"advertencia\",\n"
+                + "      \"vendedor\": \"Nombre\",\n"
+                + "      \"cliente_id\": 123,\n"
+                + "      \"regla_violada\": \"Regla breve\",\n"
+                + "      \"cita_textual\": \"Texto exacto\",\n"
+                + "      \"cuando\": \"dd/MM HH:mm\",\n"
+                + "      \"severidad\": \"alta\" | \"media\" | \"baja\",\n"
+                + "      \"confianza\": \"alta\" | \"media\" | \"baja\",\n"
+                + "      \"descripcion\": \"Explicación detallada\"\n"
+                + "    }\n"
+                + "  ]\n"
+                + "}\n\n"
+                + "IMPORTANTE: Respondé ÚNICAMENTE con el JSON, sin texto adicional, sin saludos, sin disculpas, sin markdown.";
     }
 }
