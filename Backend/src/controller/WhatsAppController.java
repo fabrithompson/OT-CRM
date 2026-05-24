@@ -161,7 +161,8 @@ public class WhatsAppController {
                 .filter(dev -> dev.getAgencia() != null && Objects.equals(dev.getAgencia().getId(), usuario.getAgencia().getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado"));
 
-        String baseUrl = whatsAppService.getNodeBotUrl();
+        @SuppressWarnings("deprecation")
+		String baseUrl = whatsAppService.getNodeBotUrl();
         try {
             @SuppressWarnings("null")
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -199,7 +200,7 @@ public class WhatsAppController {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, String>> entity = new HttpEntity<>(Map.of("sessionId", d.getSessionId(), "phoneNumber", request.phoneNumber()), headers);
 
-            @SuppressWarnings("null")
+            @SuppressWarnings({ "null", "deprecation" })
             ResponseEntity<Map<String, String>> response = restTemplate.exchange(
                     whatsAppService.getNodeBotUrl() + "/session/pair-code", HttpMethod.POST, entity, new ParameterizedTypeReference<Map<String, String>>() {}
             );

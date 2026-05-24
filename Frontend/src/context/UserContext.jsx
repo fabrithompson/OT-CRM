@@ -18,6 +18,9 @@ export function UserProvider({ children }) {
         }
     }, []);
 
+    // Bootstrap: cargar el perfil si hay token; si no, marcar loading=false.
+    // El setState al montar es el patrón "load on mount" descrito por la regla: aceptable.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token && token !== 'undefined') {
@@ -26,6 +29,7 @@ export function UserProvider({ children }) {
             setLoading(false);
         }
     }, [refresh]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Listen for plan updates to refresh
     useEffect(() => {
@@ -43,4 +47,6 @@ export function UserProvider({ children }) {
     );
 }
 
+// El hook vive junto a su Provider (patrón estándar de Context).
+// eslint-disable-next-line react-refresh/only-export-components
 export const useUser = () => useContext(UserContext);

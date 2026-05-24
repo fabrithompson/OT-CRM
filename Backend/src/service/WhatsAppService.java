@@ -18,20 +18,12 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import dto.SystemNotification;
@@ -51,7 +43,6 @@ public class WhatsAppService {
     private static final Logger log = LoggerFactory.getLogger(WhatsAppService.class);
 
     private static final String CLIENTE_DEFAULT_PREFIX = "Cliente ";
-    private static final String API_KEY_HEADER = "X-Bot-Token";
     private static final String ESTADO_CONNECTED = "CONNECTED";
     private static final String ESTADO_DISCONNECTED = "DISCONNECTED";
 
@@ -62,7 +53,7 @@ public class WhatsAppService {
     private final EtapaRepository etapaRepository;
     private final DispositivoRepository dispositivoRepository;
     private final SimpMessagingTemplate messaging;
-    private final RestTemplate http;
+    private final BotHttpClient botClient;
     private final TelegramBridgeService bridgeService;
     private final SubscriptionValidationService subscriptionValidationService;
     private final CloudStorageService cloudStorageService;
@@ -80,12 +71,6 @@ public class WhatsAppService {
             .maximumSize(10_000)
             .build();
 
-    @Value("${node.bot.url}")
-    private String nodeBotUrl;
-
-    @Value("${bot.secret.key}")
-    private String botSecretKey;
-
     public WhatsAppService(ClienteRepository clienteRepository,
             MensajeRepository mensajeRepository,
             EtapaRepository etapaRepository,
@@ -94,7 +79,7 @@ public class WhatsAppService {
             TelegramBridgeService bridgeService,
             SubscriptionValidationService subscriptionValidationService,
             CloudStorageService cloudStorageService,
-            RestTemplate restTemplate) {
+            BotHttpClient botClient) {
         this.subscriptionValidationService = subscriptionValidationService;
         this.cloudStorageService = cloudStorageService;
         this.clienteRepository = clienteRepository;
@@ -103,7 +88,7 @@ public class WhatsAppService {
         this.dispositivoRepository = dispositivoRepository;
         this.messaging = messaging;
         this.bridgeService = bridgeService;
-        this.http = restTemplate;
+        this.botClient = botClient;
     }
 
     public record MensajeEntranteRequest(String from, String texto, String nombreSender, String sessionId,
@@ -112,7 +97,7 @@ public class WhatsAppService {
     }
 
     private record ChatNotification(String contenido, boolean inbound, String fecha, String tipo, String urlArchivo,
-            String autor, String whatsappId, String estado) {
+            String autor, String whatsappId, String estado, String origenMensaje) {
 
     }
 
@@ -130,11 +115,13 @@ public class WhatsAppService {
 
     }
 
+    /**
+     * @deprecated Usar {@link BotHttpClient#getBaseUrl()} directamente. Se mantiene
+     * mientras {@code WhatsAppController} todavía lo invoca para construir URLs ad-hoc.
+     */
+    @Deprecated
     public String getNodeBotUrl() {
-        if (nodeBotUrl == null) {
-            return "";
-        }
-        return nodeBotUrl.replace("\"", "").replace("'", "").trim();
+        return botClient.getBaseUrl();
     }
 
     private LocalDateTime ahoraArgentina() {
@@ -289,33 +276,7 @@ public class WhatsAppService {
 
     private String enviarArchivoBase64AlBot(String to, String sessionId, String base64Data,
             String mimeType, String filename, Mensaje.TipoMensaje tipo) {
-        try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("number", to);
-            body.put("sessionId", sessionId);
-            body.put("base64", base64Data);
-            body.put("mimetype", mimeType);
-            body.put("filename", filename);
-            body.put("type", mapearTipoParaBot(tipo));
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(API_KEY_HEADER, botSecretKey);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            @SuppressWarnings({ "rawtypes", "null" })
-            ResponseEntity<Map> response = http.exchange(
-                    getNodeBotUrl() + "/send-media", HttpMethod.POST, request, Map.class);
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                @SuppressWarnings("null")
-                Object idObj = response.getBody().get("id");
-                return idObj != null ? idObj.toString() : "WA_" + System.currentTimeMillis();
-            }
-        } catch (Exception e) {
-            log.error("Error enviando archivo base64 al bot: {}", e.getMessage());
-        }
-        return null;
+        return botClient.sendMediaBase64(sessionId, to, base64Data, mimeType, filename, mapearTipoParaBot(tipo));
     }
 
     private String obtenerContenidoSegunTipo(Mensaje.TipoMensaje tipo, String nombreArchivo) {
@@ -333,47 +294,12 @@ public class WhatsAppService {
         };
     }
 
-    @SuppressWarnings("rawtypes")
     private String enviarARobot(String to, String texto, String sessionId, String urlMedia,
             Mensaje.TipoMensaje tipoMedia) {
-        try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("number", to);
-            body.put("sessionId", sessionId);
-
-            String endpoint;
-            if (urlMedia != null && !urlMedia.isEmpty()) {
-                body.put("url", urlMedia);
-                body.put("message", texto);
-                body.put("type", mapearTipoParaBot(tipoMedia));
-                endpoint = "/send-media";
-            } else {
-                body.put("message", texto);
-                endpoint = "/send-message";
-            }
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(API_KEY_HEADER, botSecretKey);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            String url = getNodeBotUrl() + endpoint;
-
-            @SuppressWarnings("null")
-            ResponseEntity<Map> response = http.exchange(url, HttpMethod.POST, request, Map.class);
-
-            Map<?, ?> responseBody = response.getBody();
-            if (response.getStatusCode().is2xxSuccessful() && responseBody != null) {
-                Object idObj = responseBody.get("id");
-                return (idObj != null) ? idObj.toString() : "WA_" + System.currentTimeMillis();
-            } else {
-
-                log.error("Bot retornó status {}: {}", response.getStatusCode(), response.getBody());
-            }
-        } catch (RestClientException e) {
-            log.error("Error comunicando con Bot: {}", e.getMessage());
+        if (urlMedia != null && !urlMedia.isEmpty()) {
+            return botClient.sendMediaUrl(sessionId, to, urlMedia, texto, mapearTipoParaBot(tipoMedia));
         }
-        return null;
+        return botClient.sendText(sessionId, to, texto);
     }
 
     private String mapearTipoParaBot(Mensaje.TipoMensaje tipo) {
@@ -428,27 +354,7 @@ public class WhatsAppService {
                 .toList();
 
         if (!idsParaMarcar.isEmpty()) {
-            enviarOrdenLecturaANode(disp.getSessionId(), cliente.getTelefono(), idsParaMarcar);
-        }
-    }
-
-    @SuppressWarnings("UseSpecificCatch")
-    private void enviarOrdenLecturaANode(String sessionId, String telefono, List<String> messageIds) {
-        try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("sessionId", sessionId);
-            body.put("number", limpiarTelefono(telefono));
-            body.put("messageIds", messageIds);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(API_KEY_HEADER, botSecretKey);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            http.postForLocation(getNodeBotUrl() + "/chat/read", request);
-
-        } catch (Exception e) {
-            log.warn("No se pudo enviar confirmación de lectura a WA: {}", e.getMessage());
+            botClient.markChatRead(disp.getSessionId(), limpiarTelefono(cliente.getTelefono()), idsParaMarcar);
         }
     }
 
@@ -516,7 +422,7 @@ public class WhatsAppService {
             if (disp.getPlataforma() == Dispositivo.Plataforma.TELEGRAM) {
                 bridgeService.cerrarSesion(disp.getSessionId());
             } else {
-                callNodeReset(disp.getSessionId());
+                botClient.resetSession(disp.getSessionId());
             }
         } catch (Exception e) {
             log.warn("No se pudo cerrar sesión en el bot, pero seguiremos con el borrado.");
@@ -533,34 +439,20 @@ public class WhatsAppService {
     }
 
     @Transactional
-public void desvincularSesion(@NonNull Long dispositivoId) {
-    Dispositivo d = dispositivoRepository.findById(dispositivoId)
-            .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
-    callNodeReset(d.getSessionId());
-    d.setEstado(ESTADO_DISCONNECTED);
-    d.setNumeroTelefono(null);
-    String nuevoSessionId = "agencia_" + d.getAgencia().getId() + "_" + UUID.randomUUID().toString().substring(0, 8);
-    d.setSessionId(nuevoSessionId);
-    
-    dispositivoRepository.save(d);
-}
+    public void desvincularSesion(@NonNull Long dispositivoId) {
+        Dispositivo d = dispositivoRepository.findById(dispositivoId)
+                .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
+        botClient.resetSession(d.getSessionId());
+        d.setEstado(ESTADO_DISCONNECTED);
+        d.setNumeroTelefono(null);
+        String nuevoSessionId = "agencia_" + d.getAgencia().getId() + "_" + UUID.randomUUID().toString().substring(0, 8);
+        d.setSessionId(nuevoSessionId);
 
-    private void callNodeReset(String sessionId) {
-        try {
-            String url = getNodeBotUrl() + "/session/reset";
-            Map<String, String> body = Map.of("sessionId", sessionId);
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(API_KEY_HEADER, botSecretKey);
-            HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
-            http.postForLocation(url, request);
-        } catch (RestClientException e) {
-            log.warn("Reset fallido: {}", e.getMessage());
-        }
+        dispositivoRepository.save(d);
     }
 
     public void desvincularRobot(String sessionId) {
-        callNodeReset(sessionId);
+        botClient.resetSession(sessionId);
     }
 
     /**
@@ -586,9 +478,26 @@ public void desvincularSesion(@NonNull Long dispositivoId) {
                     .findByAgenciaIdAndTelefonoAndDispositivoIsNull(dispositivo.getAgencia().getId(), telefono);
         }
         if (clienteOpt.isEmpty()) {
-            log.debug("guardarMensajeSalidaExterno: contacto {} no encontrado en agencia {}, ignorando.",
-                    telefono, dispositivo.getAgencia().getId());
-            return;
+            // Número nuevo: el vendedor inició la conversación desde su celular sin pasar
+            // por el CRM. Creamos un cliente "pendiente de clasificar" para que la conversación
+            // aparezca en el embudo y el reporte de auditoría tenga el contexto. Respetamos
+            // el límite del plan: si no se puede crear, dejamos pasar y solo logueamos.
+            if (!subscriptionValidationService.puedeRecibirNuevoContacto(dispositivo.getAgencia())) {
+                log.info("guardarMensajeSalidaExterno: límite de contactos alcanzado para agencia {}, ignorando {}.",
+                        dispositivo.getAgencia().getId(), telefono);
+                return;
+            }
+            try {
+                Cliente nuevo = crearClienteNuevo(dispositivo.getAgencia(), telefono,
+                        CLIENTE_DEFAULT_PREFIX + telefono, null, "EXTERNO_WSP", dispositivo);
+                clienteOpt = Optional.ofNullable(nuevo);
+                log.info("guardarMensajeSalidaExterno: cliente pendiente creado para {} en agencia {}.",
+                        telefono, dispositivo.getAgencia().getId());
+            } catch (Exception e) {
+                log.warn("guardarMensajeSalidaExterno: no se pudo crear cliente pendiente para {}: {}",
+                        telefono, e.getMessage());
+                return;
+            }
         }
 
         // Deduplicación: el CRM ya guardó el mensaje si lo envió él mismo
@@ -748,6 +657,19 @@ public void desvincularSesion(@NonNull Long dispositivoId) {
         return nombre == null || nombre.trim().equalsIgnoreCase("Usuario") || nombre.isBlank();
     }
 
+    // Origen del mensaje al broadcastear por WebSocket. Los valores son consumidos
+    // por el frontend (ChatModal) para dibujar el ícono correcto al lado de cada
+    // mensaje saliente: CRM (escritorio), EXTERNO_WSP (celular del vendedor),
+    // AGENTE_IA (bot), o CLIENTE (entrante).
+    private String deducirOrigenMensaje(Mensaje m, boolean esSalida) {
+        if (!esSalida) return "CLIENTE";
+        String autor = m.getAutor();
+        if (autor == null || autor.isBlank()) return "CRM";
+        if ("EXTERNO_WSP".equalsIgnoreCase(autor)) return "EXTERNO_WSP";
+        if ("AGENTE_IA".equalsIgnoreCase(autor) || autor.startsWith("IA_")) return "AGENTE_IA";
+        return "CRM";
+    }
+
     private void notificarCambio(Cliente c, Mensaje m, boolean esSalida) {
         try {
             messaging.convertAndSend("/topic/chat/" + c.getId(), new ChatNotification(
@@ -758,7 +680,10 @@ public void desvincularSesion(@NonNull Long dispositivoId) {
                     m.getUrlArchivo(),
                     m.getAutor(),
                     m.getWhatsappId(),
-                    m.getEstado().name()));
+                    m.getEstado().name(),
+                    // origenMensaje: discrimina explícitamente el canal de salida para que
+                    // el frontend muestre un indicador visual (CRM/celular/IA/cliente).
+                    deducirOrigenMensaje(m, esSalida)));
 
             messaging.convertAndSend("/topic/embudo/" + c.getAgencia().getId(), new KanbanNotification(
                     c.getId(),

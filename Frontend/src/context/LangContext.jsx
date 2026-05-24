@@ -35,6 +35,9 @@ export function LangProvider({ children }) {
     );
 }
 
+// El hook vive junto a su Provider (patrón estándar de Context). Separarlo a otro
+// archivo solo para Fast Refresh obligaría a tocar imports en todo el proyecto.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLanguage() {
     const ctx = useContext(LangContext);
     if (!ctx) throw new Error('useLanguage must be used within LangProvider');

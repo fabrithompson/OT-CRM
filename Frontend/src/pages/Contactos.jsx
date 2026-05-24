@@ -146,7 +146,11 @@ export default function Contactos() {
         }
     }, [toast]);
 
+    // Recarga al cambiar página/tamaño. La búsqueda se dispara manualmente desde
+    // handleSearch (con debouncing); por eso 'search' no está en deps a propósito.
+    /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
     useEffect(() => { loadClientes(page, pageSize, search); }, [page, pageSize, loadClientes]);
+    /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
     const handleSearch = (value) => {
         setSearch(value);

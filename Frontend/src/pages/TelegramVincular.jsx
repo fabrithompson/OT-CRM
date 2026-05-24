@@ -137,6 +137,8 @@ export default function TelegramVincular() {
         }
     }, [toast]);
 
+    // Fetch on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { loadDevices(); }, [loadDevices]);
 
     const confirmarCrear = async () => {

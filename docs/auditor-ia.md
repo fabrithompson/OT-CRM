@@ -279,6 +279,151 @@ Pasamos de un esquema simple (`resumen` + `hallazgos[]`) a un análisis detallad
 
 ---
 
+### Fase 6 — Visualización en tiempo real desde todos los dispositivos
+
+**Commit:** `feat(auditor-ia): fase 6`
+
+**Contexto:** los mensajes que entran o salen vía el bot del CRM ya se broadcasteaban por WebSocket a `/topic/embudo/{agenciaId}` y `/topic/chat/{clienteId}`. Faltaban dos piezas para que el embudo refleje fielmente lo que ocurre desde **cualquier** origen (celular del vendedor, web, otros clientes WhatsApp del mismo número):
+
+1. **Mensajes del celular hacia números nuevos** quedaban descartados porque `guardarMensajeSalidaExterno` solo registraba si el cliente ya existía.
+2. **El frontend no diferenciaba visualmente** mensajes salientes del CRM vs. del celular vs. del Agente IA.
+
+**Cambios:**
+
+**`WhatsAppService.guardarMensajeSalidaExterno`** — si el número de destino no existe como cliente y el dispositivo no es de propósito CAMPAÑAS, ahora se crea automáticamente un cliente nuevo:
+- `nombre` = `Cliente <telefono>` (placeholder hasta que se clasifique).
+- `origen` = `EXTERNO_WSP` (queda visible en filtros).
+- `etapa` = la inicial de la agencia (vía `etapaRepository.findFirstByAgenciaIdAndEsInicialTrue`).
+- Respeta `puedeRecibirNuevoContacto` — si el plan está al tope, se ignora con log informativo.
+
+Esto desencadena el `notificarCambio` habitual → la tarjeta aparece en el embudo en tiempo real con el último mensaje saliente, sin necesidad de reload.
+
+**`ChatNotification` (WebSocket payload)** — se agregó el campo `origenMensaje` con valores semánticos: `CLIENTE`, `CRM`, `EXTERNO_WSP`, `AGENTE_IA`. El helper `deducirOrigenMensaje` lo calcula a partir del `autor` y la dirección. El frontend lo usa para dibujar el ícono correcto sin tener que parsear strings.
+
+**`ChatModal.MessageBubble`** — cada mensaje saliente ahora muestra un pequeño ícono con tooltip al lado del nombre del autor:
+- `fa-mobile-screen-button` (ámbar) → mensaje enviado desde el celular del vendedor.
+- `fa-robot` (violeta) → mensaje del Agente IA.
+- `fa-desktop` (celeste) → mensaje enviado desde el CRM.
+
+El label `EXTERNO_WSP` se reemplaza por `Vendedor (celular)` para que sea legible.
+
+**`KanbanCard`** — la línea de preview del último mensaje:
+- Si el resumen empieza con `EXTERNO_WSP:` → se reemplaza por un ícono de celular ámbar + el texto del mensaje.
+- Si empieza con `AGENTE_IA:` o `IA_*:` → ícono de robot violeta + texto.
+- Caso contrario, comportamiento previo intacto.
+
+**Resultado:** el embudo y el chat muestran en tiempo real y de manera diferenciada **todos** los mensajes entrantes y salientes — sin importar si el vendedor escribió desde el CRM, desde su celular físico, o si fue el Agente IA quien respondió. Los números nuevos contactados desde el celular crean automáticamente una tarjeta pendiente de clasificar en la primera etapa del kanban.
+
+**Limitaciones conocidas:**
+- Mensajes salientes desde el celular en dispositivos de **propósito CAMPAÑAS** siguen sin registrarse (decisión de diseño: las campañas son envío masivo, no atención individual).
+- La captura desde el celular depende del evento `messages.upsert { fromMe: true }` de Baileys, que en modo "dispositivo compañero" no garantiza el 100% de entrega — limitación de plataforma documentada en Fase 0.
+
+**Archivos modificados:**
+- `Backend/src/service/WhatsAppService.java` — auto-creación de cliente pendiente + nuevo campo `origenMensaje` en `ChatNotification` + helper `deducirOrigenMensaje`.
+- `Frontend/src/components/kanban/ChatModal.jsx` — helper `deducirOrigenVisual` + ícono con tooltip en `MessageBubble` para cada mensaje saliente + label amigable para `EXTERNO_WSP`.
+- `Frontend/src/components/kanban/KanbanCard.jsx` — detección del prefijo de origen en `ultimoMensajeResumen` y reemplazo por ícono visual.
+
+---
+
+### Fase 7 — Tabs, CRUD y reorden del historial
+
+**Commit:** `feat(auditor-ia): fase 7`
+
+**Cambios:**
+
+**Migración Flyway V7** (`V7__ai_auditor_crud.sql`):
+- `ai_audit_report.nombre VARCHAR(255)` — etiqueta editable opcional.
+- `ai_audit_report.notas TEXT` — anotaciones internas del usuario.
+- `ai_audit_report.orden INT` — posición manual; `NULL` = orden por fecha desc.
+- Índice `idx_audit_report_agencia_orden(agencia_id, orden NULLS LAST, created_at DESC)`.
+
+**Repository** (`AiAuditReportRepository`):
+- Nuevo método `findAllForAgenciaSorted` con `@Query` JPQL: respeta el orden manual cuando hay `orden NOT NULL`, y cae a `createdAt DESC` para los reportes sin orden manual.
+
+**AuditController** — 3 endpoints nuevos:
+- `PATCH /api/v1/audit/reports/{id}` — body `{nombre, notas}` actualiza metadatos. Strings vacíos limpian, `null` mantiene el valor previo.
+- `DELETE /api/v1/audit/reports/{id}` — elimina el reporte. Confirma ownership por agencia antes de borrar.
+- `POST /api/v1/audit/reports/reorder` — body `{orden: [id1, id2, ...]}` aplica el orden manual. Sólo se aplica a reportes de la agencia del usuario; IDs ajenos se ignoran.
+- `getReports` ahora usa el orden con `orden NULLS LAST`.
+- `toMap` expone `nombre`, `notas`, `orden`.
+
+**Frontend `Auditoria.jsx`** — refactor mayor con tabs:
+- Topbar con **dos tabs**: "Reportes" (default) y "Configuración".
+- Tab **Reportes** mantiene el layout 2-pane (lista a la izquierda, detalle a la derecha), ahora con acciones por fila:
+  - ⬆️/⬇️ — mover arriba/abajo. Persiste el orden vía `POST /reorder`.
+  - ✏️ — abre modal de edición con campos nombre y notas.
+  - 🗑️ — abre modal de confirmación de eliminación.
+  - ⌄/⌃ — expandir/colapsar inline el resumen + notas del reporte directamente en la fila, sin tener que abrir el detalle completo.
+- El nombre del reporte se muestra como título principal cuando existe; si no, cae al timestamp.
+- Las notas se muestran como nota ámbar en el panel de detalle.
+- Skeleton loader (`ReportListSkeleton`) reemplaza al spinner crudo durante la carga.
+- Tab **Configuración** = formulario completo del auditor (toggle, procedimientos, horario, email, WhatsApp, dispositivo), movido íntegramente desde `AgenteIA.jsx`.
+- Botón "Auditar ahora" se deshabilita si la auditoría está apagada o no hay procedimientos configurados, con tooltip que apunta al tab Configuración.
+- Animaciones `fadeIn` y `slideUp` para modales y secciones expandibles.
+- Modal genérico reutilizable (`<Modal>`) con overlay oscuro y card centrada, soporta cierre por click-fuera.
+
+**Frontend `AgenteIA.jsx`** — limpieza:
+- Eliminada toda la sección JSX del auditor (244 líneas).
+- Eliminados states: `auditEnabled`, `auditProcedures`, `auditEmail`, `auditWhatsappPhone`, `auditDispositivoId`, `horarioInicio`, `horarioFin`, `dispositivos`, `auditSaveStatus`, `auditRunning`, `auditResult`.
+- Eliminado el `useEffect` de carga de config auditor y dispositivos.
+- Eliminadas funciones `runAuditNow` y `saveAuditConfig`.
+- Reemplazado por un comentario que apunta a `/auditoria` para evitar confusión a futuros mantenedores.
+
+**Archivos modificados:**
+- `Backend/src/db/migration/V7__ai_auditor_crud.sql` (nuevo)
+- `Backend/src/model/AiAuditReport.java` (nuevos campos `nombre`, `notas`, `orden` + getters/setters)
+- `Backend/src/repository/AiAuditReportRepository.java` (query JPQL con orden manual)
+- `Backend/src/controller/AuditController.java` (3 endpoints CRUD + `toMap` extendido)
+- `Frontend/src/pages/Auditoria.jsx` (refactor mayor con tabs + acciones por fila + subcomponentes)
+- `Frontend/src/pages/AgenteIA.jsx` (sección auditor removida)
+
+---
+
+### Fase 8 — Mobile responsive + time picker mejorado
+
+**Commit:** `feat(auditor-ia): fase 8`
+
+**Cambios:**
+
+**Hook `useIsMobile`** — interno a `Auditoria.jsx`, escucha `window.resize` y devuelve `true` cuando el viewport es < 768 px. Cleanup automático del listener.
+
+**Layout responsive del tab Reportes:**
+- Desktop (≥ 768 px) — mantiene el layout 2-pane: lista a la izquierda (320 px), detalle a la derecha.
+- Mobile (< 768 px) — patrón de "drill-down" típico:
+  - Sin reporte seleccionado → solo se ve la lista, ocupa todo el ancho.
+  - Con reporte seleccionado → la lista se oculta y aparece el detalle full-width, con un botón **"← Volver al historial"** arriba para regresar.
+- Esto evita el scroll horizontal y mantiene la legibilidad en pantallas pequeñas.
+
+**Form de configuración responsive (`ConfigForm`):**
+- Recibe la prop `isMobile`. En mobile aumenta `font-size` a `1rem` y `padding` a `12px 14px` para que los inputs sean cómodos al touch.
+- Botón de guardado más alto en mobile (`13px` de padding vertical, `0.95rem` de fuente).
+- Padding lateral de la página reducido en mobile para que el form respire bien.
+- `inputMode="email"` / `inputMode="numeric"` en los campos correspondientes para que el teclado virtual del dispositivo se adapte.
+- `autoComplete="email"` y `autoComplete="tel"` para sugerir valores guardados del navegador.
+
+**Time picker con presets — `<TimeRangePicker>`:**
+- Mantiene los dos inputs nativos `<input type="time">` (con buen soporte cross-platform).
+- Debajo agrega 4 chips de preset rápidos: **Mañana** (08-13), **Tarde** (14-18), **Día completo** (09-18), **24 hs** (00-23:59).
+- El chip activo (cuando el rango actual coincide con un preset) se resalta en violeta.
+- Click en un chip aplica ambos valores de una sola vez.
+
+**Validación inicio < fin:**
+- Si `horarioInicio >= horarioFin`, se muestra un mensaje rojo bajo el picker: _"La hora de inicio debe ser menor a la de fin."_
+- El botón "Guardar configuración" se deshabilita visualmente (opacity 0.5, cursor not-allowed) hasta que el rango sea válido.
+
+**Polish complementario** (ya incorporado entre Fases 5-7, listado acá para inventario):
+- Animaciones `fadeIn` (secciones expandibles, modales) y `slideUp` (entrada de modales) ya están en place.
+- Skeleton loader (`ReportListSkeleton`) reemplaza el spinner crudo al cargar el historial.
+- Badges con ícono + color por estado: ✅ Cumplido / ⚠️ Parcial / ❌ Incumplido (en procedimientos) y verde/amarillo/rojo en los chips del header.
+- Tooltips (`title` attribute) en los campos del form vía componente `<Field>` con ícono `fa-circle-question`.
+- Botones principales con `fa-spinner fa-spin` durante operaciones async (`saveConfig`, `runAudit`, `saveMeta`).
+- Sistema de colores y tipografías ya alineado con el resto del dashboard (clase `db-root` con `--db-accent`, paleta violeta `#a78bfa`).
+
+**Archivos modificados:**
+- `Frontend/src/pages/Auditoria.jsx` — hook `useIsMobile`, layout drill-down en mobile, prop `isMobile` propagada a `ConfigForm`, componente `<TimeRangePicker>` con presets + validación, atributos `inputMode`/`autoComplete` en inputs.
+
+---
+
 ## Configuración necesaria
 
 No se requieren variables de entorno nuevas — el módulo usa las ya existentes:

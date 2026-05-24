@@ -50,6 +50,17 @@ public class AiAuditReport {
     @Column(name = "tokens_usados", nullable = false)
     private int tokensUsados = 0;
 
+    // Metadatos editables por el usuario (Fase 7 — CRUD del historial)
+    @Column(length = 255)
+    private String nombre;
+
+    @Column(columnDefinition = "TEXT")
+    private String notas;
+
+    // orden manual del historial. NULL = orden por created_at DESC (default).
+    @Column
+    private Integer orden;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -80,6 +91,15 @@ public class AiAuditReport {
 
     public int getTokensUsados() { return tokensUsados; }
     public void setTokensUsados(int tokensUsados) { this.tokensUsados = tokensUsados; }
+
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+
+    public String getNotas() { return notas; }
+    public void setNotas(String notas) { this.notas = notas; }
+
+    public Integer getOrden() { return orden; }
+    public void setOrden(Integer orden) { this.orden = orden; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

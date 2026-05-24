@@ -84,6 +84,8 @@ export default function MainLayout() {
     const token = localStorage.getItem('token');
     const { agenciaId, loading } = useUser();
     const { playConnect, playDisconnect, playNotification } = useAudio();
+    const { t } = useLanguage();
+    const [helpOpen, setHelpOpen] = useState(false);
 
     // Cache sessionId → alias para mostrar el nombre real del dispositivo
     const deviceCacheRef = useRef({});
@@ -125,7 +127,9 @@ export default function MainLayout() {
                     window.__crmOnlineUsers = new Set(users);
                     window.dispatchEvent(new CustomEvent('crm:presence-updated', { detail: users }));
                 }
-            } catch {}
+            } catch (err) {
+                console.warn('Presence payload inválido:', err);
+            }
         });
 
         // Enviar heartbeat periódico para mantener la presencia activa
@@ -174,7 +178,9 @@ export default function MainLayout() {
                         pushBrowserNotif(title, message);
                     }
                 }
-            } catch {}
+            } catch (err) {
+                console.warn('Embudo payload inválido:', err);
+            }
         });
 
         client.subscribe(`/topic/agencia/${agenciaId}`, (msg) => {
@@ -193,7 +199,9 @@ export default function MainLayout() {
                     pushBrowserNotif(t('notif.teamRequest'), `${nombre} ${t('notif.teamRequestMsg')}`);
                     window.dispatchEvent(new CustomEvent('crm:nueva-solicitud', { detail: data }));
                 }
-            } catch {}
+            } catch (err) {
+                console.warn('Agencia payload inválido:', err);
+            }
         });
 
         client.subscribe(`/topic/bot/${agenciaId}`, (msg) => {
@@ -240,12 +248,11 @@ export default function MainLayout() {
                         refreshAndNotify(deviceCacheRef.current);
                     });
                 }
-            } catch {}
+            } catch (err) {
+                console.warn('Bot status payload inválido:', err);
+            }
         });
     });
-
-    const { t } = useLanguage();
-    const [helpOpen, setHelpOpen] = useState(false);
 
     if (!token) return <Navigate to="/login" replace />;
     if (loading) return <div className="app-loading" />;

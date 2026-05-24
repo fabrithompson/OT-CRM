@@ -90,12 +90,15 @@ function AddDeviceModal({ active, onClose, onCreated }) {
     const pollRef = useRef(null);
     const toast   = useToast();
 
+    // Reset del form cuando el modal se cierra (active=false). Side effect intencional.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (!active) {
             setAlias(''); setQr(null); setDevice(null); setStatusMsg('');
             if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
         }
     }, [active]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const crear = async () => {
         if (!alias.trim()) { toast('Aviso', 'Poné un alias', C_AMBER); return; }
@@ -181,6 +184,8 @@ function ContactosPanel({ deviceId, contactos, onReload }) {
     const fileRef = useRef(null);
     const toast   = useToast();
 
+    // Reset de la selección cuando cambia el device activo (intencional).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { setSeleccionados(new Set()); }, [deviceId]);
 
     const importar = async (e) => {
@@ -388,9 +393,12 @@ function CrearPlanModal({ active, onClose, onCreated, devices }) {
     const [saving, setSaving]           = useState(false);
     const toast = useToast();
 
+    // Reset del form cuando el modal se cierra (intencional).
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (!active) { setNombre(''); setSelDevices(new Set()); setMsgs(10); setTextoActual(''); setTextos([]); setSaving(false); }
     }, [active]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const toggleDevice = (id) => setSelDevices(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
     const agregarTexto = () => { const t = textoActual.trim(); if (!t) return; setTextos(p => [...p, t]); setTextoActual(''); };
@@ -514,6 +522,8 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
     const [planes, setPlanes]               = useState([]);
     const [historial, setHistorial]         = useState(null);
     const [loadingHistorial, setLoadingH]   = useState(false);
+    const [planAEliminar, setPlanAEliminar] = useState(null); // { id, nombre } | null
+    const [eliminando, setEliminando]       = useState(false);
     const toast = useToast();
 
     const loadPlanes = useCallback(async () => {
@@ -521,14 +531,27 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
         } catch { toast('Error', 'No se pudieron cargar los planes', C_RED); }
     }, [toast]);
 
+    // Fetch on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { loadPlanes(); }, [loadPlanes]);
 
     const pausar   = async (id) => { try { await api.patch(`/calentamiento/planes/${id}/pausar`);   loadPlanes(); } catch (err) { toast('Error', err.response?.data?.error || 'Error', C_RED); } };
     const reanudar = async (id) => { try { await api.patch(`/calentamiento/planes/${id}/reanudar`); loadPlanes(); } catch (err) { toast('Error', err.response?.data?.error || 'Error', C_RED); } };
-    const eliminar = async (id) => {
-        if (!confirm('¿Eliminar este plan? Se borrarán todos los envíos.')) return;
-        try { await api.delete(`/calentamiento/planes/${id}`); toast('Eliminado', '', C_GREEN); if (historial?.planId === id) setHistorial(null); loadPlanes();
-        } catch (err) { toast('Error', err.response?.data?.error || 'Error', C_RED); }
+    const pedirEliminar = (plan) => setPlanAEliminar({ id: plan.id, nombre: plan.nombre });
+    const confirmarEliminar = async () => {
+        if (!planAEliminar) return;
+        setEliminando(true);
+        try {
+            await api.delete(`/calentamiento/planes/${planAEliminar.id}`);
+            toast('Eliminado', '', C_GREEN);
+            if (historial?.planId === planAEliminar.id) setHistorial(null);
+            setPlanAEliminar(null);
+            loadPlanes();
+        } catch (err) {
+            toast('Error', err.response?.data?.error || 'Error', C_RED);
+        } finally {
+            setEliminando(false);
+        }
     };
     const verHistorial = async (id) => {
         if (historial?.planId === id) { setHistorial(null); return; }
@@ -600,7 +623,7 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
                                         ? <button onClick={() => pausar(plan.id)} style={btnGhost} title="Pausar"><i className="fas fa-pause" /></button>
                                         : <button onClick={() => reanudar(plan.id)} style={{ ...btnGhost, color: C_GREEN }} title="Reanudar"><i className="fas fa-play" /></button>
                                     }
-                                    <button onClick={() => eliminar(plan.id)} style={btnDanger} title="Eliminar"><i className="fas fa-trash-alt" /></button>
+                                    <button onClick={() => pedirEliminar(plan)} style={btnDanger} title="Eliminar"><i className="fas fa-trash-alt" /></button>
                                 </div>
                             </div>
                         </div>
@@ -648,6 +671,34 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
             )}
 
             <CrearPlanModal active={showModal} onClose={onCloseModal} onCreated={loadPlanes} devices={devices} />
+
+            {/* Confirmación de eliminación de plan */}
+            {planAEliminar && (
+                <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+                    onClick={(e) => { if (e.target === e.currentTarget && !eliminando) setPlanAEliminar(null); }}>
+                    <div className="custom-modal" style={{ maxWidth: 420 }}>
+                        <h3 style={{ margin: '0 0 14px', fontSize: '1.1rem', color: C_TEXT }}>
+                            <i className="fas fa-exclamation-triangle" style={{ color: C_RED, marginRight: 8 }} />
+                            Eliminar plan
+                        </h3>
+                        <p style={{ color: C_MUTED2, fontSize: '0.88rem', lineHeight: 1.55, margin: '0 0 18px' }}>
+                            ¿Seguro que querés eliminar <strong style={{ color: C_TEXT }}>{planAEliminar.nombre}</strong>?
+                            Se borrarán todos los envíos asociados. Esta acción no se puede deshacer.
+                        </p>
+                        <div className="modal-actions">
+                            <button className="btn-modal btn-cancel"
+                                onClick={() => setPlanAEliminar(null)} disabled={eliminando}>
+                                Cancelar
+                            </button>
+                            <button className="btn-modal btn-confirm"
+                                style={{ background: C_RED }}
+                                onClick={confirmarEliminar} disabled={eliminando}>
+                                {eliminando ? <i className="fas fa-spinner fa-spin" /> : 'Eliminar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -762,19 +813,10 @@ export default function Spam() {
     const toast               = useToast();
     const { agenciaId, usuario, loading: loadingUser } = useUser();
 
-    // ── Gate: solo PRO, BUSINESS y ENTERPRISE tienen acceso a campañas ─────────
-    if (loadingUser) {
-        return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#07070a' }}>
-                <div className="spinner" />
-            </div>
-        );
-    }
     // Fallback al nombre si el backend (versión vieja) aún no envía el flag.
     const planNombre = usuario?.plan?.nombre || 'FREE';
     const campaniasHabilitadas = usuario?.plan?.campaniasHabilitadas === true
         || (planNombre !== 'FREE' && usuario?.plan?.campaniasHabilitadas !== false);
-    if (!campaniasHabilitadas) return <UpgradeWall />;
 
     const [tab, setTab]               = useState('campanas');
     const [devices, setDevices]       = useState([]);
@@ -799,25 +841,30 @@ export default function Spam() {
     const loadContactos = useCallback(async (id) => {
         if (!id) { setContactos([]); return; }
         try { const { data } = await api.get(`/campania/devices/${id}/contactos`); setContactos(data || []);
-        } catch { /* silencio */ }
+        } catch (err) { console.warn('Spam: no se pudieron cargar contactos:', err); }
     }, []);
 
     const loadBandeja = useCallback(async (id) => {
         if (!id) { setBandeja([]); return; }
         try { const { data } = await api.get(`/campania/devices/${id}/bandeja`); setBandeja(data || []);
-        } catch { /* silencio */ }
+        } catch (err) { console.warn('Spam: no se pudo cargar la bandeja:', err); }
     }, []);
 
     const loadMensajes = useCallback(async (id) => {
         if (!id) { setMensajes([]); return; }
         try { const { data } = await api.get(`/campania/contactos/${id}/mensajes`); setMensajes(data || []);
-        } catch { /* silencio */ }
+        } catch (err) { console.warn('Spam: no se pudieron cargar mensajes:', err); }
     }, []);
 
+    // Fetch on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { loadDevices(); }, [loadDevices]);
+    // Cuando cambia el device activo: recarga sus datos y resetea selección de contacto.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (deviceActivoId) { loadContactos(deviceActivoId); loadBandeja(deviceActivoId); setCtActivo(null); setMensajes([]); }
     }, [deviceActivoId, loadContactos, loadBandeja]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     useWebSocket(agenciaId, () => { }, (client) => {
         // Estado de los dispositivos (SCAN_QR / CONNECTED / DISCONNECTED) vía /topic/bot
@@ -836,7 +883,9 @@ export default function Spam() {
                 });
                 // CONNECTED recarga para tomar el número de teléfono detectado por el bot
                 if (p.status === 'CONNECTED' || p.tipo === 'CONNECTED') loadDevices();
-            } catch { /* ignorar */ }
+            } catch (err) {
+                console.warn('Spam bot payload inválido:', err);
+            }
         });
 
         // Eventos del módulo de campañas vía /topic/campania
@@ -896,18 +945,29 @@ export default function Spam() {
                     if (devActivoRef.current === p.deviceId) loadBandeja(p.deviceId);
                     return;
                 }
-            } catch { /* ignorar */ }
+            } catch (err) {
+                console.warn('Spam campania payload inválido:', err);
+            }
         });
     });
 
-    const eliminarDevice = async (id) => {
-        if (!confirm('¿Eliminar este número? Se borran sus contactos, chats y plantillas.')) return;
+    const [deviceAEliminar, setDeviceAEliminar] = useState(null); // { id, alias } | null
+    const [eliminandoDevice, setEliminandoDevice] = useState(false);
+    const pedirEliminarDevice = (d) => setDeviceAEliminar({ id: d.id, alias: d.alias || d.numeroTelefono || `#${d.id}` });
+    const confirmarEliminarDevice = async () => {
+        if (!deviceAEliminar) return;
+        setEliminandoDevice(true);
         try {
-            await api.delete(`/campania/devices/${id}`);
+            await api.delete(`/campania/devices/${deviceAEliminar.id}`);
             toast('Eliminado', 'Número y sus chats borrados', C_GREEN);
-            if (deviceActivoId === id) { setDevActivo(null); setContactos([]); setBandeja([]); setCtActivo(null); setMensajes([]); }
+            if (deviceActivoId === deviceAEliminar.id) { setDevActivo(null); setContactos([]); setBandeja([]); setCtActivo(null); setMensajes([]); }
+            setDeviceAEliminar(null);
             loadDevices();
-        } catch (err) { toast('Error', err.response?.data?.error || 'Error eliminando', C_RED); }
+        } catch (err) {
+            toast('Error', err.response?.data?.error || 'Error eliminando', C_RED);
+        } finally {
+            setEliminandoDevice(false);
+        }
     };
 
     const seleccionarContacto = (item) => { setCtActivo(item); loadMensajes(item.contactoId); };
@@ -916,6 +976,16 @@ export default function Spam() {
         loadMensajes(contactoId);
         if (deviceActivoId) loadBandeja(deviceActivoId);
     };
+
+    // ── Gates (después de todos los hooks para no romper Rules of Hooks) ──────
+    if (loadingUser) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#07070a' }}>
+                <div className="spinner" />
+            </div>
+        );
+    }
+    if (!campaniasHabilitadas) return <UpgradeWall />;
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
@@ -985,7 +1055,7 @@ export default function Spam() {
                             </select>
                         )}
                         {deviceActivoId && (
-                            <button onClick={() => eliminarDevice(deviceActivoId)} style={btnDanger} title="Eliminar número activo">
+                            <button onClick={() => pedirEliminarDevice(devices.find(d => d.id === deviceActivoId) || { id: deviceActivoId })} style={btnDanger} title="Eliminar número activo">
                                 <i className="fas fa-trash-alt" />
                             </button>
                         )}
@@ -1031,6 +1101,34 @@ export default function Spam() {
             </div>
 
             <AddDeviceModal active={showAddModal} onClose={() => setShowAdd(false)} onCreated={loadDevices} />
+
+            {/* Confirmación de eliminación de dispositivo */}
+            {deviceAEliminar && (
+                <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+                    onClick={(e) => { if (e.target === e.currentTarget && !eliminandoDevice) setDeviceAEliminar(null); }}>
+                    <div className="custom-modal" style={{ maxWidth: 420 }}>
+                        <h3 style={{ margin: '0 0 14px', fontSize: '1.1rem', color: C_TEXT }}>
+                            <i className="fas fa-exclamation-triangle" style={{ color: C_RED, marginRight: 8 }} />
+                            Eliminar número
+                        </h3>
+                        <p style={{ color: C_MUTED2, fontSize: '0.88rem', lineHeight: 1.55, margin: '0 0 18px' }}>
+                            ¿Seguro que querés eliminar <strong style={{ color: C_TEXT }}>{deviceAEliminar.alias}</strong>?
+                            Se borran sus contactos, chats y plantillas. Esta acción no se puede deshacer.
+                        </p>
+                        <div className="modal-actions">
+                            <button className="btn-modal btn-cancel"
+                                onClick={() => setDeviceAEliminar(null)} disabled={eliminandoDevice}>
+                                Cancelar
+                            </button>
+                            <button className="btn-modal btn-confirm"
+                                style={{ background: C_RED }}
+                                onClick={confirmarEliminarDevice} disabled={eliminandoDevice}>
+                                {eliminandoDevice ? <i className="fas fa-spinner fa-spin" /> : 'Eliminar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

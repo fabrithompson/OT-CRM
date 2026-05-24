@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import api from '../../utils/api';
 
+// Este archivo exporta el hook useSlashCommands + el componente SlashMenu, que están
+// acoplados por diseño (el hook produce las suggestions que el menú renderiza).
+// eslint-disable-next-line react-refresh/only-export-components
 export default function useSlashCommands(msgInput, setMsgInput) {
-    const [commands, setCommands]     = useState([]);
-    const [suggestions, setSuggestions] = useState([]);
-    const [activeIdx, setActiveIdx]   = useState(0);
+    const [commands, setCommands]       = useState([]);
+    const [rawActiveIdx, setActiveIdx]  = useState(0);
     const loaded = useRef(false);
 
     useEffect(() => {
@@ -13,24 +15,26 @@ export default function useSlashCommands(msgInput, setMsgInput) {
         loaded.current = true;
         api.get('/respuestas-rapidas')
             .then(res => setCommands(res.data || []))
-            .catch(() => {});
+            .catch((err) => { console.warn('Slash commands: no se pudieron cargar:', err); });
     }, []);
 
-    useEffect(() => {
-        if (!msgInput.startsWith('/') || msgInput.length < 2) {
-            setSuggestions([]);
-            return;
-        }
+    // Derivado puro: sugerencias = commands filtradas por el query actual.
+    // useMemo evita el ciclo setState→render→useEffect→setState.
+    const suggestions = useMemo(() => {
+        if (!msgInput.startsWith('/') || msgInput.length < 2) return [];
         const query = msgInput.slice(1).toLowerCase();
-        setSuggestions(
-            commands.filter(c => c.atajo.toLowerCase().startsWith(query)).slice(0, 6)
-        );
-        setActiveIdx(0);
+        return commands.filter(c => c.atajo.toLowerCase().startsWith(query)).slice(0, 6);
     }, [msgInput, commands]);
 
+    // Clamp en render para que activeIdx siempre apunte a una sugerencia válida,
+    // sin tener que sincronizar con useEffect+setState.
+    const activeIdx = suggestions.length > 0
+        ? Math.min(rawActiveIdx, suggestions.length - 1)
+        : 0;
+
     const apply = useCallback((cmd) => {
+        // Al setear msgInput sin slash inicial, useMemo recomputa suggestions = [].
         setMsgInput(cmd.respuesta);
-        setSuggestions([]);
     }, [setMsgInput]);
 
     const handleKeyDown = useCallback((e) => {
@@ -47,9 +51,10 @@ export default function useSlashCommands(msgInput, setMsgInput) {
                 apply(suggestions[activeIdx]);
             }
         } else if (e.key === 'Escape') {
-            setSuggestions([]);
+            // Limpiar el input para que useMemo recompute suggestions = [].
+            setMsgInput('');
         }
-    }, [suggestions, activeIdx, apply]);
+    }, [suggestions, activeIdx, apply, setMsgInput]);
 
     return { suggestions, activeIdx, apply, handleKeyDown };
 }

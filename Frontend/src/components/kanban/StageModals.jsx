@@ -88,11 +88,12 @@ CreateStageModal.propTypes = {
 CreateStageModal.defaultProps = { agenciaId: null };
 
 // ─── Edit Stage Modal ────────────────────────────────────────────────────────
+// El consumidor pasa key={stage?.id} en el <EditStageModal/> para que React
+// desmonte/monte cuando cambia la etapa editada — así el initial state del
+// useState refleja siempre la etapa actual sin necesidad de useEffect+setState.
 export function EditStageModal({ show, onClose, stage }) {
     const [nombre, setNombre]   = useState(stage?.nombre || '');
     const [loading, setLoading] = useState(false);
-
-    React.useEffect(() => { setNombre(stage?.nombre || ''); }, [stage]);
 
     const handleSave = async () => {
         if (!nombre.trim() || !stage) return;

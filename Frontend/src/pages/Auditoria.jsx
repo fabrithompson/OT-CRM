@@ -1,18 +1,34 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+
+// Hook simple para detectar viewport mobile (< 768px). Listener de resize
+// con cleanup; suficiente para decisiones de layout en este módulo.
+function useIsMobile(breakpoint = 768) {
+    const [isMobile, setIsMobile] = useState(() =>
+        typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+    );
+    useEffect(() => {
+        const onResize = () => setIsMobile(window.innerWidth < breakpoint);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, [breakpoint]);
+    return isMobile;
+}
 import { Navigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LangContext';
 import '../assets/css/dashboard.css';
 
 const SEV_COLOR = { alta: '#ef4444', media: '#f59e0b', baja: '#94a3b8' };
 const SEV_BG    = { alta: 'rgba(239,68,68,0.10)', media: 'rgba(245,158,11,0.10)', baja: 'rgba(148,163,184,0.08)' };
 
-// Mapeo del estado de cumplimiento por punto de procedimiento al esquema visual
+// Esquema visual por estado de cumplimiento. El label se resuelve por i18n en
+// tiempo de render (t('auditor.states.<estado>')), no se hardcodea acá.
 const ESTADO_META = {
-    cumplido:    { icon: 'fa-circle-check',        label: 'Cumplido',     color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.30)' },
-    parcial:     { icon: 'fa-circle-exclamation',  label: 'Parcial',      color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.30)' },
-    incumplido:  { icon: 'fa-circle-xmark',        label: 'Incumplido',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.30)' },
+    cumplido:    { icon: 'fa-circle-check',        color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.30)' },
+    parcial:     { icon: 'fa-circle-exclamation',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.30)' },
+    incumplido:  { icon: 'fa-circle-xmark',        color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.30)' },
 };
 
 function fmtDate(iso) {
@@ -48,11 +64,35 @@ function parseReportPayload(json) {
     }
 }
 
+// Modal genérico (overlay oscuro + card central)
+function Modal({ children, onClose }) {
+    return (
+        <div onClick={onClose} style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+            zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.15s ease-out', padding: 20,
+        }}>
+            <div onClick={e => e.stopPropagation()} style={{
+                background: '#111118', border: '1px solid rgba(255,255,255,0.10)',
+                borderRadius: 14, maxWidth: 460, width: '100%', padding: 22,
+                animation: 'slideUp 0.18s ease-out',
+            }}>
+                {children}
+            </div>
+        </div>
+    );
+}
+
 export default function Auditoria() {
     const { usuario, loading: userLoading } = useUser();
     const toast = useToast();
+    const { t } = useLanguage();
+    const isMobile = useIsMobile();
     const isEnterprise = usuario?.plan?.agenteIaHabilitado === true
         || usuario?.plan?.nombre === 'ENTERPRISE';
+
+    // Tab actual: reportes | config
+    const [tab, setTab] = useState('reportes');
 
     const [reports, setReports]           = useState([]);
     const [selected, setSelected]         = useState(null);
@@ -62,6 +102,22 @@ export default function Auditoria() {
     const [hideFP, setHideFP]             = useState(true);
     // Estado por reporte: qué puntos de procedimiento están expandidos
     const [expandedProcs, setExpandedProcs] = useState({});
+    // Estado por reporte: qué fila del historial está expandida inline
+    const [rowExpanded, setRowExpanded] = useState({});
+
+    // Edición inline de nombre/notas + confirmación de eliminación
+    const [editingMeta, setEditingMeta] = useState(null);   // { id, nombre, notas } o null
+    const [deleting, setDeleting]       = useState(null);   // reporte a eliminar o null
+
+    // Estado de configuración del auditor (movido desde AgenteIA.jsx)
+    const [cfg, setCfg] = useState({
+        auditEnabled: false, auditProcedures: '', auditEmail: '',
+        auditWhatsappPhone: '', auditDispositivoId: '',
+        horarioInicio: '09:00', horarioFin: '18:00',
+    });
+    const [dispositivos, setDispositivos]   = useState([]);
+    const [cfgSaving, setCfgSaving]         = useState(false);
+    const [cfgSaved, setCfgSaved]           = useState(false);
 
     const loadReports = useCallback(async () => {
         try {
@@ -77,10 +133,28 @@ export default function Auditoria() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Carga inicial: reportes + config + dispositivos (fetch-on-mount con setState es legítimo).
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (!isEnterprise || userLoading) return;
         loadReports();
+        api.get('/agent-config/audit').then(res => {
+            const d = res.data || {};
+            setCfg({
+                auditEnabled: d.auditEnabled || false,
+                auditProcedures: d.auditProcedures || '',
+                auditEmail: d.auditEmail || '',
+                auditWhatsappPhone: d.auditWhatsappPhone || '',
+                auditDispositivoId: d.auditDispositivoId ? String(d.auditDispositivoId) : '',
+                horarioInicio: d.horarioInicio || '09:00',
+                horarioFin: d.horarioFin || '18:00',
+            });
+        }).catch(() => { /* silencioso */ });
+        api.get('/whatsapp').then(res => {
+            setDispositivos(Array.isArray(res.data) ? res.data : []);
+        }).catch(() => { /* silencioso */ });
     }, [isEnterprise, userLoading, loadReports]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const runAudit = async () => {
         setRunLoading(true);
@@ -94,16 +168,16 @@ export default function Auditoria() {
             const sentEmail = res.data?.sentEmail === true;
             const sentWa    = res.data?.sentWhatsapp === true;
             if (sentEmail && sentWa) {
-                toast('Reporte enviado', 'Email y WhatsApp despachados correctamente.', '#10b981');
+                toast(t('auditor.toasts.sentTitle'), t('auditor.toasts.sentBoth'), '#10b981');
             } else if (sentEmail) {
-                toast('Reporte enviado', 'Email despachado. WhatsApp no configurado o no enviado.', '#3b82f6');
+                toast(t('auditor.toasts.sentTitle'), t('auditor.toasts.sentEmailOnly'), '#3b82f6');
             } else if (sentWa) {
-                toast('Reporte enviado', 'WhatsApp despachado. Email no configurado o no enviado.', '#3b82f6');
+                toast(t('auditor.toasts.sentTitle'), t('auditor.toasts.sentWhatsappOnly'), '#3b82f6');
             } else {
-                toast('Auditoría lista', 'Sin destinos configurados — el reporte quedó disponible en el panel.', '#f59e0b');
+                toast(t('auditor.toasts.readyTitle'), t('auditor.toasts.sentNone'), '#f59e0b');
             }
         } catch (err) {
-            const msg = err?.response?.data?.error || 'Error al ejecutar la auditoría';
+            const msg = err?.response?.data?.error || t('auditor.toasts.runError');
             setRunError(msg);
             toast('Error', msg, '#ef4444');
         } finally {
@@ -119,12 +193,83 @@ export default function Auditoria() {
         } catch { /* silencioso */ }
     };
 
+    // Persistir orden manual del historial cuando el usuario mueve filas
+    const persistOrden = useCallback(async (lista) => {
+        try {
+            await api.post('/audit/reports/reorder', { orden: lista.map(r => r.id) });
+        } catch {
+            toast('Error', t('auditor.toasts.reorderError'), '#ef4444');
+        }
+    }, [toast, t]);
+
+    const moveReport = (id, delta) => {
+        setReports(prev => {
+            const idx = prev.findIndex(r => r.id === id);
+            if (idx < 0) return prev;
+            const target = idx + delta;
+            if (target < 0 || target >= prev.length) return prev;
+            const next = [...prev];
+            [next[idx], next[target]] = [next[target], next[idx]];
+            persistOrden(next);
+            return next;
+        });
+    };
+
+    const saveMeta = async () => {
+        if (!editingMeta) return;
+        try {
+            const res = await api.patch(`/audit/reports/${editingMeta.id}`, {
+                nombre: editingMeta.nombre, notas: editingMeta.notas,
+            });
+            setReports(prev => prev.map(r => r.id === editingMeta.id ? res.data : r));
+            if (selected?.id === editingMeta.id) setSelected(res.data);
+            setEditingMeta(null);
+            toast(t('auditor.toasts.updateSuccessTitle'), t('auditor.toasts.updateSuccess'), '#10b981');
+        } catch {
+            toast('Error', t('auditor.toasts.updateError'), '#ef4444');
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!deleting) return;
+        const id = deleting.id;
+        try {
+            await api.delete(`/audit/reports/${id}`);
+            setReports(prev => prev.filter(r => r.id !== id));
+            if (selected?.id === id) setSelected(null);
+            setDeleting(null);
+            toast(t('auditor.toasts.deleteSuccessTitle'), t('auditor.toasts.deleteSuccess'), '#10b981');
+        } catch {
+            toast('Error', t('auditor.toasts.deleteError'), '#ef4444');
+        }
+    };
+
+    const saveConfig = async () => {
+        setCfgSaving(true);
+        try {
+            await api.put('/agent-config/audit', {
+                ...cfg,
+                auditDispositivoId: cfg.auditDispositivoId ? Number(cfg.auditDispositivoId) : null,
+            });
+            setCfgSaved(true);
+            setTimeout(() => setCfgSaved(false), 2200);
+            toast(t('auditor.toasts.configSavedTitle'), t('auditor.toasts.configSaved'), '#10b981');
+        } catch (err) {
+            const msg = err?.response?.data?.error || t('auditor.toasts.configError');
+            toast('Error', msg, '#ef4444');
+        } finally {
+            setCfgSaving(false);
+        }
+    };
+
     const payload = useMemo(
         () => selected ? parseReportPayload(selected.hallazgosJson) : { resumen_ejecutivo: '', procedimientos: [], hallazgos: [] },
         [selected]
     );
 
-    // Al cambiar de reporte: expandimos por defecto los puntos no cumplidos
+    // Al cambiar de reporte: expandimos por defecto los puntos no cumplidos.
+    // Sólo nos interesa cuando cambia el id del reporte y su payload, no la referencia entera.
+    /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
     useEffect(() => {
         if (!selected) return;
         const next = {};
@@ -133,11 +278,12 @@ export default function Auditoria() {
         });
         setExpandedProcs(next);
     }, [selected?.id, payload.procedimientos]);
+    /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
     if (userLoading || !usuario || !usuario.plan) {
         return (
             <div className="db-root" style={{ alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>Cargando...</span>
+                <span style={{ color: 'rgba(255,255,255,0.5)' }}>{t('common.loading')}</span>
             </div>
         );
     }
@@ -156,48 +302,68 @@ export default function Auditoria() {
     return (
         <div className="db-root" style={{ '--db-accent': '#a78bfa', height: '100%', overflow: 'hidden' }}>
 
-            {/* Topbar */}
-            <div className="db-topbar" style={{ flexShrink: 0 }}>
-                <div>
-                    <div className="db-greeting" style={{ fontSize: 'clamp(1.1rem, 2vw, 1.45rem)' }}>
-                        <i className="fa-solid fa-magnifying-glass-chart"
-                           style={{ marginRight: 10, color: '#a78bfa' }} />
-                        Auditoría IA
+            {/* Topbar con tabs */}
+            <div className="db-topbar" style={{ flexShrink: 0, alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
+                    <div>
+                        <div className="db-greeting" style={{ fontSize: 'clamp(1.1rem, 2vw, 1.45rem)' }}>
+                            <i className="fa-solid fa-magnifying-glass-chart"
+                               style={{ marginRight: 10, color: '#a78bfa' }} />
+                            {t('auditor.title')}
+                        </div>
+                        <div className="db-subtitle">
+                            {tab === 'reportes'
+                                ? t('auditor.subtitleReports')
+                                : t('auditor.subtitleConfig')}
+                        </div>
                     </div>
-                    <div className="db-subtitle">
-                        Historial de reportes — revisión de procedimientos de atención
+                    <div style={{ display: 'flex', gap: 4 }}>
+                        <TabButton active={tab === 'reportes'} onClick={() => setTab('reportes')}
+                                   icon="fa-list-ul" label={t('auditor.tabs.reports')} count={reports.length} />
+                        <TabButton active={tab === 'config'} onClick={() => setTab('config')}
+                                   icon="fa-gear" label={t('auditor.tabs.config')} />
                     </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {runError && (
-                        <span style={{ fontSize: '0.78rem', color: '#ef4444', maxWidth: 240 }}>{runError}</span>
-                    )}
-                    <button
-                        onClick={runAudit}
-                        disabled={runLoading}
-                        className="btn-primary"
-                        style={{ background: 'rgba(167,139,250,0.85)', color: '#fff', whiteSpace: 'nowrap' }}
-                    >
-                        <i className={`fa-solid ${runLoading ? 'fa-spinner fa-spin' : 'fa-microscope'}`}
-                           style={{ marginRight: 6 }} />
-                        {runLoading ? 'Analizando...' : 'Auditar ahora'}
-                    </button>
-                </div>
+                {tab === 'reportes' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {runError && (
+                            <span style={{ fontSize: '0.78rem', color: '#ef4444', maxWidth: 240 }}>{runError}</span>
+                        )}
+                        <button
+                            onClick={runAudit}
+                            disabled={runLoading || !cfg.auditEnabled || !cfg.auditProcedures.trim()}
+                            title={!cfg.auditEnabled || !cfg.auditProcedures.trim() ? t('auditor.runDisabledTip') : ''}
+                            className="btn-primary"
+                            style={{
+                                background: 'rgba(167,139,250,0.85)', color: '#fff', whiteSpace: 'nowrap',
+                                opacity: (!cfg.auditEnabled || !cfg.auditProcedures.trim()) ? 0.5 : 1,
+                                cursor: (!cfg.auditEnabled || !cfg.auditProcedures.trim()) ? 'not-allowed' : 'pointer',
+                            }}
+                        >
+                            <i className={`fa-solid ${runLoading ? 'fa-spinner fa-spin' : 'fa-microscope'}`}
+                               style={{ marginRight: 6 }} />
+                            {runLoading ? t('auditor.analyzing') : t('auditor.runNow')}
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {/* Main */}
-            <div style={{ display: 'flex', gap: 14, flex: 1, overflow: 'hidden', minHeight: 0 }}>
-
-                {/* LEFT: lista de reportes */}
+            {/* Tab Reportes */}
+            {tab === 'reportes' && (
                 <div style={{
-                    width: 260, flexShrink: 0, overflowY: 'auto', display: 'flex',
+                    display: 'flex', gap: 14, flex: 1, overflow: 'hidden', minHeight: 0,
+                    // En mobile apilamos vertical y mostramos lista o detalle, no ambos
+                    flexDirection: isMobile ? 'column' : 'row',
+                }}>
+
+                {/* LEFT: lista de reportes con acciones (oculta en mobile cuando hay detalle abierto) */}
+                <div style={{
+                    width: isMobile ? '100%' : 320,
+                    flexShrink: 0, overflowY: 'auto', display: (isMobile && selected) ? 'none' : 'flex',
                     flexDirection: 'column', gap: 8,
                 }}>
                     {loadingList ? (
-                        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.85rem', padding: 12 }}>
-                            <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: 6 }} />
-                            Cargando reportes...
-                        </div>
+                        <ReportListSkeleton />
                     ) : reports.length === 0 ? (
                         <div style={{
                             color: 'rgba(255,255,255,0.30)', fontSize: '0.82rem',
@@ -205,56 +371,29 @@ export default function Auditoria() {
                         }}>
                             <i className="fa-solid fa-folder-open"
                                style={{ fontSize: '1.8rem', marginBottom: 8, display: 'block', opacity: 0.4 }} />
-                            Aún no hay reportes.<br />
-                            Hacé click en <strong>"Auditar ahora"</strong>.
+                            {t('auditor.emptyState')}<br />
+                            {t('auditor.emptyStateHint')} <strong>&quot;{t('auditor.runNow')}&quot;</strong>.
                         </div>
-                    ) : reports.map(r => {
-                        const isSelected = selected?.id === r.id;
-                        const color = r.incumplimientos === 0 ? '#10b981'
-                            : r.incumplimientos <= 3 ? '#f59e0b' : '#ef4444';
-                        return (
-                            <div
-                                key={r.id}
-                                onClick={() => setSelected(r)}
-                                style={{
-                                    padding: '10px 13px', borderRadius: 10, cursor: 'pointer',
-                                    background: isSelected
-                                        ? 'rgba(167,139,250,0.12)'
-                                        : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${isSelected
-                                        ? 'rgba(167,139,250,0.35)'
-                                        : 'rgba(255,255,255,0.07)'}`,
-                                    transition: '0.15s',
-                                }}
-                            >
-                                <div style={{
-                                    display: 'flex', justifyContent: 'space-between',
-                                    alignItems: 'center', marginBottom: 4,
-                                }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.40)' }}>
-                                        {fmtDate(r.createdAt)}
-                                    </span>
-                                    <span style={{
-                                        fontSize: '0.70rem', fontWeight: 700, padding: '1px 7px',
-                                        borderRadius: 8, background: color + '1a', color,
-                                        border: `1px solid ${color}40`,
-                                    }}>
-                                        {r.incumplimientos === 0 ? 'OK' : r.incumplimientos + ' ⚠'}
-                                    </span>
-                                </div>
-                                <div style={{
-                                    fontSize: '0.76rem', color: 'rgba(255,255,255,0.55)',
-                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                }}>
-                                    {fmtPeriod(r.periodoInicio, r.periodoFin)}
-                                </div>
-                            </div>
-                        );
-                    })}
+                    ) : reports.map((r, idx) => (
+                        <ReportRow
+                            key={r.id} r={r} idx={idx} total={reports.length} t={t}
+                            selected={selected?.id === r.id}
+                            expanded={!!rowExpanded[r.id]}
+                            onSelect={() => setSelected(r)}
+                            onToggleExpand={() => setRowExpanded(prev => ({ ...prev, [r.id]: !prev[r.id] }))}
+                            onEdit={() => setEditingMeta({ id: r.id, nombre: r.nombre || '', notas: r.notas || '' })}
+                            onDelete={() => setDeleting(r)}
+                            onMoveUp={() => moveReport(r.id, -1)}
+                            onMoveDown={() => moveReport(r.id, +1)}
+                        />
+                    ))}
                 </div>
 
-                {/* RIGHT: detalle del reporte seleccionado */}
-                <div style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
+                {/* RIGHT: detalle del reporte seleccionado (oculto en mobile sin selección) */}
+                <div style={{
+                    flex: 1, overflowY: 'auto', minWidth: 0,
+                    display: (isMobile && !selected) ? 'none' : 'block',
+                }}>
                     {!selected ? (
                         <div style={{
                             height: '100%', display: 'flex', alignItems: 'center',
@@ -264,12 +403,27 @@ export default function Auditoria() {
                             <i className="fa-solid fa-arrow-pointer"
                                style={{ fontSize: '2rem', opacity: 0.3 }} />
                             <span style={{ fontSize: '0.88rem' }}>
-                                Seleccioná un reporte para ver el detalle
+                                {t('auditor.selectReport')}
                             </span>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
+                            {/* Botón volver en mobile */}
+                            {isMobile && (
+                                <button
+                                    onClick={() => setSelected(null)}
+                                    style={{
+                                        alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8,
+                                        border: '1px solid rgba(255,255,255,0.12)',
+                                        background: 'rgba(255,255,255,0.04)',
+                                        color: 'rgba(255,255,255,0.65)', fontSize: '0.82rem',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <i className="fa-solid fa-arrow-left" style={{ marginRight: 6 }} />
+                                    {t('auditor.backToHistory')}
+                                </button>
+                            )}
                             {/* Resumen */}
                             <div className="db-card" style={{ gap: 12 }}>
                                 <div style={{
@@ -280,13 +434,18 @@ export default function Auditoria() {
                                         <div className="db-card-title" style={{ margin: 0 }}>
                                             <i className="fa-solid fa-file-contract"
                                                style={{ color: '#a78bfa' }} />
-                                            Reporte — {fmtDate(selected.createdAt)}
+                                            {selected.nombre || `${t('auditor.tabs.reports')} — ${fmtDate(selected.createdAt)}`}
                                         </div>
                                         <div style={{
                                             fontSize: '0.75rem', color: 'rgba(255,255,255,0.38)',
                                             marginTop: 4,
                                         }}>
-                                            Período: {fmtPeriod(selected.periodoInicio, selected.periodoFin)}
+                                            {t('auditor.period')}: {fmtPeriod(selected.periodoInicio, selected.periodoFin)}
+                                            {selected.nombre && (
+                                                <span style={{ marginLeft: 10, color: 'rgba(255,255,255,0.30)' }}>
+                                                    · {fmtDate(selected.createdAt)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -304,8 +463,8 @@ export default function Auditoria() {
                                                 <i className="fa-solid fa-eye-slash"
                                                    style={{ marginRight: 4 }} />
                                                 {hideFP
-                                                    ? `Mostrar ${fpCount} falso${fpCount > 1 ? 's' : ''} positivo${fpCount > 1 ? 's' : ''}`
-                                                    : 'Ocultar falsos positivos'}
+                                                    ? `${t('auditor.showFP')} ${fpCount} ${fpCount > 1 ? t('auditor.falsePositives') : t('auditor.falsePositive')}`
+                                                    : t('auditor.hideFP')}
                                             </button>
                                         )}
                                         <div style={{
@@ -325,8 +484,8 @@ export default function Auditoria() {
                                                     : 'rgba(239,68,68,0.25)'}`,
                                         }}>
                                             {selected.incumplimientos === 0
-                                                ? 'Sin incumplimientos'
-                                                : `${selected.incumplimientos} incumplimiento${selected.incumplimientos > 1 ? 's' : ''}`}
+                                                ? t('auditor.noIncidentsShort')
+                                                : `${selected.incumplimientos} ${selected.incumplimientos > 1 ? t('auditor.incidents') : t('auditor.incident')}`}
                                         </div>
                                     </div>
                                 </div>
@@ -347,9 +506,28 @@ export default function Auditoria() {
                                         }}>
                                             <i className="fa-solid fa-clipboard-list"
                                                style={{ marginRight: 6, color: '#a78bfa' }} />
-                                            Resumen ejecutivo
+                                            {t('auditor.executiveSummary')}
                                         </div>
                                         {resumen_ejecutivo || selected.resumen}
+                                    </div>
+                                )}
+
+                                {selected.notas && (
+                                    <div style={{
+                                        padding: '10px 14px', borderRadius: 8,
+                                        background: 'rgba(245,158,11,0.06)',
+                                        border: '1px solid rgba(245,158,11,0.18)',
+                                        fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)',
+                                        lineHeight: 1.6, whiteSpace: 'pre-wrap',
+                                    }}>
+                                        <div style={{
+                                            fontSize: '0.68rem', color: '#fbbf24',
+                                            textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4,
+                                        }}>
+                                            <i className="fa-regular fa-note-sticky" style={{ marginRight: 5 }} />
+                                            {t('auditor.notes')}
+                                        </div>
+                                        {selected.notas}
                                     </div>
                                 )}
 
@@ -357,7 +535,7 @@ export default function Auditoria() {
                                     fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)',
                                     textAlign: 'right',
                                 }}>
-                                    Tokens usados: {selected.tokensUsados?.toLocaleString('es-AR')}
+                                    {t('auditor.tokensUsed')}: {selected.tokensUsados?.toLocaleString('es-AR')}
                                 </div>
                             </div>
 
@@ -374,7 +552,7 @@ export default function Auditoria() {
                                         }}>
                                             <i className="fa-solid fa-list-check"
                                                style={{ marginRight: 6, color: '#a78bfa' }} />
-                                            Procedimientos auditados ({procedimientos.length})
+                                            {t('auditor.procedures')} ({procedimientos.length})
                                         </div>
                                         <div style={{ display: 'flex', gap: 6, fontSize: '0.72rem' }}>
                                             {counts.cumplido > 0 && (
@@ -408,7 +586,6 @@ export default function Auditoria() {
                                                     borderLeft: `3px solid ${meta.color}`,
                                                 }}
                                             >
-                                                {/* Header colapsable */}
                                                 <button
                                                     type="button"
                                                     onClick={() => setExpandedProcs(prev => ({ ...prev, [i]: !prev[i] }))}
@@ -424,7 +601,7 @@ export default function Auditoria() {
                                                         color: 'rgba(255,255,255,0.88)', flex: 1,
                                                         lineHeight: 1.4,
                                                     }}>
-                                                        {p.punto || `Punto ${i + 1}`}
+                                                        {p.punto || `${t('auditor.procedures')} ${i + 1}`}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                                                         <span style={{
@@ -435,13 +612,13 @@ export default function Auditoria() {
                                                             display: 'inline-flex', alignItems: 'center', gap: 5,
                                                         }}>
                                                             <i className={`fa-solid ${meta.icon}`} />
-                                                            {meta.label}
+                                                            {t(`auditor.states.${p.estado}`)}
                                                         </span>
                                                         {evidencias.length > 0 && (
                                                             <span style={{
                                                                 fontSize: '0.70rem', color: 'rgba(255,255,255,0.45)',
                                                             }}>
-                                                                {evidencias.length} evidencia{evidencias.length > 1 ? 's' : ''}
+                                                                {evidencias.length} {evidencias.length > 1 ? t('auditor.evidences') : t('auditor.evidence')}
                                                             </span>
                                                         )}
                                                         <i className={`fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}
@@ -449,7 +626,6 @@ export default function Auditoria() {
                                                     </div>
                                                 </button>
 
-                                                {/* Cuerpo colapsable con animación de fade */}
                                                 {isOpen && (
                                                     <div style={{
                                                         padding: '0 16px 14px 16px',
@@ -471,10 +647,9 @@ export default function Auditoria() {
                                                         {evidencias.length === 0 ? (
                                                             <div style={{
                                                                 fontSize: '0.76rem', color: 'rgba(255,255,255,0.3)',
-                                                                fontStyle: 'italic', textAlign: 'center',
-                                                                padding: 6,
+                                                                fontStyle: 'italic', textAlign: 'center', padding: 6,
                                                             }}>
-                                                                Sin evidencias específicas registradas.
+                                                                {t('auditor.noEvidences')}
                                                             </div>
                                                         ) : evidencias.map((ev, j) => (
                                                             <div key={j} style={{
@@ -483,7 +658,6 @@ export default function Auditoria() {
                                                                 border: '1px solid rgba(255,255,255,0.05)',
                                                                 display: 'flex', flexDirection: 'column', gap: 6,
                                                             }}>
-                                                                {/* Encabezado: quién + cuándo */}
                                                                 <div style={{
                                                                     display: 'flex', justifyContent: 'space-between',
                                                                     alignItems: 'center', flexWrap: 'wrap', gap: 6,
@@ -495,11 +669,11 @@ export default function Auditoria() {
                                                                         <i className="fa-solid fa-user"
                                                                            style={{ color: '#a78bfa' }} />
                                                                         <strong style={{ color: '#c4b5fd' }}>
-                                                                            {ev.vendedor || 'Vendedor desconocido'}
+                                                                            {ev.vendedor || t('auditor.vendorUnknown')}
                                                                         </strong>
                                                                         {ev.cliente_id && (
                                                                             <span style={{ color: 'rgba(255,255,255,0.3)' }}>
-                                                                                · Cliente #{ev.cliente_id}
+                                                                                · {t('auditor.client')} #{ev.cliente_id}
                                                                             </span>
                                                                         )}
                                                                     </span>
@@ -514,7 +688,6 @@ export default function Auditoria() {
                                                                     )}
                                                                 </div>
 
-                                                                {/* Cómo lo hizo */}
                                                                 {ev.como && (
                                                                     <div style={{
                                                                         fontSize: '0.80rem', color: 'rgba(255,255,255,0.58)',
@@ -525,13 +698,12 @@ export default function Auditoria() {
                                                                             fontSize: '0.72rem', marginRight: 6,
                                                                             textTransform: 'uppercase', letterSpacing: '0.06em',
                                                                         }}>
-                                                                            Cómo:
+                                                                            {t('auditor.how')}:
                                                                         </span>
                                                                         {ev.como}
                                                                     </div>
                                                                 )}
 
-                                                                {/* Cita textual */}
                                                                 {ev.cita_textual && (
                                                                     <blockquote style={{
                                                                         margin: 0, padding: '8px 12px',
@@ -541,11 +713,10 @@ export default function Auditoria() {
                                                                         fontSize: '0.80rem', fontStyle: 'italic',
                                                                         color: 'rgba(255,255,255,0.70)', lineHeight: 1.55,
                                                                     }}>
-                                                                        "{ev.cita_textual}"
+                                                                        &quot;{ev.cita_textual}&quot;
                                                                     </blockquote>
                                                                 )}
 
-                                                                {/* Esperado vs Ocurrido (solo si hay desviación) */}
                                                                 {(ev.esperado || ev.ocurrido) && (
                                                                     <div style={{
                                                                         display: 'grid', gridTemplateColumns: '1fr 1fr',
@@ -562,7 +733,7 @@ export default function Auditoria() {
                                                                                 marginBottom: 3, fontSize: '0.68rem',
                                                                                 textTransform: 'uppercase', letterSpacing: '0.06em',
                                                                             }}>
-                                                                                Esperado
+                                                                                {t('auditor.expected')}
                                                                             </div>
                                                                             <div style={{ color: 'rgba(255,255,255,0.6)' }}>
                                                                                 {ev.esperado || '—'}
@@ -579,7 +750,7 @@ export default function Auditoria() {
                                                                                 marginBottom: 3, fontSize: '0.68rem',
                                                                                 textTransform: 'uppercase', letterSpacing: '0.06em',
                                                                             }}>
-                                                                                Ocurrido
+                                                                                {t('auditor.actual')}
                                                                             </div>
                                                                             <div style={{ color: 'rgba(255,255,255,0.6)' }}>
                                                                                 {ev.ocurrido || '—'}
@@ -597,7 +768,7 @@ export default function Auditoria() {
                                 </div>
                             )}
 
-                            {/* Hallazgos individuales (sólo si existen — formato legacy y nuevo) */}
+                            {/* Hallazgos individuales */}
                             {hallazgos.length > 0 && (
                                 <>
                                     <div style={{
@@ -607,7 +778,7 @@ export default function Auditoria() {
                                     }}>
                                         <i className="fa-solid fa-triangle-exclamation"
                                            style={{ marginRight: 6, color: '#f59e0b' }} />
-                                        Hallazgos individuales ({visibles.length})
+                                        {t('auditor.findings')} ({visibles.length})
                                     </div>
 
                                     {visibles.length === 0 && hallazgos.length > 0 && (
@@ -615,7 +786,7 @@ export default function Auditoria() {
                                             textAlign: 'center', padding: '20px',
                                             color: 'rgba(255,255,255,0.30)', fontSize: '0.85rem',
                                         }}>
-                                            Todos los hallazgos están marcados como falsos positivos.
+                                            {t('auditor.allFP')}
                                         </div>
                                     )}
 
@@ -633,7 +804,6 @@ export default function Auditoria() {
                                                     paddingLeft: 16,
                                                 }}
                                             >
-                                                {/* Header */}
                                                 <div style={{
                                                     display: 'flex', justifyContent: 'space-between',
                                                     alignItems: 'flex-start', gap: 8,
@@ -642,7 +812,7 @@ export default function Auditoria() {
                                                         fontSize: '0.90rem', fontWeight: 700,
                                                         color: 'rgba(255,255,255,0.88)', flex: 1,
                                                     }}>
-                                                        {h.regla_violada || 'Incumplimiento'}
+                                                        {h.regla_violada || t('auditor.states.incumplido')}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
                                                         <span style={{
@@ -661,13 +831,12 @@ export default function Auditoria() {
                                                                 color: '#818cf8',
                                                                 border: '1px solid rgba(99,102,241,0.25)',
                                                             }}>
-                                                                advertencia
+                                                                {t('auditor.warning')}
                                                             </span>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                {/* Descripción */}
                                                 {h.descripcion && (
                                                     <div style={{
                                                         fontSize: '0.83rem', color: 'rgba(255,255,255,0.58)',
@@ -677,7 +846,6 @@ export default function Auditoria() {
                                                     </div>
                                                 )}
 
-                                                {/* Cita textual */}
                                                 {h.cita_textual && (
                                                     <blockquote style={{
                                                         margin: 0, padding: '10px 14px',
@@ -687,11 +855,10 @@ export default function Auditoria() {
                                                         fontSize: '0.82rem', fontStyle: 'italic',
                                                         color: 'rgba(255,255,255,0.65)', lineHeight: 1.6,
                                                     }}>
-                                                        "{h.cita_textual}"
+                                                        &quot;{h.cita_textual}&quot;
                                                     </blockquote>
                                                 )}
 
-                                                {/* Footer */}
                                                 <div style={{
                                                     display: 'flex', justifyContent: 'space-between',
                                                     alignItems: 'center', flexWrap: 'wrap', gap: 8,
@@ -710,8 +877,8 @@ export default function Auditoria() {
                                                             <i className="fa-regular fa-clock" style={{ marginRight: 4 }} />
                                                             {h.cuando}
                                                         </span>}
-                                                        {h.confianza && <span style={{ marginLeft: 10 }}>Confianza: {h.confianza}</span>}
-                                                        {h.cliente_id && <span style={{ marginLeft: 10 }}>Cliente ID: {h.cliente_id}</span>}
+                                                        {h.confianza && <span style={{ marginLeft: 10 }}>{t('auditor.confidence')}: {h.confianza}</span>}
+                                                        {h.cliente_id && <span style={{ marginLeft: 10 }}>{t('auditor.client')} ID: {h.cliente_id}</span>}
                                                     </div>
                                                     <button
                                                         onClick={() => toggleFP(selected.id, realIdx)}
@@ -730,7 +897,7 @@ export default function Auditoria() {
                                                     >
                                                         <i className={`fa-solid ${isFP ? 'fa-rotate-left' : 'fa-ban'}`}
                                                            style={{ marginRight: 4 }} />
-                                                        {isFP ? 'Restaurar' : 'Falso positivo'}
+                                                        {isFP ? t('auditor.restore') : t('auditor.markFP')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -739,7 +906,6 @@ export default function Auditoria() {
                                 </>
                             )}
 
-                            {/* Estado vacío total */}
                             {procedimientos.length === 0 && hallazgos.length === 0 && (
                                 <div style={{
                                     textAlign: 'center', padding: '32px',
@@ -749,21 +915,517 @@ export default function Auditoria() {
                                 }}>
                                     <i className="fa-solid fa-circle-check"
                                        style={{ fontSize: '2rem', opacity: 0.7 }} />
-                                    Sin incumplimientos detectados en este período.
+                                    {t('auditor.noIncidents')}
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
-            </div>
+                </div>
+            )}
 
-            {/* Animación fade-in para secciones expandibles */}
+            {/* Tab Configuración */}
+            {tab === 'config' && (
+                <ConfigForm
+                    cfg={cfg} setCfg={setCfg}
+                    dispositivos={dispositivos}
+                    saving={cfgSaving} saved={cfgSaved}
+                    onSave={saveConfig}
+                    isMobile={isMobile}
+                />
+            )}
+
+            {/* Modal edición de metadatos */}
+            {editingMeta && (
+                <Modal onClose={() => setEditingMeta(null)}>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+                        {t('auditor.modal.editTitle')}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginBottom: 14 }}>
+                        {t('auditor.modal.editSubtitle')}
+                    </div>
+
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {t('auditor.modal.name')}
+                    </label>
+                    <input
+                        type="text"
+                        value={editingMeta.nombre}
+                        onChange={e => setEditingMeta(m => ({ ...m, nombre: e.target.value }))}
+                        placeholder={t('auditor.modal.namePlaceholder')}
+                        style={inputStyle}
+                    />
+
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', margin: '14px 0 5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {t('auditor.modal.notes')}
+                    </label>
+                    <textarea
+                        value={editingMeta.notas}
+                        onChange={e => setEditingMeta(m => ({ ...m, notas: e.target.value }))}
+                        placeholder={t('auditor.modal.notesPlaceholder')}
+                        style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }}
+                    />
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+                        <button onClick={() => setEditingMeta(null)} style={btnGhost}>{t('auditor.modal.cancel')}</button>
+                        <button onClick={saveMeta} className="btn-primary" style={{ background: 'rgba(167,139,250,0.85)' }}>
+                            <i className="fa-solid fa-floppy-disk" style={{ marginRight: 5 }} />
+                            {t('auditor.modal.save')}
+                        </button>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Modal confirmación eliminación */}
+            {deleting && (
+                <Modal onClose={() => setDeleting(null)}>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+                        <i className="fa-solid fa-triangle-exclamation" style={{ color: '#ef4444', marginRight: 6 }} />
+                        {t('auditor.modal.deleteTitle')}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.6 }}>
+                        {t('auditor.modal.deleteConfirm')}
+                        {deleting.nombre ? <strong style={{ color: '#fff' }}> &quot;{deleting.nombre}&quot;</strong> : <span> {fmtDate(deleting.createdAt)}</span>}?
+                        {' '}{t('auditor.modal.deleteIrreversible')}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+                        <button onClick={() => setDeleting(null)} style={btnGhost}>{t('auditor.modal.cancel')}</button>
+                        <button onClick={confirmDelete} style={{
+                            ...btnGhost, background: 'rgba(239,68,68,0.18)',
+                            border: '1px solid rgba(239,68,68,0.45)', color: '#fca5a5',
+                        }}>
+                            <i className="fa-solid fa-trash" style={{ marginRight: 5 }} />
+                            {t('auditor.row.delete')}
+                        </button>
+                    </div>
+                </Modal>
+            )}
+
             <style>{`
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(-3px); }
-                    to   { opacity: 1; transform: translateY(0); }
-                }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
             `}</style>
         </div>
     );
 }
+
+// ─── Subcomponentes ────────────────────────────────────────────────────────
+
+function TabButton({ active, onClick, icon, label, count }) {
+    return (
+        <button
+            onClick={onClick}
+            style={{
+                padding: '7px 14px', borderRadius: '8px 8px 0 0',
+                border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
+                background: active ? 'rgba(167,139,250,0.14)' : 'transparent',
+                color: active ? '#c4b5fd' : 'rgba(255,255,255,0.5)',
+                borderBottom: active ? '2px solid #a78bfa' : '2px solid transparent',
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                transition: '0.15s',
+            }}
+        >
+            <i className={`fa-solid ${icon}`} />
+            {label}
+            {typeof count === 'number' && (
+                <span style={{
+                    fontSize: '0.68rem', padding: '1px 6px', borderRadius: 8,
+                    background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)',
+                }}>
+                    {count}
+                </span>
+            )}
+        </button>
+    );
+}
+
+// Fila del historial: card con metadata, acciones en hover y expansión inline
+function ReportRow({ r, idx, total, selected, expanded, onSelect, onToggleExpand, onEdit, onDelete, onMoveUp, onMoveDown, t }) {
+    const color = r.incumplimientos === 0 ? '#10b981'
+        : r.incumplimientos <= 3 ? '#f59e0b' : '#ef4444';
+
+    return (
+        <div
+            style={{
+                padding: '10px 12px', borderRadius: 10,
+                background: selected ? 'rgba(167,139,250,0.12)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${selected ? 'rgba(167,139,250,0.35)' : 'rgba(255,255,255,0.07)'}`,
+                transition: '0.15s', display: 'flex', flexDirection: 'column', gap: 6,
+            }}
+        >
+            <button
+                type="button"
+                onClick={onSelect}
+                style={{ all: 'unset', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4 }}
+            >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>
+                        {r.nombre || fmtDate(r.createdAt)}
+                    </span>
+                    <span style={{
+                        fontSize: '0.70rem', fontWeight: 700, padding: '1px 7px',
+                        borderRadius: 8, background: color + '1a', color,
+                        border: `1px solid ${color}40`,
+                    }}>
+                        {r.incumplimientos === 0 ? 'OK' : r.incumplimientos + ' ⚠'}
+                    </span>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.40)' }}>
+                    {r.nombre ? fmtDate(r.createdAt) : fmtPeriod(r.periodoInicio, r.periodoFin)}
+                </div>
+            </button>
+
+            {/* Acciones de fila */}
+            <div style={{
+                display: 'flex', gap: 4, justifyContent: 'space-between',
+                borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6,
+            }}>
+                <div style={{ display: 'flex', gap: 3 }}>
+                    <IconButton onClick={onMoveUp} disabled={idx === 0} icon="fa-arrow-up" title={t('auditor.row.moveUp')} />
+                    <IconButton onClick={onMoveDown} disabled={idx === total - 1} icon="fa-arrow-down" title={t('auditor.row.moveDown')} />
+                </div>
+                <div style={{ display: 'flex', gap: 3 }}>
+                    <IconButton onClick={onToggleExpand} icon={expanded ? 'fa-chevron-up' : 'fa-chevron-down'}
+                                title={expanded ? t('auditor.row.collapse') : t('auditor.row.expand')} />
+                    <IconButton onClick={onEdit} icon="fa-pen" title={t('auditor.row.edit')} />
+                    <IconButton onClick={onDelete} icon="fa-trash" title={t('auditor.row.delete')} danger />
+                </div>
+            </div>
+
+            {/* Preview inline */}
+            {expanded && (
+                <div style={{
+                    padding: '8px 10px', borderRadius: 6,
+                    background: 'rgba(0,0,0,0.18)',
+                    fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)',
+                    lineHeight: 1.55, animation: 'fadeIn 0.18s ease-out',
+                    whiteSpace: 'pre-wrap',
+                }}>
+                    {r.resumen || t('auditor.row.noSummary')}
+                    {r.notas && (
+                        <div style={{
+                            marginTop: 6, paddingTop: 6, borderTop: '1px dashed rgba(255,255,255,0.08)',
+                            color: '#fbbf24', fontSize: '0.72rem',
+                        }}>
+                            <i className="fa-regular fa-note-sticky" style={{ marginRight: 4 }} />
+                            {r.notas}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function IconButton({ onClick, icon, title, disabled, danger }) {
+    return (
+        <button
+            onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+            disabled={disabled}
+            title={title}
+            style={{
+                padding: '4px 7px', borderRadius: 5, border: 'none',
+                background: 'transparent',
+                color: disabled
+                    ? 'rgba(255,255,255,0.15)'
+                    : danger ? '#fca5a5' : 'rgba(255,255,255,0.55)',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                fontSize: '0.72rem', transition: '0.12s',
+            }}
+            onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+        >
+            <i className={`fa-solid ${icon}`} />
+        </button>
+    );
+}
+
+// Skeleton mientras carga la lista de reportes
+function ReportListSkeleton() {
+    return (
+        <>
+            {[1, 2, 3, 4].map(k => (
+                <div key={k} style={{
+                    padding: 12, borderRadius: 10,
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div style={skel(120, 10)} />
+                        <div style={skel(40, 14)} />
+                    </div>
+                    <div style={skel(160, 9)} />
+                </div>
+            ))}
+        </>
+    );
+}
+
+function skel(w, h) {
+    return {
+        width: w, height: h, borderRadius: 4,
+        background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.5s ease-in-out infinite',
+    };
+}
+
+// Formulario de configuración (movido desde AgenteIA.jsx)
+function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile }) {
+    const { t } = useLanguage();
+    const update = (k, v) => setCfg(prev => ({ ...prev, [k]: v }));
+
+    // Validación: rango de horario coherente
+    const horarioOk = !cfg.horarioInicio || !cfg.horarioFin || cfg.horarioInicio < cfg.horarioFin;
+
+    // En mobile aumentamos el font-size y padding de los inputs para que sean cómodos al touch
+    const baseInput = isMobile
+        ? { ...inputStyle, fontSize: '1rem', padding: '12px 14px' }
+        : inputStyle;
+
+    return (
+        <div style={{
+            flex: 1, overflowY: 'auto', maxWidth: 780, width: '100%', margin: '0 auto',
+            padding: isMobile ? '6px 0 32px' : '6px 4px 24px',
+        }}>
+            <div className="db-card" style={{ gap: 16 }}>
+                <div className="db-card-title" style={{ margin: 0 }}>
+                    <i className="fa-solid fa-magnifying-glass-chart" style={{ color: '#a78bfa' }} />
+                    {t('auditor.config.cardTitle')}
+                </div>
+
+                {/* Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <label style={{
+                        position: 'relative', display: 'inline-block',
+                        width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
+                    }}>
+                        <input
+                            type="checkbox"
+                            checked={cfg.auditEnabled}
+                            onChange={e => update('auditEnabled', e.target.checked)}
+                            style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                        />
+                        <span style={{
+                            position: 'absolute', inset: 0, borderRadius: 13,
+                            background: cfg.auditEnabled ? '#a78bfa' : 'rgba(255,255,255,0.15)',
+                            transition: '0.2s',
+                        }}>
+                            <span style={{
+                                position: 'absolute', top: 3, left: cfg.auditEnabled ? 23 : 3,
+                                width: 20, height: 20, borderRadius: '50%',
+                                background: '#fff', transition: '0.2s',
+                            }} />
+                        </span>
+                    </label>
+                    <div>
+                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
+                            {t('auditor.config.enableLabel')}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.42)', marginTop: 2 }}>
+                            {t('auditor.config.enableHint')}
+                        </div>
+                    </div>
+                </div>
+
+                <Field
+                    label={t('auditor.config.proceduresLabel')}
+                    hint={t('auditor.config.proceduresHint')}
+                >
+                    <textarea
+                        value={cfg.auditProcedures}
+                        onChange={e => update('auditProcedures', e.target.value)}
+                        placeholder={t('auditor.config.proceduresPlaceholder')}
+                        style={{ ...baseInput, minHeight: 130, resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+                </Field>
+
+                <Field
+                    label={t('auditor.config.scheduleLabel')}
+                    hint={t('auditor.config.scheduleHint')}
+                >
+                    <TimeRangePicker
+                        inicio={cfg.horarioInicio}
+                        fin={cfg.horarioFin}
+                        onChange={(ini, fin) => setCfg(prev => ({ ...prev, horarioInicio: ini, horarioFin: fin }))}
+                        baseInput={baseInput}
+                        t={t}
+                    />
+                    {!horarioOk && (
+                        <div style={{
+                            marginTop: 6, fontSize: '0.74rem', color: '#fca5a5',
+                            display: 'flex', alignItems: 'center', gap: 5,
+                        }}>
+                            <i className="fa-solid fa-triangle-exclamation" />
+                            {t('auditor.config.scheduleError')}
+                        </div>
+                    )}
+                </Field>
+
+                <Field
+                    label={t('auditor.config.emailLabel')}
+                    hint={t('auditor.config.emailHint')}
+                >
+                    <input
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        value={cfg.auditEmail}
+                        onChange={e => update('auditEmail', e.target.value)}
+                        placeholder="gerente@empresa.com"
+                        style={baseInput}
+                    />
+                </Field>
+
+                <Field
+                    label={t('auditor.config.whatsappLabel')}
+                    hint={t('auditor.config.whatsappHint')}
+                >
+                    <input
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        value={cfg.auditWhatsappPhone}
+                        onChange={e => update('auditWhatsappPhone', e.target.value)}
+                        placeholder="5491112345678"
+                        style={baseInput}
+                    />
+                </Field>
+
+                <Field
+                    label={t('auditor.config.deviceLabel')}
+                    hint={t('auditor.config.deviceHint')}
+                >
+                    <select
+                        value={cfg.auditDispositivoId}
+                        onChange={e => update('auditDispositivoId', e.target.value)}
+                        style={{ ...baseInput, color: cfg.auditDispositivoId ? '#fff' : 'rgba(255,255,255,0.35)' }}
+                    >
+                        <option value="">{t('auditor.config.deviceNone')}</option>
+                        {dispositivos.map(d => (
+                            <option key={d.id} value={String(d.id)}>
+                                {d.alias || d.sessionId} {d.estado === 'CONNECTED' ? '●' : '○'}
+                            </option>
+                        ))}
+                    </select>
+                </Field>
+
+                <button
+                    onClick={onSave}
+                    disabled={saving || !horarioOk}
+                    className="btn-primary"
+                    style={{
+                        width: '100%', marginTop: 6,
+                        background: saved ? '#10b981' : 'rgba(167,139,250,0.85)',
+                        padding: isMobile ? '13px 0' : undefined,
+                        fontSize: isMobile ? '0.95rem' : undefined,
+                        opacity: !horarioOk ? 0.5 : 1,
+                        cursor: !horarioOk ? 'not-allowed' : 'pointer',
+                    }}
+                >
+                    <i className={`fa-solid ${saving ? 'fa-spinner fa-spin' : saved ? 'fa-check' : 'fa-floppy-disk'}`}
+                       style={{ marginRight: 6 }} />
+                    {saving ? t('auditor.config.savingBtn') : saved ? t('auditor.config.savedBtn') : t('auditor.config.saveBtn')}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// Time picker con presets rápidos. Cubre los rangos más usados (mañana, tarde,
+// día completo, 24 hs). El usuario sigue pudiendo ajustar manualmente con los
+// inputs nativos de tiempo.
+function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
+    const presets = [
+        { label: t('auditor.config.presets.morning'),   inicio: '08:00', fin: '13:00' },
+        { label: t('auditor.config.presets.afternoon'), inicio: '14:00', fin: '18:00' },
+        { label: t('auditor.config.presets.allDay'),    inicio: '09:00', fin: '18:00' },
+        { label: t('auditor.config.presets.all24'),     inicio: '00:00', fin: '23:59' },
+    ];
+    const activePreset = presets.findIndex(p => p.inicio === inicio && p.fin === fin);
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <input
+                    type="time"
+                    value={inicio}
+                    onChange={e => onChange(e.target.value, fin)}
+                    style={{ ...baseInput, flex: 1 }}
+                />
+                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>a</span>
+                <input
+                    type="time"
+                    value={fin}
+                    onChange={e => onChange(inicio, e.target.value)}
+                    style={{ ...baseInput, flex: 1 }}
+                />
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {presets.map((p, i) => {
+                    const active = i === activePreset;
+                    return (
+                        <button
+                            key={p.label}
+                            type="button"
+                            onClick={() => onChange(p.inicio, p.fin)}
+                            style={{
+                                padding: '5px 11px', borderRadius: 16,
+                                border: `1px solid ${active ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.10)'}`,
+                                background: active ? 'rgba(167,139,250,0.14)' : 'rgba(255,255,255,0.03)',
+                                color: active ? '#c4b5fd' : 'rgba(255,255,255,0.55)',
+                                fontSize: '0.74rem', cursor: 'pointer', transition: '0.15s',
+                            }}
+                        >
+                            {p.label} <span style={{ opacity: 0.55, marginLeft: 4 }}>{p.inicio}–{p.fin}</span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// Campo de formulario con label + hint tooltip
+function Field({ label, hint, children }) {
+    return (
+        <div>
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6,
+                fontSize: '0.74rem', color: 'rgba(255,255,255,0.62)',
+                textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600,
+            }}>
+                {label}
+                {hint && (
+                    <i className="fa-regular fa-circle-question"
+                       title={hint}
+                       style={{ color: 'rgba(255,255,255,0.30)', cursor: 'help' }} />
+                )}
+            </div>
+            {children}
+            {hint && (
+                <div style={{
+                    fontSize: '0.72rem', color: 'rgba(255,255,255,0.32)',
+                    marginTop: 4, lineHeight: 1.5,
+                }}>
+                    {hint}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Estilos compartidos para inputs del formulario de config
+const inputStyle = {
+    width: '100%', fontSize: '0.85rem', padding: '8px 11px',
+    background: 'rgba(0,0,0,0.32)', border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: 8, color: '#fff', outline: 'none', boxSizing: 'border-box',
+};
+
+const btnGhost = {
+    padding: '7px 14px', borderRadius: 8,
+    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.65)',
+    cursor: 'pointer', fontSize: '0.82rem',
+};

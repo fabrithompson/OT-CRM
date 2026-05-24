@@ -108,7 +108,7 @@ export default function Checkout() {
             setEmail(userCtx?.email || '');
         }).catch(() => navigate('/planes'))
           .finally(() => setCargando(false));
-    }, [planId, userCtx]);
+    }, [planId, userCtx, navigate]);
 
     const metodoActivo = METODOS.find(m => m.id === metodo);
 

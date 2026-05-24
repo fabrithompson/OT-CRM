@@ -21,19 +21,11 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import model.Agencia;
@@ -61,7 +53,6 @@ import repository.PlantillaCampaniaRepository;
 public class CampaniaService {
 
     private static final Logger log = LoggerFactory.getLogger(CampaniaService.class);
-    private static final String API_KEY_HEADER = "X-Bot-Token";
 
     // ── Configuración anti-ban ────────────────────────────────────────────────
     private static final long DELAY_MIN_MS = 25_000L;
@@ -76,7 +67,7 @@ public class CampaniaService {
     private final MensajeCampaniaRepository mensajeRepo;
     private final DispositivoRepository dispositivoRepo;
     private final SimpMessagingTemplate messaging;
-    private final RestTemplate http;
+    private final BotHttpClient botClient;
     private CalentamientoService calentamientoService;
 
     /**
@@ -86,26 +77,20 @@ public class CampaniaService {
      */
     private final Map<String, Long> proximoEnvioPermitido = new ConcurrentHashMap<>();
 
-    @Value("${node.bot.url}")
-    private String nodeBotUrl;
-
-    @Value("${bot.secret.key}")
-    private String botSecretKey;
-
     public CampaniaService(ContactoCampaniaRepository contactoRepo,
                            PlantillaCampaniaRepository plantillaRepo,
                            EnvioCampaniaRepository envioRepo,
                            MensajeCampaniaRepository mensajeRepo,
                            DispositivoRepository dispositivoRepo,
                            SimpMessagingTemplate messaging,
-                           RestTemplate restTemplate) {
+                           BotHttpClient botClient) {
         this.contactoRepo = contactoRepo;
         this.plantillaRepo = plantillaRepo;
         this.envioRepo = envioRepo;
         this.mensajeRepo = mensajeRepo;
         this.dispositivoRepo = dispositivoRepo;
         this.messaging = messaging;
-        this.http = restTemplate;
+        this.botClient = botClient;
     }
 
     // Setter injection para romper dependencia circular (CalentamientoService → CampaniaService nunca)
@@ -359,28 +344,9 @@ public class CampaniaService {
         }
     }
 
-    @SuppressWarnings("null")
     private boolean enviarAlBot(Dispositivo dispositivo, String telefono, String texto) {
-        try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("sessionId", dispositivo.getSessionId());
-            // El bot espera "number", no "to" (ver Bot-Whatsapp/index.js /send-message)
-            body.put("number", telefono);
-            body.put("message", texto);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(API_KEY_HEADER, botSecretKey);
-
-            HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
-            ResponseEntity<Map<String, Object>> resp = http.exchange(
-                    nodeBotUrl + "/send-message", HttpMethod.POST, req,
-                    new ParameterizedTypeReference<>() {});
-            return resp.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            log.warn("Fallo enviando campaña a {}: {}", telefono, e.getMessage());
-            return false;
-        }
+        // BotHttpClient devuelve el id del mensaje (waId) o null si el envío falló.
+        return botClient.sendText(dispositivo.getSessionId(), telefono, texto) != null;
     }
 
     // ════════════════════════════════════════════════════════════════════════

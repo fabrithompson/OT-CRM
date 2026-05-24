@@ -12,10 +12,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -153,9 +155,83 @@ public class AuditController {
         if (usuario.getAgencia() == null) {
             return ResponseEntity.ok(List.of());
         }
+        // Respeta orden manual del usuario (orden NOT NULL) y cae a fecha DESC para el resto
         List<AiAuditReport> reports = auditReportRepository
-                .findByAgenciaIdOrderByCreatedAtDesc(usuario.getAgencia().getId());
+                .findAllForAgenciaSorted(usuario.getAgencia().getId());
         return ResponseEntity.ok(reports.stream().map(this::toMap).toList());
+    }
+
+    // ─── CRUD del historial (Fase 7) ─────────────────────────────────────────
+
+    // DTO para editar metadatos del reporte
+    record ReportMetaRequest(String nombre, String notas) {}
+
+    // DTO para reordenar el historial
+    record ReorderRequest(List<Long> orden) {}
+
+    @Transactional
+    @PatchMapping("/reports/{reportId}")
+    public ResponseEntity<?> updateReportMeta(@AuthenticationPrincipal UserDetails userDetails,
+                                                @PathVariable Long reportId,
+                                                @RequestBody ReportMetaRequest req) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null) return ResponseEntity.badRequest().body(Map.of("error", "Sin agencia"));
+
+        @SuppressWarnings("null")
+		AiAuditReport report = auditReportRepository.findById(reportId).orElse(null);
+        if (report == null || report.getAgencia() == null
+                || !report.getAgencia().getId().equals(usuario.getAgencia().getId())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Reporte no encontrado"));
+        }
+        if (req != null) {
+            // Permitimos string vacío para limpiar el campo, pero nulls dejan el valor anterior
+            if (req.nombre() != null) report.setNombre(req.nombre().isBlank() ? null : req.nombre().trim());
+            if (req.notas()  != null) report.setNotas(req.notas().isBlank() ? null : req.notas());
+        }
+        auditReportRepository.save(report);
+        return ResponseEntity.ok(toMap(report));
+    }
+
+    @Transactional
+    @DeleteMapping("/reports/{reportId}")
+    public ResponseEntity<?> deleteReport(@AuthenticationPrincipal UserDetails userDetails,
+                                           @PathVariable Long reportId) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null) return ResponseEntity.badRequest().body(Map.of("error", "Sin agencia"));
+
+        @SuppressWarnings("null")
+		AiAuditReport report = auditReportRepository.findById(reportId).orElse(null);
+        if (report == null || report.getAgencia() == null
+                || !report.getAgencia().getId().equals(usuario.getAgencia().getId())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Reporte no encontrado"));
+        }
+        auditReportRepository.delete(report);
+        return ResponseEntity.ok(Map.of("ok", true, "id", reportId));
+    }
+
+    @Transactional
+    @PostMapping("/reports/reorder")
+    public ResponseEntity<?> reorderReports(@AuthenticationPrincipal UserDetails userDetails,
+                                             @RequestBody ReorderRequest req) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null) return ResponseEntity.badRequest().body(Map.of("error", "Sin agencia"));
+        if (req == null || req.orden() == null || req.orden().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Lista de orden vacía"));
+        }
+
+        Long agenciaId = usuario.getAgencia().getId();
+        // Solo aplicamos el orden a los reportes que pertenecen a la agencia del usuario.
+        // Los IDs que no correspondan se ignoran silenciosamente.
+        int i = 0;
+        for (Long id : req.orden()) {
+            if (id == null) continue;
+            AiAuditReport r = auditReportRepository.findById(id).orElse(null);
+            if (r != null && r.getAgencia() != null && agenciaId.equals(r.getAgencia().getId())) {
+                r.setOrden(i++);
+                auditReportRepository.save(r);
+            }
+        }
+        return ResponseEntity.ok(Map.of("ok", true, "actualizados", i));
     }
 
     @SuppressWarnings("null")
@@ -229,6 +305,10 @@ public class AuditController {
         m.put("incumplimientos", r.getIncumplimientos());
         m.put("tokensUsados", r.getTokensUsados());
         m.put("createdAt", r.getCreatedAt() != null ? r.getCreatedAt().toString() : "");
+        // Metadatos editables del Fase 7 — el frontend los usa para nombre/notas/orden
+        m.put("nombre", r.getNombre());
+        m.put("notas", r.getNotas());
+        m.put("orden", r.getOrden());
         return m;
     }
 

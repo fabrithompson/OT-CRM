@@ -23,8 +23,11 @@ export default function useAudio() {
         try {
             const audio = getAudio(src);
             audio.currentTime = 0;
+            // play() puede fallar por política de autoplay; silenciar para no spamear.
             audio.play().catch(() => {});
-        } catch {}
+        } catch (err) {
+            console.warn('useAudio: no se pudo reproducir', err);
+        }
     }, []);
 
     const playConnect      = useCallback(() => play(connectSrc),      [play]);

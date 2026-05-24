@@ -46,6 +46,10 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
     const audioChunksRef    = useRef([]);
     const subscriptionsRef  = useRef([]);
 
+    // loadChat es recursivo (se llama a sí mismo con attempt+1) y depende de varios
+    // handlers locales declarados más abajo; envolverlo en useCallback en orden inverso
+    // complica la cadena. Es un patrón "fetch on prop change" estable.
+    /* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps */
     useEffect(() => {
         if (!clienteId) return;
         loadChat(clienteId);
@@ -54,6 +58,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
             subscriptionsRef.current = [];
         };
     }, [clienteId]);
+    /* eslint-enable react-hooks/immutability, react-hooks/exhaustive-deps */
 
     const handleInboundMessage = (ev) => {
         const m = { ...ev, esSalida: !ev.inbound, fechaHora: ev.fecha };
@@ -77,9 +82,15 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
             if (attempt < 10) setTimeout(() => subscribeWS(id, attempt + 1), 500 + attempt * 300);
             return;
         }
-        subscriptionsRef.current.forEach(s => { try { s.unsubscribe(); } catch {} });
-        const s1 = stompClient.subscribe(`/topic/chat/${id}`, (msg) => { try { handleInboundMessage(JSON.parse(msg.body)); } catch {} });
-        const s2 = stompClient.subscribe(`/topic/chat/${id}/status`, (msg) => { try { handleStatusUpdate(JSON.parse(msg.body)); } catch {} });
+        subscriptionsRef.current.forEach(s => { try { s.unsubscribe(); } catch { /* ya desuscripto */ } });
+        const s1 = stompClient.subscribe(`/topic/chat/${id}`, (msg) => {
+            try { handleInboundMessage(JSON.parse(msg.body)); }
+            catch (err) { console.warn('Chat inbound payload inválido:', err); }
+        });
+        const s2 = stompClient.subscribe(`/topic/chat/${id}/status`, (msg) => {
+            try { handleStatusUpdate(JSON.parse(msg.body)); }
+            catch (err) { console.warn('Chat status payload inválido:', err); }
+        });
         subscriptionsRef.current = [s1, s2];
     };
 
@@ -122,7 +133,9 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         try {
             await api.put(`/clientes/${id}/leido`);
             onUpdateCard?.(id, { mensajesSinLeer: 0 });
-        } catch { }
+        } catch (err) {
+            console.warn('No se pudo marcar como leído:', err);
+        }
     };
 
     const loadOlder = async () => {
@@ -133,7 +146,9 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
             if (older.length > 0) setMsgCursor(older[0].id);
             if (older.length < 50) setMsgExhausted(true);
             setMessages(prev => [...older, ...prev]);
-        } catch { }
+        } catch (err) {
+            console.warn('No se pudieron cargar mensajes anteriores:', err);
+        }
     };
 
     const scrollToBottom = () => { setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50); };
@@ -209,7 +224,9 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         try {
             await api.put(`/clientes/${clienteId}`, { nombre: cliente.nombre, notas: cliente.notas });
             onUpdateCard?.(clienteId, { nombre: cliente.nombre });
-        } catch { }
+        } catch (err) {
+            console.warn('No se pudo guardar el cliente:', err);
+        }
     };
 
     const changeStage = async (etapaId) => {
@@ -574,10 +591,27 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
     );
 }
 
+// Mapeo del origen del mensaje saliente a un indicador visual (ícono + tooltip).
+// Soporta tanto el campo `origenMensaje` del payload WS (Fase 6) como el `autor`
+// de mensajes históricos que todavía no traen ese campo.
+function deducirOrigenVisual(msg) {
+    const o = (msg.origenMensaje || '').toUpperCase();
+    const a = (msg.autor || '').toUpperCase();
+    if (o === 'EXTERNO_WSP' || a === 'EXTERNO_WSP') {
+        return { icon: 'fa-mobile-screen-button', label: 'Celular del vendedor', color: '#fbbf24' };
+    }
+    if (o === 'AGENTE_IA' || a === 'AGENTE_IA' || a.startsWith('IA_')) {
+        return { icon: 'fa-robot', label: 'Agente IA', color: '#a78bfa' };
+    }
+    return { icon: 'fa-desktop', label: 'Enviado desde el CRM', color: '#60a5fa' };
+}
+
 function MessageBubble({ msg }) {
     const { t } = useLanguage();
     const origin    = msg.origen === 'TELEGRAM' ? 'telegram-msg' : 'whatsapp-msg';
     const className = `msg ${msg.esSalida ? 'sent' : 'received'} ${origin}`;
+    const origenVisual = msg.esSalida ? deducirOrigenVisual(msg) : null;
+    const autorDisplay = msg.autor === 'EXTERNO_WSP' ? 'Vendedor (celular)' : (msg.autor || 'Agente');
     const renderTicks = () => {
         if (!msg.esSalida) return null;
         let cls = 'fas fa-check'; let color = '#a6b3bd';
@@ -602,7 +636,19 @@ function MessageBubble({ msg }) {
     const text = msg.contenido ? escapeHtml(msg.contenido).replace(/\n/g, '<br>') : '';
     return (
         <div className={className} data-wa-id={msg.whatsappId || ''}>
-            {msg.esSalida && <span className="msg-author" style={{ fontSize: '0.75rem', opacity: 0.7 }}>{msg.autor || 'Agente'}</span>}
+            {msg.esSalida && (
+                <span className="msg-author" style={{
+                    fontSize: '0.75rem', opacity: 0.78,
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                }}>
+                    {origenVisual && (
+                        <i className={`fa-solid ${origenVisual.icon}`}
+                           title={origenVisual.label}
+                           style={{ fontSize: '0.72rem', color: origenVisual.color }} />
+                    )}
+                    {autorDisplay}
+                </span>
+            )}
             <div className="msg-content-wrapper">
                 {text && <div className="msg-text-part" style={{ marginBottom: 5, wordBreak: 'break-word' }} dangerouslySetInnerHTML={{ __html: text }} />}
                 {renderContent()}
