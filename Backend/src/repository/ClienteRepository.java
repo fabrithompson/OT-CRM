@@ -167,4 +167,17 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
             @Param("afterId") Long afterId,
             Pageable pageable);
 
+    /**
+     * Serie temporal de leads nuevos (por fecha_registro) agrupados por bucket
+     * (hour|day|week|month). Devuelve filas [bucket_timestamp, count].
+     */
+    @Query(value = "SELECT date_trunc(CAST(:unit AS text), fecha_registro) AS bucket, COUNT(*) AS total "
+        + "FROM clientes WHERE agencia_id = :agenciaId AND fecha_registro BETWEEN :desde AND :hasta "
+        + "GROUP BY bucket ORDER BY bucket", nativeQuery = true)
+    List<Object[]> serieLeadsPorBucket(
+            @Param("agenciaId") Long agenciaId,
+            @Param("unit") String unit,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
+
 }

@@ -83,4 +83,19 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
         @Param("desde") LocalDateTime desde,
         @Param("hasta") LocalDateTime hasta,
         Pageable pageable);
+
+    /**
+     * Serie temporal de mensajes agrupados por bucket (hour|day|week|month).
+     * Devuelve filas [bucket_timestamp, count]. El relleno de buckets vacíos se
+     * hace en el servicio.
+     */
+    @Query(value = "SELECT date_trunc(CAST(:unit AS text), m.fecha_hora) AS bucket, COUNT(*) AS total "
+        + "FROM mensaje m JOIN clientes c ON c.id = m.cliente_id "
+        + "WHERE c.agencia_id = :agenciaId AND m.fecha_hora BETWEEN :desde AND :hasta "
+        + "GROUP BY bucket ORDER BY bucket", nativeQuery = true)
+    List<Object[]> serieMensajesPorBucket(
+        @Param("agenciaId") Long agenciaId,
+        @Param("unit") String unit,
+        @Param("desde") LocalDateTime desde,
+        @Param("hasta") LocalDateTime hasta);
 }

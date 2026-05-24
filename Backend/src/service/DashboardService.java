@@ -1,8 +1,11 @@
 package service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -177,5 +180,120 @@ public class DashboardService {
         }
 
         return data;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // SERIES TEMPORALES (alimenta sparklines + gráfico de tendencia del dashboard)
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Configuración de bucketing por período: unidad SQL de date_trunc, cantidad
+     * de buckets y cómo etiquetar cada uno.
+     */
+    private enum Bucketing {
+        TODAY("hour"), SEM("day"), MES("day"), ANUAL("month"), CUSTOM("day");
+        final String sqlUnit;
+        Bucketing(String sqlUnit) { this.sqlUnit = sqlUnit; }
+    }
+
+    private static final String[] LABELS_TODAY = {"00h","03h","06h","09h","12h","15h","18h","21h"};
+    private static final String[] LABELS_SEM   = {"Lun","Mar","Mié","Jue","Vie","Sáb","Dom"};
+    private static final String[] LABELS_MES   = {"S1","S2","S3","S4","S5"};
+    private static final String[] LABELS_ANUAL = {"Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"};
+
+    /**
+     * Devuelve la serie temporal real del período. Estructura:
+     * { "buckets": [ { "label": "Lun", "leads": n, "mensajes": n, "ingresos": n } ] }
+     *
+     * Reemplaza los generadores sintéticos (Math.sin) que tenía el frontend.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getSeries(Usuario usuario, String periodo,
+                                         LocalDateTime desde, LocalDateTime hasta) {
+        if (usuario == null || usuario.getAgencia() == null) {
+            return Map.of("buckets", Collections.emptyList());
+        }
+        Long agenciaId = usuario.getAgencia().getId();
+        Bucketing cfg = switch (periodo != null ? periodo : "today") {
+            case "sem"   -> Bucketing.SEM;
+            case "mes"   -> Bucketing.MES;
+            case "anual" -> Bucketing.ANUAL;
+            case "custom"-> Bucketing.CUSTOM;
+            default      -> Bucketing.TODAY;
+        };
+
+        // Acumuladores por índice de bucket
+        int n = bucketCount(cfg, desde, hasta);
+        double[] leads    = new double[n];
+        double[] mensajes = new double[n];
+        double[] ingresos = new double[n];
+
+        accumulate(clienteRepository.serieLeadsPorBucket(agenciaId, cfg.sqlUnit, desde, hasta), cfg, desde, leads);
+        accumulate(mensajeRepository.serieMensajesPorBucket(agenciaId, cfg.sqlUnit, desde, hasta), cfg, desde, mensajes);
+        accumulate(transaccionRepository.serieCargaPorBucket(agenciaId, cfg.sqlUnit, desde, hasta), cfg, desde, ingresos);
+
+        List<Map<String, Object>> buckets = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            Map<String, Object> b = new LinkedHashMap<>();
+            b.put("label", labelFor(cfg, i, desde));
+            b.put("leads", (long) leads[i]);
+            b.put("mensajes", (long) mensajes[i]);
+            b.put("ingresos", Math.round(ingresos[i]));
+            buckets.add(b);
+        }
+        return Map.of("buckets", buckets);
+    }
+
+    private int bucketCount(Bucketing cfg, LocalDateTime desde, LocalDateTime hasta) {
+        return switch (cfg) {
+            case TODAY -> LABELS_TODAY.length;
+            case SEM   -> LABELS_SEM.length;
+            case ANUAL -> LABELS_ANUAL.length;
+            case MES   -> 5; // hasta 5 semanas en un mes
+            case CUSTOM -> (int) Math.max(1, Math.min(31, ChronoUnit.DAYS.between(desde.toLocalDate(), hasta.toLocalDate()) + 1));
+        };
+    }
+
+    /**
+     * Mapea cada fila [bucket_timestamp, valor] al índice de bucket correspondiente
+     * y acumula el valor. El bucket_timestamp viene truncado por date_trunc.
+     */
+    private void accumulate(List<Object[]> rows, Bucketing cfg, LocalDateTime desde, double[] acc) {
+        for (Object[] row : rows) {
+            if (row[0] == null) continue;
+            LocalDateTime ts = toLocalDateTime(row[0]);
+            double val = row[1] instanceof Number num ? num.doubleValue() : 0.0;
+            int idx = bucketIndex(cfg, desde, ts, acc.length);
+            if (idx >= 0 && idx < acc.length) acc[idx] += val;
+        }
+    }
+
+    private int bucketIndex(Bucketing cfg, LocalDateTime desde, LocalDateTime ts, int n) {
+        return switch (cfg) {
+            case TODAY -> Math.min(ts.getHour() / 3, n - 1);            // 8 franjas de 3h
+            case SEM   -> Math.min(Math.max(ts.getDayOfWeek().getValue() - 1, 0), n - 1); // Lun=0..Dom=6
+            case MES   -> Math.min((ts.getDayOfMonth() - 1) / 7, n - 1); // semana del mes
+            case ANUAL -> Math.min(ts.getMonthValue() - 1, n - 1);       // Ene=0..Dic=11
+            case CUSTOM -> (int) Math.min(Math.max(ChronoUnit.DAYS.between(desde.toLocalDate(), ts.toLocalDate()), 0), n - 1);
+        };
+    }
+
+    private String labelFor(Bucketing cfg, int i, LocalDateTime desde) {
+        return switch (cfg) {
+            case TODAY -> LABELS_TODAY[i];
+            case SEM   -> LABELS_SEM[i];
+            case MES   -> LABELS_MES[Math.min(i, LABELS_MES.length - 1)];
+            case ANUAL -> LABELS_ANUAL[i];
+            case CUSTOM -> desde.toLocalDate().plusDays(i).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM"));
+        };
+    }
+
+    private LocalDateTime toLocalDateTime(Object dbValue) {
+        if (dbValue instanceof java.sql.Timestamp ts) return ts.toLocalDateTime();
+        if (dbValue instanceof LocalDateTime ldt) return ldt;
+        if (dbValue instanceof java.time.Instant inst) return LocalDateTime.ofInstant(inst, java.time.ZoneId.systemDefault());
+        // Fallback defensivo: algunas versiones del driver devuelven OffsetDateTime
+        if (dbValue instanceof java.time.OffsetDateTime odt) return odt.toLocalDateTime();
+        return LocalDateTime.now();
     }
 }

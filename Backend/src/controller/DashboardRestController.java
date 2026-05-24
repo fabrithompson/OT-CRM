@@ -153,6 +153,22 @@ public class DashboardRestController {
         return ResponseEntity.ok(data);
     }
 
+    /**
+     * Serie temporal real del período seleccionado (leads, mensajes, ingresos por
+     * bucket). Alimenta los sparklines y el gráfico de tendencia del dashboard,
+     * que antes usaban datos sintéticos generados con Math.sin en el frontend.
+     */
+    @GetMapping("/series")
+    public ResponseEntity<Map<String, Object>> getSeries(
+            Principal principal,
+            @RequestParam(defaultValue = "today") String periodo,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta) {
+        Usuario usuario = getUsuarioAutenticado(principal.getName());
+        LocalDateTime[] rango = resolverRango(periodo, desde, hasta);
+        return ResponseEntity.ok(dashboardService.getSeries(usuario, periodo, rango[0], rango[1]));
+    }
+
     @GetMapping("/equipo")
     public ResponseEntity<List<Map<String, String>>> obtenerEquipo(Principal principal) {
         Usuario usuario = getUsuarioAutenticado(principal.getName());

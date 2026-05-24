@@ -40,4 +40,18 @@ public interface TransaccionRepository extends JpaRepository<Transaccion, Long> 
 
     @Query("SELECT COUNT(DISTINCT t.cliente.id) FROM Transaccion t WHERE t.cliente.agencia.id = :agenciaId AND t.tipo = 'CARGA' AND t.fecha BETWEEN :desde AND :hasta")
     long countClientesConCargaByAgenciaAndFecha(@Param("agenciaId") Long agenciaId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    /**
+     * Serie temporal de cargas (SUM monto, tipo='CARGA') agrupada por bucket
+     * (hour|day|week|month). Devuelve filas [bucket_timestamp, suma].
+     */
+    @Query(value = "SELECT date_trunc(CAST(:unit AS text), t.fecha) AS bucket, COALESCE(SUM(t.monto), 0) AS total "
+        + "FROM transacciones t JOIN clientes c ON c.id = t.cliente_id "
+        + "WHERE c.agencia_id = :agenciaId AND t.tipo = 'CARGA' AND t.fecha BETWEEN :desde AND :hasta "
+        + "GROUP BY bucket ORDER BY bucket", nativeQuery = true)
+    List<Object[]> serieCargaPorBucket(
+        @Param("agenciaId") Long agenciaId,
+        @Param("unit") String unit,
+        @Param("desde") LocalDateTime desde,
+        @Param("hasta") LocalDateTime hasta);
 }
