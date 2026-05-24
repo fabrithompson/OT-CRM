@@ -19,15 +19,12 @@ export default function Kanban() {
     const [searchParams] = useSearchParams();
     const { usuario: userCtx, agenciaId } = useUser();
 
-    useEffect(() => {
-        const id = Number.parseInt(searchParams.get('openChat'), 10);
-        if (id) setOpenChatId(id);
-    }, [searchParams]);
-
     const [etapas, setEtapas]       = useState([]);
     const [clientes, setClientes]   = useState([]);
-    const [usuario, setUsuario]     = useState('Agente');
     const [loading, setLoading]     = useState(true);
+
+    // Derivado directo del context: evita el ciclo setState+useEffect.
+    const usuario = userCtx ? getDisplayName(userCtx) : 'Agente';
 
     const [etiquetas, setEtiquetas]               = useState([]);
     const [filterLabel, setFilterLabel]           = useState('');
@@ -41,6 +38,14 @@ export default function Kanban() {
     const [deleteStage, setDeleteStage] = useState(null);
 
     const [openChatId, setOpenChatId] = useState(null);
+
+    // Abrir chat automáticamente si la URL incluye ?openChat=ID.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => {
+        const id = Number.parseInt(searchParams.get('openChat'), 10);
+        if (id) setOpenChatId(id);
+    }, [searchParams]);
+    /* eslint-enable react-hooks/set-state-in-effect */
     const [mutedStages, setMutedStages] = useState(() => {
         const s = JSON.parse(localStorage.getItem('crm_muted_stages') || '[]');
         return new Set(s.map(Number));
@@ -48,12 +53,6 @@ export default function Kanban() {
 
     const filterRef    = useRef(null);
     const wsEventRef   = useRef(null);
-
-    useEffect(() => {
-        if (userCtx) {
-            setUsuario(getDisplayName(userCtx));
-        }
-    }, [userCtx]);
 
     const loadBoard = useCallback(async (etiquetaId = '') => {
         setLoading(true);
@@ -81,6 +80,8 @@ export default function Kanban() {
         }
     }, [toast]);
 
+    // Recarga el tablero al cambiar el filtro de etiquetas.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { loadBoard(filterEtiquetaId); }, [filterEtiquetaId, loadBoard]);
 
     useEffect(() => {
@@ -169,9 +170,13 @@ export default function Kanban() {
         }
     }, [filterEtiquetaId, loadBoard, handleClienteEvent, handleEtapasReordenadas]);
 
+    // Patrón "latest-callback ref": las refs apuntan siempre al último callback
+    // para que las suscripciones WS los invoquen sin reconectar cuando cambian deps.
+    // eslint-disable-next-line react-hooks/refs
     wsEventRef.current = handleWSEvent;
 
     const handleEmbudoRef = useRef(null);
+    // eslint-disable-next-line react-hooks/refs
     handleEmbudoRef.current = useCallback((data) => {
         if (!data) return;
         const cliente = {
@@ -195,7 +200,8 @@ export default function Kanban() {
 
         // Cambios de etapas en tiempo real (color, nombre, orden, principal, crear, eliminar)
         client.subscribe(`/topic/agencia/${agenciaId}`, (msg) => {
-            try { wsEventRef.current?.(JSON.parse(msg.body)); } catch {}
+            try { wsEventRef.current?.(JSON.parse(msg.body)); }
+            catch (err) { console.warn('Kanban agencia payload inválido:', err); }
         });
     });
 
@@ -403,9 +409,11 @@ export default function Kanban() {
                 {renderBoard()}
             </div>
 
+            {/* stompClient se setea desde el WS handshake, no es state derivable en render. */}
+            {/* eslint-disable-next-line react-hooks/refs */}
             {openChatId && <ChatModal clienteId={openChatId} etapas={etapas} stompClient={stompRef.current} usuario={usuario} onClose={() => setOpenChatId(null)} onMoveCard={handleDropCard} onUpdateCard={handleUpdateCard} />}
             <CreateStageModal show={createOpen} onClose={() => setCreateOpen(false)} agenciaId={agenciaId} />
-            <EditStageModal show={!!editStage} stage={editStage} onClose={() => setEditStage(null)} />
+            <EditStageModal key={editStage?.id} show={!!editStage} stage={editStage} onClose={() => setEditStage(null)} />
             <DeleteStageModal show={!!deleteStage} stage={deleteStage} onClose={() => setDeleteStage(null)} />
         </div>
     );

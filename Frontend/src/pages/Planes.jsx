@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useLanguage } from '../context/LangContext';
@@ -38,19 +38,8 @@ export default function Planes() {
     const [showExito, setShowExito] = useState(pagoParam === 'exitoso');
     const [showFallido, setShowFallido] = useState(pagoParam === 'fallido');
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    useEffect(() => {
-        if (showExito) {
-            const t = setTimeout(() => setShowExito(false), 8000);
-            return () => clearTimeout(t);
-        }
-    }, [showExito]);
-
-    // FIX: use Promise.allSettled so that if mi-plan fails, planes still loads
-    const fetchData = async () => {
+    // Promise.allSettled: si mi-plan falla, los planes igual cargan.
+    const fetchData = useCallback(async () => {
         setLoadError('');
         setLoading(true);
         try {
@@ -76,7 +65,17 @@ export default function Planes() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    useEffect(() => {
+        if (showExito) {
+            const t = setTimeout(() => setShowExito(false), 8000);
+            return () => clearTimeout(t);
+        }
+    }, [showExito]);
 
 
     const handleSuscribirse = (plan) => {

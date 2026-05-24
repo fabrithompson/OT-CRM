@@ -12,6 +12,20 @@ export default function KanbanCard({ cliente, onOpen }) {
     const platformClass = isWhatsApp ? 'whatsapp' : 'telegram';
     const platformIcon = isWhatsApp ? 'fab fa-whatsapp' : 'fab fa-telegram-plane';
 
+    // Detecta el origen del último mensaje a partir del resumen guardado en backend
+    // (formato "{autor}: {contenido}"). Si fue desde el celular del vendedor,
+    // reemplazamos el prefijo crudo "EXTERNO_WSP:" por un ícono visible en la tarjeta.
+    const resumenRaw = cliente.ultimoMensajeResumen || '';
+    let resumenIcon = null;
+    let resumenTexto = resumenRaw;
+    if (resumenRaw.startsWith('EXTERNO_WSP:')) {
+        resumenIcon = { icon: 'fa-mobile-screen-button', color: '#fbbf24', title: 'Enviado desde celular del vendedor' };
+        resumenTexto = resumenRaw.slice('EXTERNO_WSP:'.length).trim();
+    } else if (resumenRaw.startsWith('AGENTE_IA:') || resumenRaw.startsWith('IA_')) {
+        resumenIcon = { icon: 'fa-robot', color: '#a78bfa', title: 'Enviado por el Agente IA' };
+        resumenTexto = resumenRaw.replace(/^(AGENTE_IA|IA_[^:]*):\s*/, '');
+    }
+
     const handleDragStart = (e) => {
         e.stopPropagation();
         e.dataTransfer.setData('cardId', String(cliente.id));
@@ -55,8 +69,15 @@ export default function KanbanCard({ cliente, onOpen }) {
                     <span className="card-time" style={{ fontSize: '0.75rem', opacity: 0.6, flexShrink: 0 }}>{time}</span>
                 </div>
                 <div className="card-preview-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                    <div className="card-preview" style={{ flex: 1, fontSize: '0.8rem', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {cliente.ultimoMensajeResumen || 'Sin mensajes'}
+                    <div className="card-preview" style={{ flex: 1, fontSize: '0.8rem', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {resumenIcon && (
+                            <i className={`fa-solid ${resumenIcon.icon}`}
+                               title={resumenIcon.title}
+                               style={{ color: resumenIcon.color, fontSize: '0.78rem', flexShrink: 0 }} />
+                        )}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {resumenTexto || 'Sin mensajes'}
+                        </span>
                     </div>
                     {cliente.nombreInstancia && (
                         <span className={`card-instance-label ${platformClass}`}>{cliente.nombreInstancia}</span>

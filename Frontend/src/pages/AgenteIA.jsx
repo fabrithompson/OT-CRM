@@ -21,19 +21,6 @@ export default function AgenteIA() {
     const [enabled, setEnabled] = useState(false);
     const [saveStatus, setSaveStatus] = useState('idle');
 
-    // Auditor IA
-    const [auditEnabled, setAuditEnabled] = useState(false);
-    const [auditProcedures, setAuditProcedures] = useState('');
-    const [auditEmail, setAuditEmail] = useState('');
-    const [auditWhatsappPhone, setAuditWhatsappPhone] = useState('');
-    const [auditDispositivoId, setAuditDispositivoId] = useState('');
-    const [horarioInicio, setHorarioInicio] = useState('09:00');
-    const [horarioFin, setHorarioFin] = useState('18:00');
-    const [dispositivos, setDispositivos] = useState([]);
-    const [auditSaveStatus, setAuditSaveStatus] = useState('idle');
-    const [auditRunning, setAuditRunning] = useState(false);
-    const [auditResult, setAuditResult] = useState(null);
-
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [chatLoading, setChatLoading] = useState(false);
@@ -43,7 +30,8 @@ export default function AgenteIA() {
     const chatReady = useRef(false);
     const fileInputRef = useRef(null);
 
-    // Init messages from localStorage
+    // Init messages from localStorage (bootstrap on mount).
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (!isEnterprise || userLoading || !agenciaId || chatReady.current) return;
         chatReady.current = true;
@@ -54,6 +42,7 @@ export default function AgenteIA() {
             setMessages([{ role: 'assistant', content: t('agente.welcomeMsg') }]);
         }
     }, [isEnterprise, userLoading, agenciaId, t]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Persist chat — strip images to keep localStorage lean
     useEffect(() => {
@@ -69,24 +58,6 @@ export default function AgenteIA() {
             setInstructions(res.data.instructions || '');
             setBusinessContext(res.data.businessContext || '');
             setEnabled(res.data.enabled || false);
-        }).catch(() => {});
-    }, [isEnterprise, userLoading]);
-
-    // Load audit config + devices
-    useEffect(() => {
-        if (!isEnterprise || userLoading) return;
-        api.get('/agent-config/audit').then(res => {
-            const d = res.data;
-            setAuditEnabled(d.auditEnabled || false);
-            setAuditProcedures(d.auditProcedures || '');
-            setAuditEmail(d.auditEmail || '');
-            setAuditWhatsappPhone(d.auditWhatsappPhone || '');
-            setAuditDispositivoId(d.auditDispositivoId ? String(d.auditDispositivoId) : '');
-            setHorarioInicio(d.horarioInicio || '09:00');
-            setHorarioFin(d.horarioFin || '18:00');
-        }).catch(() => {});
-        api.get('/whatsapp').then(res => {
-            setDispositivos(Array.isArray(res.data) ? res.data : []);
         }).catch(() => {});
     }, [isEnterprise, userLoading]);
 
@@ -161,42 +132,6 @@ export default function AgenteIA() {
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-    };
-
-    const runAuditNow = async () => {
-        setAuditRunning(true);
-        setAuditResult(null);
-        try {
-            const res = await api.post('/audit/run-now');
-            const report = res.data;
-            let hallazgos = [];
-            try { hallazgos = JSON.parse(report.hallazgosJson || '[]'); } catch {}
-            setAuditResult({ ...report, hallazgos });
-        } catch (err) {
-            const msg = err?.response?.data?.error || 'Error al ejecutar la auditoría';
-            setAuditResult({ error: msg });
-        } finally {
-            setAuditRunning(false);
-        }
-    };
-
-    const saveAuditConfig = async () => {
-        setAuditSaveStatus('saving');
-        try {
-            await api.put('/agent-config/audit', {
-                auditEnabled,
-                auditProcedures,
-                auditEmail,
-                auditWhatsappPhone,
-                auditDispositivoId: auditDispositivoId ? Number(auditDispositivoId) : null,
-                horarioInicio,
-                horarioFin,
-            });
-            setAuditSaveStatus('saved');
-            setTimeout(() => setAuditSaveStatus('idle'), 2000);
-        } catch {
-            setAuditSaveStatus('idle');
-        }
     };
 
     const saveConfig = async () => {
@@ -536,251 +471,9 @@ export default function AgenteIA() {
                             {saveStatus === 'saving' ? t('agente.saving') : saveStatus === 'saved' ? t('agente.saved') : t('agente.save')}
                         </button>
                     </div>
-                    {/* Auditor de procedimientos */}
-                    <div className="db-card" style={{ gap: 14 }}>
-                        <div className="db-card-title" style={{ margin: 0 }}>
-                            <i className="fa-solid fa-magnifying-glass-chart" style={{ color: '#a78bfa' }} />
-                            Auditor de procedimientos
-                        </div>
-
-                        {/* Toggle auditor */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <label style={{
-                                position: 'relative', display: 'inline-block',
-                                width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
-                            }}>
-                                <input
-                                    type="checkbox"
-                                    checked={auditEnabled}
-                                    onChange={e => setAuditEnabled(e.target.checked)}
-                                    style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
-                                />
-                                <span style={{
-                                    position: 'absolute', inset: 0, borderRadius: 13,
-                                    background: auditEnabled ? '#a78bfa' : 'rgba(255,255,255,0.15)',
-                                    transition: '0.2s',
-                                }}>
-                                    <span style={{
-                                        position: 'absolute', top: 3, left: auditEnabled ? 23 : 3,
-                                        width: 20, height: 20, borderRadius: '50%',
-                                        background: '#fff', transition: '0.2s',
-                                    }} />
-                                </span>
-                            </label>
-                            <div>
-                                <div style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.80)', fontWeight: 600 }}>
-                                    Activar auditoría diaria
-                                </div>
-                                <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>
-                                    Envía un reporte a las 07:00 todos los días
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Procedimientos */}
-                        <div>
-                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
-                                Procedimientos a controlar
-                            </div>
-                            <textarea
-                                value={auditProcedures}
-                                onChange={e => setAuditProcedures(e.target.value)}
-                                placeholder={'Ej: Los vendedores deben responder en menos de 1 hora. No pueden prometer descuentos sin autorización. Siempre deben pedir el nombre del cliente al inicio...'}
-                                style={{ width: '100%', resize: 'none', height: 110, fontSize: '0.83rem', boxSizing: 'border-box' }}
-                            />
-                        </div>
-
-                        {/* Horario laboral */}
-                        <div>
-                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
-                                Horario laboral (solo se auditan mensajes dentro de este rango)
-                            </div>
-                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                <input
-                                    type="time"
-                                    value={horarioInicio}
-                                    onChange={e => setHorarioInicio(e.target.value)}
-                                    style={{ flex: 1, fontSize: '0.83rem', padding: '7px 10px',
-                                        background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.10)',
-                                        borderRadius: 8, color: '#fff', outline: 'none' }}
-                                />
-                                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>a</span>
-                                <input
-                                    type="time"
-                                    value={horarioFin}
-                                    onChange={e => setHorarioFin(e.target.value)}
-                                    style={{ flex: 1, fontSize: '0.83rem', padding: '7px 10px',
-                                        background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.10)',
-                                        borderRadius: 8, color: '#fff', outline: 'none' }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Email destino */}
-                        <div>
-                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
-                                Email del reporte
-                            </div>
-                            <input
-                                type="email"
-                                value={auditEmail}
-                                onChange={e => setAuditEmail(e.target.value)}
-                                placeholder="gerente@empresa.com"
-                                style={{ width: '100%', fontSize: '0.83rem', padding: '7px 10px',
-                                    background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.10)',
-                                    borderRadius: 8, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
-                            />
-                        </div>
-
-                        {/* WhatsApp destino */}
-                        <div>
-                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
-                                WhatsApp para resumen ejecutivo
-                            </div>
-                            <input
-                                type="tel"
-                                value={auditWhatsappPhone}
-                                onChange={e => setAuditWhatsappPhone(e.target.value)}
-                                placeholder="5491112345678"
-                                style={{ width: '100%', fontSize: '0.83rem', padding: '7px 10px',
-                                    background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.10)',
-                                    borderRadius: 8, color: '#fff', outline: 'none', boxSizing: 'border-box' }}
-                            />
-                        </div>
-
-                        {/* Dispositivo para enviar el resumen */}
-                        <div>
-                            <div className="db-metric-label" style={{ marginBottom: 6 }}>
-                                Dispositivo que envía el resumen por WhatsApp
-                            </div>
-                            <select
-                                value={auditDispositivoId}
-                                onChange={e => setAuditDispositivoId(e.target.value)}
-                                style={{ width: '100%', fontSize: '0.83rem', padding: '7px 10px',
-                                    background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.10)',
-                                    borderRadius: 8, color: auditDispositivoId ? '#fff' : 'rgba(255,255,255,0.35)',
-                                    outline: 'none', boxSizing: 'border-box' }}
-                            >
-                                <option value="">Sin envío por WhatsApp</option>
-                                {dispositivos.map(d => (
-                                    <option key={d.id} value={String(d.id)}>
-                                        {d.alias || d.sessionId} {d.estado === 'CONNECTED' ? '●' : '○'}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <button
-                            onClick={saveAuditConfig}
-                            disabled={auditSaveStatus === 'saving'}
-                            className="btn-primary"
-                            style={{ width: '100%', marginTop: 4, background: auditSaveStatus === 'saved' ? 'rgba(167,139,250,0.8)' : undefined }}
-                        >
-                            <i className={`fa-solid ${auditSaveStatus === 'saving' ? 'fa-spinner fa-spin' : auditSaveStatus === 'saved' ? 'fa-check' : 'fa-floppy-disk'}`} style={{ marginRight: 6 }} />
-                            {auditSaveStatus === 'saving' ? 'Guardando...' : auditSaveStatus === 'saved' ? 'Guardado' : 'Guardar configuración del auditor'}
-                        </button>
-
-                        {/* Auditar ahora */}
-                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14, marginTop: 4 }}>
-                            <button
-                                onClick={runAuditNow}
-                                disabled={auditRunning || !auditEnabled || !auditProcedures.trim()}
-                                style={{
-                                    width: '100%', padding: '9px 0', borderRadius: 9,
-                                    border: '1px solid rgba(167,139,250,0.35)',
-                                    background: auditRunning ? 'rgba(167,139,250,0.08)' : 'rgba(167,139,250,0.14)',
-                                    color: (!auditEnabled || !auditProcedures.trim()) ? 'rgba(255,255,255,0.25)' : '#c4b5fd',
-                                    cursor: (auditRunning || !auditEnabled || !auditProcedures.trim()) ? 'not-allowed' : 'pointer',
-                                    fontSize: '0.84rem', fontWeight: 600, transition: '0.15s',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                }}
-                            >
-                                <i className={`fa-solid ${auditRunning ? 'fa-spinner fa-spin' : 'fa-microscope'}`} />
-                                {auditRunning ? 'Analizando conversaciones...' : 'Auditar últimas 24 hs ahora'}
-                            </button>
-                            {(!auditEnabled || !auditProcedures.trim()) && (
-                                <div style={{ fontSize: '0.71rem', color: 'rgba(255,255,255,0.28)', marginTop: 5, textAlign: 'center' }}>
-                                    Activá la auditoría y completá los procedimientos para poder ejecutarla
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Resultado inline */}
-                        {auditResult && (
-                            <div style={{
-                                marginTop: 6, borderRadius: 10, padding: '12px 14px',
-                                background: auditResult.error
-                                    ? 'rgba(239,68,68,0.08)'
-                                    : auditResult.incumplimientos > 0
-                                        ? 'rgba(251,191,36,0.07)'
-                                        : 'rgba(34,197,94,0.07)',
-                                border: `1px solid ${auditResult.error ? 'rgba(239,68,68,0.20)' : auditResult.incumplimientos > 0 ? 'rgba(251,191,36,0.20)' : 'rgba(34,197,94,0.20)'}`,
-                            }}>
-                                {auditResult.error ? (
-                                    <div style={{ color: '#fca5a5', fontSize: '0.82rem' }}>
-                                        <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 6 }} />
-                                        {auditResult.error}
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                                            <i className={`fa-solid ${auditResult.incumplimientos > 0 ? 'fa-circle-exclamation' : 'fa-circle-check'}`}
-                                                style={{ color: auditResult.incumplimientos > 0 ? '#fbbf24' : '#4ade80', fontSize: '1.1rem' }} />
-                                            <span style={{ fontSize: '0.84rem', color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
-                                                {auditResult.incumplimientos > 0
-                                                    ? `${auditResult.incumplimientos} incumplimiento(s) detectado(s)`
-                                                    : 'Sin incumplimientos'}
-                                            </span>
-                                            {auditResult.tokensUsados > 0 && (
-                                                <span style={{ marginLeft: 'auto', fontSize: '0.70rem', color: 'rgba(255,255,255,0.25)' }}>
-                                                    {auditResult.tokensUsados.toLocaleString()} tokens
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div style={{ fontSize: '0.80rem', color: 'rgba(255,255,255,0.60)', marginBottom: auditResult.hallazgos?.length > 0 ? 10 : 0 }}>
-                                            {auditResult.resumen}
-                                        </div>
-                                        {auditResult.hallazgos?.length > 0 && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                {auditResult.hallazgos.map((h, i) => (
-                                                    <div key={i} style={{
-                                                        padding: '9px 11px', borderRadius: 8,
-                                                        background: 'rgba(0,0,0,0.18)',
-                                                        border: `1px solid ${h.severidad === 'alta' ? 'rgba(239,68,68,0.22)' : h.severidad === 'media' ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.08)'}`,
-                                                    }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-                                                            <span style={{
-                                                                fontSize: '0.68rem', padding: '2px 7px', borderRadius: 4, fontWeight: 700,
-                                                                background: h.severidad === 'alta' ? 'rgba(239,68,68,0.18)' : h.severidad === 'media' ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.07)',
-                                                                color: h.severidad === 'alta' ? '#fca5a5' : h.severidad === 'media' ? '#fde68a' : 'rgba(255,255,255,0.45)',
-                                                                textTransform: 'uppercase',
-                                                            }}>{h.severidad}</span>
-                                                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.70)', fontWeight: 600 }}>
-                                                                {h.regla_violada}
-                                                            </span>
-                                                        </div>
-                                                        {h.cita_textual && (
-                                                            <div style={{
-                                                                fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)',
-                                                                fontStyle: 'italic', marginBottom: 4,
-                                                                borderLeft: '2px solid rgba(255,255,255,0.10)',
-                                                                paddingLeft: 8,
-                                                            }}>
-                                                                "{h.cita_textual}"
-                                                            </div>
-                                                        )}
-                                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)' }}>
-                                                            {h.descripcion}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    {/* La sección del Auditor de procedimientos se movió a /auditoria
+                        (tab "Configuración") para concentrar todo el módulo en un solo
+                        lugar. Ver docs/auditor-ia.md (Fase 7). */}
 
                 </div>
             </div>

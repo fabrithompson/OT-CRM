@@ -54,34 +54,6 @@ function buildLeadOrigin(wa, tg) {
     ];
 }
 
-function buildFunnel(total) {
-    const n   = Math.max(1, total);
-    const cal = Math.round(n   * 0.66);
-    const pro = Math.round(cal * 0.50);
-    const neg = Math.round(pro * 0.46);
-    const cer = Math.round(neg * 0.50);
-    return [
-        { stage: 'Nuevos',      count: n,   width: 100, color: '#10b981', conv: null },
-        { stage: 'Calificados', count: cal, width: 66,  color: '#3b82f6', conv: '66% conv.' },
-        { stage: 'Propuesta',   count: pro, width: Math.round(pro / n * 100), color: '#8b5cf6', conv: '50% conv.' },
-        { stage: 'Negociación', count: neg, width: Math.round(neg / n * 100), color: '#f59e0b', conv: '46% conv.' },
-        { stage: 'Cerrados',    count: cer, width: Math.round(cer / n * 100), color: '#ef4444', conv: '50% conv.' },
-    ];
-}
-
-function buildHeatmap(mensajesHoy) {
-    const days  = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-    const hours = [0,3,6,9,12,15,18,21];
-    const peak  = Math.max(1, mensajesHoy);
-    return days.map((day, di) => ({
-        day,
-        slots: hours.map((h, hi) => {
-            const workBoost = h >= 9 && h <= 18 ? 1.8 : 0.3;
-            return { h, v: Math.round(Math.abs(Math.sin(di * 3 + hi * 1.7)) * peak * 0.5 * workBoost) };
-        }),
-    }));
-}
-
 
 /* ─────────────────────────────────────────────
    Gradient KPI Card
@@ -284,14 +256,21 @@ export default function Dashboard() {
     const { playNotification }                = useAudio();
     const refreshTimer                        = useRef(null);
 
+    // Carga inicial. fetchData se declara abajo a propósito (captura state ya inicializado).
+    /* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps */
     useEffect(() => { fetchData(); }, []);
+    /* eslint-enable react-hooks/immutability, react-hooks/exhaustive-deps */
     useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
+    // Sincronizar el state local con el store global de presencia + event listener.
+    // Caso de uso "external store" descrito por la regla: aceptable.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (window.__crmOnlineUsers) setOnlineUsers(new Set(window.__crmOnlineUsers));
         const h = (e) => setOnlineUsers(new Set(e.detail));
         window.addEventListener('crm:presence-updated', h);
         return () => window.removeEventListener('crm:presence-updated', h);
     }, []);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     useEffect(() => {
         const id = setInterval(() => setNow(new Date()), 60_000);
@@ -386,7 +365,10 @@ export default function Dashboard() {
         }
     };
 
+    // Patrón "latest-callback ref": fetchRef.current siempre apunta a la última
+    // versión de fetchData sin invalidar los timeouts/callbacks que lo capturaron.
     const fetchRef = useRef(null);
+    // eslint-disable-next-line react-hooks/immutability, react-hooks/refs
     fetchRef.current = fetchData;
 
     useEffect(() => {
@@ -414,7 +396,9 @@ export default function Dashboard() {
                 } else if (['NUEVO_MIEMBRO','PERFIL_ACTUALIZADO'].includes(ev.tipo)) {
                     debouncedRefresh();
                 }
-            } catch {}
+            } catch (err) {
+                console.warn('Dashboard agencia payload inválido:', err);
+            }
         });
         client.subscribe(`/topic/bot/${agenciaId}`, (msg) => {
             try {
@@ -423,7 +407,9 @@ export default function Dashboard() {
                     debouncedRefresh();
                     if (ev.tipo === 'CONNECTED') playNotification();
                 }
-            } catch {}
+            } catch (err) {
+                console.warn('Dashboard bot payload inválido:', err);
+            }
         });
         client.subscribe(`/topic/embudo/${agenciaId}`, () => { debouncedRefresh(); });
     });
@@ -440,7 +426,6 @@ export default function Dashboard() {
     const weeklyData = useMemo(() => buildWeeklyData(data.mensajesHoy, data.nuevosLeads, data.totalCarga, dateRange),
         [data.mensajesHoy, data.nuevosLeads, data.totalCarga, dateRange]);
     const leadOrigin = useMemo(() => buildLeadOrigin(data.waLeads, data.tgLeads), [data.waLeads, data.tgLeads]);
-    const funnelData = useMemo(() => buildFunnel(data.totalLeads), [data.totalLeads]);
     const sparkLeads = useMemo(() => buildSparkLine(data.nuevosLeads, data.totalLeads), [data.nuevosLeads, data.totalLeads]);
     const sparkMsgs  = useMemo(() => buildSparkLine(data.mensajesHoy, data.totalMensajes), [data.mensajesHoy, data.totalMensajes]);
     const sparkCarga = useMemo(() => buildSparkLine(data.totalCarga, data.totalCarga * 5), [data.totalCarga]);

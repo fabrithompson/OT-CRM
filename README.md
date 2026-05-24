@@ -79,6 +79,15 @@ Este proyecto nacio del esfuerzo conjunto de dos amigos apasionados por la tecno
 - Integracion con **Cloudinary** para imagenes, documentos y archivos multimedia.
 - Generacion de **codigos QR** para vinculacion de dispositivos.
 
+### Auditor IA (plan ENTERPRISE)
+- **Auditoria automatica** de las conversaciones de WhatsApp contra los procedimientos de atencion configurados, usando GPT-4o.
+- **Analisis profundo punto por punto**: por cada procedimiento indica si se cumplio / fue parcial / no se cumplio, con quien (nombre del agente), como, cuando (timestamp) y cita textual del mensaje.
+- **Resumen ejecutivo** de 2-3 parrafos + detalle colapsable por punto con badges (cumplido / parcial / incumplido).
+- **"Auditar ahora"**: ejecuta sobre las ultimas 24 hs y envia el reporte al instante por **email** (Resend) y **WhatsApp**, ademas del envio programado diario a las 07:00.
+- **Gestion del historial**: CRUD completo (editar nombre/notas, eliminar con confirmacion), reordenamiento manual y expansion inline.
+- **Configuracion in-modulo**: tabs "Reportes" y "Configuracion" dentro del mismo sector `/auditoria`.
+- Solo lectura sobre las conversaciones (nunca envia mensajes a clientes). Documentacion tecnica completa en [docs/auditor-ia.md](docs/auditor-ia.md).
+
 ---
 
 ## Arquitectura del Sistema
@@ -262,7 +271,7 @@ OT-crm/
 
 ## Frontend en Detalle
 
-### Paginas (11 vistas)
+### Paginas (14 vistas)
 
 | Pagina | Ruta | Descripcion |
 |--------|------|-------------|
@@ -277,6 +286,9 @@ OT-crm/
 | `MiSuscripcion.jsx` | `/mi-suscripcion` | Detalles de plan actual, miembros del equipo |
 | `RespuestasRapidas.jsx` | `/respuestas-rapidas` | Gestion de templates de respuestas |
 | `Perfil.jsx` | `/perfil` | Perfil, cambio de contrasena, avatar |
+| `AgenteIA.jsx` | `/agente-ia` | Chat con el Agente IA y configuracion (ENTERPRISE) |
+| `Spam.jsx` | `/spam` | Modulo de campanias / envio masivo aislado |
+| `Auditoria.jsx` | `/auditoria` | Auditor IA: historial de reportes + configuracion (ENTERPRISE) |
 
 ### Componentes Clave
 

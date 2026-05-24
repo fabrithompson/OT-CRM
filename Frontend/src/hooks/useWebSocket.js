@@ -36,6 +36,16 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
         clientRef.current.publish({ destination, body: JSON.stringify(body) });
     }, []);
 
+    // onEvent/onConnect se guardan en ref para que el efecto se ate sólo a agenciaId.
+    // Si los pusiéramos en deps el WebSocket se reconectaría con cada render del padre
+    // (las funciones inline cambian de identidad), lo cual rompe el patrón.
+    const onEventRef = useRef(onEvent);
+    const onConnectRef = useRef(onConnect);
+    /* eslint-disable react-hooks/refs */
+    onEventRef.current = onEvent;
+    onConnectRef.current = onConnect;
+    /* eslint-enable react-hooks/refs */
+
     useEffect(() => {
         if (!agenciaId) return;
 
@@ -45,6 +55,9 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
         const BASE = import.meta.env.VITE_API_URL || '';
         const wsUrl = `${BASE}/ws-crm?agenciaId=${agenciaId}`;
 
+        // Reflejar el estado del socket externo en el state local es exactamente
+        // el caso de uso descrito por la regla: aceptable.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setConnectionStatus('connecting');
 
         const client = new Client({
@@ -64,7 +77,7 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
                 client.subscribe('/topic/global-notifications', (msg) => {
                     try {
                         const notif = JSON.parse(msg.body);
-                        onEvent(notif);
+                        onEventRef.current?.(notif);
                         window.__crmNotifAdd?.({
                             title:     notif.title,
                             message:   notif.message,
@@ -75,7 +88,7 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
                     } catch { /* payload no JSON, ignorar */ }
                 });
 
-                if (onConnect) onConnect(client);
+                onConnectRef.current?.(client);
             },
 
             onWebSocketClose: () => {

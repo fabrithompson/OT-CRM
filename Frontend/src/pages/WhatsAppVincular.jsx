@@ -113,7 +113,8 @@ export default function WhatsAppVincular() {
         }
     }, [toast]);
 
-    // Carga inicial
+    // Carga inicial (fetch on mount).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { loadDevices(); }, [loadDevices]);
 
     // Polling pasivo cada 5s: garantiza que la tarjeta actualice a CONNECTED

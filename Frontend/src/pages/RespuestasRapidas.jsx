@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../utils/api';
 import { useLanguage } from '../context/LangContext';
 
@@ -11,11 +11,7 @@ export default function RespuestasRapidas() {
     const [formData, setFormData] = useState({ id: null, atajo: '', respuesta: '' });
     const [deleteId, setDeleteId] = useState(null);
 
-    useEffect(() => {
-        fetchRespuestas();
-    }, []);
-
-    const fetchRespuestas = async () => {
+    const fetchRespuestas = useCallback(async () => {
         try {
             const res = await api.get('/respuestas-rapidas');
             setRespuestas(res.data);
@@ -24,7 +20,10 @@ export default function RespuestasRapidas() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    useEffect(() => { fetchRespuestas(); }, [fetchRespuestas]);
 
     const handleSave = async () => {
         if (!formData.atajo.trim() || !formData.respuesta.trim()) return;

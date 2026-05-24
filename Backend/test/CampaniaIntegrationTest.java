@@ -429,11 +429,15 @@ class CampaniaIntegrationTest extends BaseIntegrationTest {
 
     @SuppressWarnings({"null", "unchecked"})
     private void mockBotFalla() {
+        // En produccion RestTemplate tira RestClientException (o subclases como
+        // ResourceAccessException) cuando el bot esta caido — no RuntimeException
+        // plano. BotHttpClient.post() captura RestClientException y devuelve empty,
+        // que es lo que el test verifica.
         when(restTemplate.exchange(
                 contains("/send-message"),
                 eq(HttpMethod.POST),
                 any(),
                 any(ParameterizedTypeReference.class)
-        )).thenThrow(new RuntimeException("Bot offline"));
+        )).thenThrow(new org.springframework.web.client.ResourceAccessException("Bot offline"));
     }
 }

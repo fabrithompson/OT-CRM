@@ -24,6 +24,24 @@ function PwdField({ id, name, field, labelKey, placeholder, showPassword, formDa
     );
 }
 
+function SubmitBtn({ children, loading }) {
+    return (
+        <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? <i className="fas fa-spinner fa-spin" /> : children}
+        </button>
+    );
+}
+
+function Alert({ type, msg }) {
+    if (!msg) return null;
+    return (
+        <div className={`auth-alert auth-alert--${type}`}>
+            <i className={`fas ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle'}`} />
+            {msg}
+        </div>
+    );
+}
+
 export default function Auth() {
     const [mode, setMode] = useState('login'); // login | register | forgot | reset | verify
     const [showPassword, setShowPassword] = useState({ login: false, register: false, new: false, confirm: false });
@@ -143,20 +161,7 @@ export default function Auth() {
         } finally { setLoading(false); }
     };
 
-    /* ── Reusable sub-components ── */
-    const SubmitBtn = ({ children }) => (
-        <button type="submit" className="auth-submit-btn" disabled={loading}>
-            {loading ? <i className="fas fa-spinner fa-spin" /> : children}
-        </button>
-    );
-
-    const Alert = ({ type, msg }) => msg ? (
-        <div className={`auth-alert auth-alert--${type}`}>
-            <i className={`fas ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle'}`} />
-            {msg}
-        </div>
-    ) : null;
-
+    const submitProps = { loading };
     const pwdProps = { showPassword, formData, handleInput, togglePwd, t };
 
     const isMain   = mode === 'login' || mode === 'register';
@@ -199,7 +204,7 @@ export default function Auth() {
                                     <PwdField id="login-pwd" name="password" field="login"
                                         labelKey="auth.panels.login.password"
                                         placeholder="••••••••" {...pwdProps} />
-                                    <SubmitBtn>{t('auth.panels.login.submit')}</SubmitBtn>
+                                    <SubmitBtn {...submitProps}>{t('auth.panels.login.submit')}</SubmitBtn>
                                     <div className="auth-forgot-link">
                                         <button type="button" className="auth-link-btn" onClick={() => switchTo('forgot')}>
                                             {t('auth.panels.login.forgotPwd')}
@@ -237,7 +242,7 @@ export default function Auth() {
                                             placeholder={t('auth.panels.register.invitePlaceholder')}
                                             value={formData.codigoInvitacion} onChange={handleInput} />
                                     </div>
-                                    <SubmitBtn>{t('auth.panels.register.submit')}</SubmitBtn>
+                                    <SubmitBtn {...submitProps}>{t('auth.panels.register.submit')}</SubmitBtn>
                                 </form>
                             </div>
                         </div>
@@ -296,7 +301,7 @@ export default function Auth() {
                                             placeholder={t('auth.panels.forgot.emailPlaceholder')}
                                             required value={formData.email} onChange={handleInput} />
                                     </div>
-                                    <SubmitBtn>{t('auth.panels.forgot.submit')}</SubmitBtn>
+                                    <SubmitBtn {...submitProps}>{t('auth.panels.forgot.submit')}</SubmitBtn>
                                 </form>
                             </div>
                         )}
@@ -321,7 +326,7 @@ export default function Auth() {
                                     </div>
                                     <PwdField id="reset-new"  name="newPassword"     field="new"     labelKey="auth.panels.reset.newPwd"     placeholder="••••••••" {...pwdProps} />
                                     <PwdField id="reset-conf" name="confirmPassword" field="confirm" labelKey="auth.panels.reset.confirmPwd" placeholder="••••••••" {...pwdProps} />
-                                    <SubmitBtn>{t('auth.panels.reset.submit')}</SubmitBtn>
+                                    <SubmitBtn {...submitProps}>{t('auth.panels.reset.submit')}</SubmitBtn>
                                 </form>
                             </div>
                         )}
@@ -351,7 +356,7 @@ export default function Auth() {
                                             style={{ letterSpacing: '0.35em', textAlign: 'center', fontSize: '1.4rem' }}
                                         />
                                     </div>
-                                    <SubmitBtn>{t('auth.panels.verify.submit')}</SubmitBtn>
+                                    <SubmitBtn {...submitProps}>{t('auth.panels.verify.submit')}</SubmitBtn>
                                 </form>
                                 <p className="util-resend-text">
                                     {t('auth.panels.verify.noCode')}{' '}

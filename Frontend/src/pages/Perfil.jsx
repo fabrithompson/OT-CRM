@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LangContext';
@@ -22,24 +22,7 @@ export default function Perfil() {
 
     const isAdmin = ['OWNER', 'ADMIN'].includes(usuario.rol);
 
-    const fetchSolicitudes = async () => {
-        try {
-            const res = await api.get('/dashboard/equipo/solicitudes-pendientes');
-            setSolicitudes(res.data || []);
-        } catch {}
-    };
-
-    useEffect(() => { fetchPerfil(); }, []);
-
-    useEffect(() => {
-        if (!isAdmin) return;
-        fetchSolicitudes();
-        const handler = () => fetchSolicitudes();
-        window.addEventListener('crm:nueva-solicitud', handler);
-        return () => window.removeEventListener('crm:nueva-solicitud', handler);
-    }, [isAdmin]);
-
-    const fetchPerfil = async () => {
+    const fetchPerfil = useCallback(async () => {
         try {
             const res = await api.get('/perfil');
             setUsuario(res.data);
@@ -49,7 +32,30 @@ export default function Perfil() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    const fetchSolicitudes = useCallback(async () => {
+        try {
+            const res = await api.get('/dashboard/equipo/solicitudes-pendientes');
+            setSolicitudes(res.data || []);
+        } catch (err) {
+            console.warn('No se pudieron cargar solicitudes del equipo:', err);
+        }
+    }, []);
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    useEffect(() => { fetchPerfil(); }, [fetchPerfil]);
+
+    // Carga inicial + escucha del evento global de nuevas solicitudes.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => {
+        if (!isAdmin) return;
+        fetchSolicitudes();
+        const handler = () => fetchSolicitudes();
+        window.addEventListener('crm:nueva-solicitud', handler);
+        return () => window.removeEventListener('crm:nueva-solicitud', handler);
+    }, [isAdmin, fetchSolicitudes]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     const handleFotoChange = (e) => {
         if (e.target.files?.[0]) {
@@ -91,7 +97,9 @@ export default function Perfil() {
         try {
             await api.post('/dashboard/equipo/gestionar-solicitud', { solicitudId, aprobar });
             setSolicitudes(prev => prev.filter(s => s.id !== solicitudId));
-        } catch {}
+        } catch (err) {
+            console.warn('No se pudo gestionar la solicitud:', err);
+        }
         finally { setGestionando(null); }
     };
 

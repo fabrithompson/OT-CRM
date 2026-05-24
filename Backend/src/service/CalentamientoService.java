@@ -13,17 +13,10 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
 import model.Agencia;
 import model.Dispositivo;
@@ -48,7 +41,6 @@ import repository.PlanCalentamientoRepository;
 public class CalentamientoService {
 
     private static final Logger log = LoggerFactory.getLogger(CalentamientoService.class);
-    private static final String API_KEY_HEADER = "X-Bot-Token";
 
     private static final long DELAY_MIN_MS = 10_000L;
     private static final long DELAY_MAX_MS = 45_000L;
@@ -58,24 +50,18 @@ public class CalentamientoService {
     private final PlanCalentamientoRepository planRepo;
     private final EnvioCalentamientoRepository envioRepo;
     private final DispositivoRepository dispositivoRepo;
-    private final RestTemplate http;
+    private final BotHttpClient botClient;
 
     private final Map<String, Long> proximoEnvioPermitido = new ConcurrentHashMap<>();
-
-    @Value("${node.bot.url}")
-    private String nodeBotUrl;
-
-    @Value("${bot.secret.key}")
-    private String botSecretKey;
 
     public CalentamientoService(PlanCalentamientoRepository planRepo,
                                 EnvioCalentamientoRepository envioRepo,
                                 DispositivoRepository dispositivoRepo,
-                                RestTemplate restTemplate) {
+                                BotHttpClient botClient) {
         this.planRepo = planRepo;
         this.envioRepo = envioRepo;
         this.dispositivoRepo = dispositivoRepo;
-        this.http = restTemplate;
+        this.botClient = botClient;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -308,29 +294,8 @@ public class CalentamientoService {
         return textos.get(ThreadLocalRandom.current().nextInt(textos.size()));
     }
 
-    @SuppressWarnings("null")
     private boolean enviarAlBot(Dispositivo dispositivo, String telefono, String texto) {
-        try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("sessionId", dispositivo.getSessionId());
-            body.put("number", telefono);
-            body.put("message", texto);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(API_KEY_HEADER, botSecretKey);
-
-            HttpEntity<Map<String, Object>> req = new HttpEntity<>(body, headers);
-            ResponseEntity<Map<String, Object>> resp = http.exchange(
-                    nodeBotUrl + "/send-message",
-                    HttpMethod.POST,
-                    req,
-                    new org.springframework.core.ParameterizedTypeReference<>() {});
-            return resp.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            log.warn("Fallo enviando calentamiento a {}: {}", telefono, e.getMessage());
-            return false;
-        }
+        return botClient.sendText(dispositivo.getSessionId(), telefono, texto) != null;
     }
 
     public Map<String, Object> planToDto(PlanCalentamiento p) {

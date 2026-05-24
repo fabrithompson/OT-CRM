@@ -21,6 +21,7 @@ import repository.ClienteRepository;
 import repository.DispositivoRepository;
 import repository.EtapaRepository;
 import repository.MensajeRepository;
+import util.PhoneUtil;
 
 @Service
 @RequiredArgsConstructor
@@ -146,6 +147,8 @@ public class TelegramService {
     }
 
     private String limpiarTelefono(String tel) {
-        return tel.replaceAll("\\D", "");
+        // Unificado con WhatsApp: PhoneUtil.normalizar agrega prefijo Argentina-aware (549...)
+        // para que un mismo cliente identificado por teléfono haga match entre canales.
+        return PhoneUtil.normalizar(tel);
     }
 }

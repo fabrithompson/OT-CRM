@@ -48,6 +48,8 @@ export default function MiSuscripcion() {
         }
     }, []);
 
+    // Fetch on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { loadData(); }, [loadData]);
 
     // WebSocket: listen for plan changes
