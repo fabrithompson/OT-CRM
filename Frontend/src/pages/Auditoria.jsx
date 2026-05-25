@@ -1237,15 +1237,22 @@ function ReportListSkeleton() {
     );
 }
 
-// Textarea que se expande automáticamente al contenido. Sin handle de resize.
-function AutoTextarea({ value, onChange, placeholder, style, minHeight = 130 }) {
+// Textarea que se expande automáticamente hasta maxHeight; luego activa scroll.
+function AutoTextarea({ value, onChange, placeholder, style, minHeight = 130, maxHeight }) {
     const ref = useRef(null);
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
         el.style.height = 'auto';
-        el.style.height = Math.max(el.scrollHeight, minHeight) + 'px';
-    }, [value, minHeight]);
+        const desired = Math.max(el.scrollHeight, minHeight);
+        if (maxHeight && desired > maxHeight) {
+            el.style.height = maxHeight + 'px';
+            el.style.overflowY = 'auto';
+        } else {
+            el.style.height = desired + 'px';
+            el.style.overflowY = 'hidden';
+        }
+    }, [value, minHeight, maxHeight]);
     return (
         <textarea
             ref={ref}
@@ -1332,6 +1339,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                     onChange={e => update('auditProcedures', e.target.value)}
                     placeholder={t('auditor.config.proceduresPlaceholder')}
                     minHeight={130}
+                    maxHeight={140}
                     style={{ ...baseInput, fontFamily: 'inherit' }}
                 />
             </div>
