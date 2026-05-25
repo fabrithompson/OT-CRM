@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
-// Hook simple para detectar viewport mobile (< 768px). Listener de resize
-// con cleanup; suficiente para decisiones de layout en este módulo.
+// Hook simple para detectar viewport mobile (< 768px).
 function useIsMobile(breakpoint = 768) {
     const [isMobile, setIsMobile] = useState(() =>
         typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
@@ -13,6 +12,7 @@ function useIsMobile(breakpoint = 768) {
     }, [breakpoint]);
     return isMobile;
 }
+
 import { Navigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useUser } from '../context/UserContext';
@@ -23,8 +23,6 @@ import '../assets/css/dashboard.css';
 const SEV_COLOR = { alta: '#ef4444', media: '#f59e0b', baja: '#94a3b8' };
 const SEV_BG    = { alta: 'rgba(239,68,68,0.10)', media: 'rgba(245,158,11,0.10)', baja: 'rgba(148,163,184,0.08)' };
 
-// Esquema visual por estado de cumplimiento. El label se resuelve por i18n en
-// tiempo de render (t('auditor.states.<estado>')), no se hardcodea acá.
 const ESTADO_META = {
     cumplido:    { icon: 'fa-circle-check',        color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.30)' },
     parcial:     { icon: 'fa-circle-exclamation',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.30)' },
@@ -35,6 +33,13 @@ function fmtDate(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
     return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDateShort(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
         + ' ' + d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -64,20 +69,40 @@ function parseReportPayload(json) {
     }
 }
 
-// Modal genérico (overlay oscuro + card central)
+// Modal usando las clases CSS del dashboard (backdrop blur, border-radius 18px)
 function Modal({ children, onClose }) {
     return (
-        <div onClick={onClose} style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
-            zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            animation: 'fadeIn 0.15s ease-out', padding: 20,
-        }}>
-            <div onClick={e => e.stopPropagation()} style={{
-                background: '#111118', border: '1px solid rgba(255,255,255,0.10)',
-                borderRadius: 14, maxWidth: 460, width: '100%', padding: 22,
-                animation: 'slideUp 0.18s ease-out',
-            }}>
+        <div className="db-modal-overlay" onClick={onClose} style={{ animation: 'fadeIn 0.15s ease-out' }}>
+            <div
+                className="db-modal"
+                onClick={e => e.stopPropagation()}
+                style={{ animation: 'slideUp 0.18s ease-out', maxWidth: 460, width: '100%' }}
+            >
                 {children}
+            </div>
+        </div>
+    );
+}
+
+// Tarjeta de métrica para el header de la pestaña Reportes
+function AuditStatCard({ icon, label, value, accentColor, small }) {
+    const color = accentColor || 'var(--db-accent, #a78bfa)';
+    return (
+        <div className="db-metric-card" style={{ '--db-accent': color }}>
+            <div className="db-metric-top">
+                <div className="db-metric-icon" style={{ color }}>
+                    <i className={`fa-solid ${icon}`} />
+                </div>
+            </div>
+            <div>
+                <div className="db-metric-label">{label}</div>
+                {small ? (
+                    <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff', lineHeight: 1.25, marginTop: 4 }}>
+                        {value}
+                    </div>
+                ) : (
+                    <div className="db-metric-value" style={{ color, fontSize: '2.2rem' }}>{value}</div>
+                )}
             </div>
         </div>
     );
@@ -91,7 +116,6 @@ export default function Auditoria() {
     const isEnterprise = usuario?.plan?.agenteIaHabilitado === true
         || usuario?.plan?.nombre === 'ENTERPRISE';
 
-    // Tab actual: reportes | config
     const [tab, setTab] = useState('reportes');
 
     const [reports, setReports]           = useState([]);
@@ -100,24 +124,19 @@ export default function Auditoria() {
     const [runLoading, setRunLoading]     = useState(false);
     const [runError, setRunError]         = useState('');
     const [hideFP, setHideFP]             = useState(true);
-    // Estado por reporte: qué puntos de procedimiento están expandidos
     const [expandedProcs, setExpandedProcs] = useState({});
-    // Estado por reporte: qué fila del historial está expandida inline
-    const [rowExpanded, setRowExpanded] = useState({});
+    const [rowExpanded, setRowExpanded]   = useState({});
+    const [editingMeta, setEditingMeta]   = useState(null);
+    const [deleting, setDeleting]         = useState(null);
 
-    // Edición inline de nombre/notas + confirmación de eliminación
-    const [editingMeta, setEditingMeta] = useState(null);   // { id, nombre, notas } o null
-    const [deleting, setDeleting]       = useState(null);   // reporte a eliminar o null
-
-    // Estado de configuración del auditor (movido desde AgenteIA.jsx)
     const [cfg, setCfg] = useState({
         auditEnabled: false, auditProcedures: '', auditEmail: '',
         auditWhatsappPhone: '', auditDispositivoId: '',
         horarioInicio: '09:00', horarioFin: '18:00',
     });
-    const [dispositivos, setDispositivos]   = useState([]);
-    const [cfgSaving, setCfgSaving]         = useState(false);
-    const [cfgSaved, setCfgSaved]           = useState(false);
+    const [dispositivos, setDispositivos] = useState([]);
+    const [cfgSaving, setCfgSaving]       = useState(false);
+    const [cfgSaved, setCfgSaved]         = useState(false);
 
     const loadReports = useCallback(async () => {
         try {
@@ -133,7 +152,6 @@ export default function Auditoria() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Carga inicial: reportes + config + dispositivos (fetch-on-mount con setState es legítimo).
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (!isEnterprise || userLoading) return;
@@ -163,8 +181,6 @@ export default function Auditoria() {
             const res = await api.post('/audit/run-now');
             setReports(prev => [res.data, ...prev.filter(r => r.id !== res.data.id)]);
             setSelected(res.data);
-
-            // Feedback visual diferenciado según qué se haya enviado
             const sentEmail = res.data?.sentEmail === true;
             const sentWa    = res.data?.sentWhatsapp === true;
             if (sentEmail && sentWa) {
@@ -193,7 +209,6 @@ export default function Auditoria() {
         } catch { /* silencioso */ }
     };
 
-    // Persistir orden manual del historial cuando el usuario mueve filas
     const persistOrden = useCallback(async (lista) => {
         try {
             await api.post('/audit/reports/reorder', { orden: lista.map(r => r.id) });
@@ -267,8 +282,6 @@ export default function Auditoria() {
         [selected]
     );
 
-    // Al cambiar de reporte: expandimos por defecto los puntos no cumplidos.
-    // Sólo nos interesa cuando cambia el id del reporte y su payload, no la referencia entera.
     /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
     useEffect(() => {
         if (!selected) return;
@@ -293,11 +306,14 @@ export default function Auditoria() {
     const visibles = hideFP ? hallazgos.filter(h => !h.false_positive) : hallazgos;
     const fpCount  = hallazgos.filter(h => h.false_positive).length;
 
-    // Contadores agregados por estado para el header de la sección procedimientos
     const counts = procedimientos.reduce((acc, p) => {
         acc[p.estado] = (acc[p.estado] || 0) + 1;
         return acc;
     }, { cumplido: 0, parcial: 0, incumplido: 0 });
+
+    // Métricas agregadas para el stats row
+    const totalIncumplimientos = reports.reduce((s, r) => s + (r.incumplimientos || 0), 0);
+    const incColor = totalIncumplimientos === 0 ? '#10b981' : totalIncumplimientos <= 5 ? '#f59e0b' : '#ef4444';
 
     return (
         <div className="db-root" style={{ '--db-accent': '#a78bfa', height: '100%', overflow: 'hidden' }}>
@@ -321,7 +337,8 @@ export default function Auditoria() {
                         <TabButton active={tab === 'reportes'} onClick={() => setTab('reportes')}
                                    icon="fa-list-ul" label={t('auditor.tabs.reports')} count={reports.length} />
                         <TabButton active={tab === 'config'} onClick={() => setTab('config')}
-                                   icon="fa-gear" label={t('auditor.tabs.config')} />
+                                   icon="fa-gear" label={t('auditor.tabs.config')}
+                                   dot={cfg.auditEnabled} />
                     </div>
                 </div>
                 {tab === 'reportes' && (
@@ -348,583 +365,470 @@ export default function Auditoria() {
                 )}
             </div>
 
-            {/* Tab Reportes */}
+            {/* ── Tab Reportes ── */}
             {tab === 'reportes' && (
                 <div style={{
-                    display: 'flex', gap: 14, flex: 1, overflow: 'hidden', minHeight: 0,
-                    // En mobile apilamos vertical y mostramos lista o detalle, no ambos
-                    flexDirection: isMobile ? 'column' : 'row',
+                    display: 'flex', flexDirection: 'column', gap: 12,
+                    flex: 1, overflow: 'hidden', minHeight: 0,
                 }}>
-
-                {/* LEFT: lista de reportes con acciones (oculta en mobile cuando hay detalle abierto) */}
-                <div style={{
-                    width: isMobile ? '100%' : 320,
-                    flexShrink: 0, overflowY: 'auto', display: (isMobile && selected) ? 'none' : 'flex',
-                    flexDirection: 'column', gap: 8,
-                }}>
-                    {loadingList ? (
-                        <ReportListSkeleton />
-                    ) : reports.length === 0 ? (
-                        <div style={{
-                            color: 'rgba(255,255,255,0.30)', fontSize: '0.82rem',
-                            padding: '20px 12px', textAlign: 'center', lineHeight: 1.7,
-                        }}>
-                            <i className="fa-solid fa-folder-open"
-                               style={{ fontSize: '1.8rem', marginBottom: 8, display: 'block', opacity: 0.4 }} />
-                            {t('auditor.emptyState')}<br />
-                            {t('auditor.emptyStateHint')} <strong>&quot;{t('auditor.runNow')}&quot;</strong>.
+                    {/* Stats row — sólo cuando ya hay datos */}
+                    {!loadingList && reports.length > 0 && (
+                        <div className="db-metrics-row" style={{ flexShrink: 0, gridTemplateColumns: 'repeat(3,1fr)' }}>
+                            <AuditStatCard
+                                icon="fa-file-contract"
+                                label={t('auditor.stats.total')}
+                                value={reports.length}
+                                accentColor="#a78bfa"
+                            />
+                            <AuditStatCard
+                                icon="fa-triangle-exclamation"
+                                label={t('auditor.stats.incumplimientos')}
+                                value={totalIncumplimientos}
+                                accentColor={incColor}
+                            />
+                            <AuditStatCard
+                                icon="fa-calendar-check"
+                                label={t('auditor.stats.lastAudit')}
+                                value={reports[0] ? fmtDateShort(reports[0].createdAt) : '—'}
+                                accentColor="#a78bfa"
+                                small
+                            />
                         </div>
-                    ) : reports.map((r, idx) => (
-                        <ReportRow
-                            key={r.id} r={r} idx={idx} total={reports.length} t={t}
-                            selected={selected?.id === r.id}
-                            expanded={!!rowExpanded[r.id]}
-                            onSelect={() => setSelected(r)}
-                            onToggleExpand={() => setRowExpanded(prev => ({ ...prev, [r.id]: !prev[r.id] }))}
-                            onEdit={() => setEditingMeta({ id: r.id, nombre: r.nombre || '', notas: r.notas || '' })}
-                            onDelete={() => setDeleting(r)}
-                            onMoveUp={() => moveReport(r.id, -1)}
-                            onMoveDown={() => moveReport(r.id, +1)}
-                        />
-                    ))}
-                </div>
+                    )}
 
-                {/* RIGHT: detalle del reporte seleccionado (oculto en mobile sin selección) */}
-                <div style={{
-                    flex: 1, overflowY: 'auto', minWidth: 0,
-                    display: (isMobile && !selected) ? 'none' : 'block',
-                }}>
-                    {!selected ? (
+                    {/* Split panel: lista izquierda / detalle derecha */}
+                    <div style={{
+                        display: 'flex', gap: 14, flex: 1, overflow: 'hidden', minHeight: 0,
+                        flexDirection: isMobile ? 'column' : 'row',
+                    }}>
+                        {/* LEFT: historial de reportes */}
                         <div style={{
-                            height: '100%', display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', flexDirection: 'column', gap: 12,
-                            color: 'rgba(255,255,255,0.25)',
+                            width: isMobile ? '100%' : 308,
+                            flexShrink: 0, overflowY: 'auto',
+                            display: (isMobile && selected) ? 'none' : 'flex',
+                            flexDirection: 'column', gap: 6,
                         }}>
-                            <i className="fa-solid fa-arrow-pointer"
-                               style={{ fontSize: '2rem', opacity: 0.3 }} />
-                            <span style={{ fontSize: '0.88rem' }}>
-                                {t('auditor.selectReport')}
-                            </span>
+                            {loadingList ? (
+                                <ReportListSkeleton />
+                            ) : reports.length === 0 ? (
+                                <EmptyHistory t={t} />
+                            ) : reports.map((r, idx) => (
+                                <ReportRow
+                                    key={r.id} r={r} idx={idx} total={reports.length} t={t}
+                                    selected={selected?.id === r.id}
+                                    expanded={!!rowExpanded[r.id]}
+                                    onSelect={() => setSelected(r)}
+                                    onToggleExpand={() => setRowExpanded(prev => ({ ...prev, [r.id]: !prev[r.id] }))}
+                                    onEdit={() => setEditingMeta({ id: r.id, nombre: r.nombre || '', notas: r.notas || '' })}
+                                    onDelete={() => setDeleting(r)}
+                                    onMoveUp={() => moveReport(r.id, -1)}
+                                    onMoveDown={() => moveReport(r.id, +1)}
+                                />
+                            ))}
                         </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            {/* Botón volver en mobile */}
-                            {isMobile && (
-                                <button
-                                    onClick={() => setSelected(null)}
-                                    style={{
-                                        alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8,
-                                        border: '1px solid rgba(255,255,255,0.12)',
-                                        background: 'rgba(255,255,255,0.04)',
-                                        color: 'rgba(255,255,255,0.65)', fontSize: '0.82rem',
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    <i className="fa-solid fa-arrow-left" style={{ marginRight: 6 }} />
-                                    {t('auditor.backToHistory')}
-                                </button>
-                            )}
-                            {/* Resumen */}
-                            <div className="db-card" style={{ gap: 12 }}>
-                                <div style={{
-                                    display: 'flex', justifyContent: 'space-between',
-                                    alignItems: 'flex-start', flexWrap: 'wrap', gap: 10,
-                                }}>
-                                    <div>
-                                        <div className="db-card-title" style={{ margin: 0 }}>
-                                            <i className="fa-solid fa-file-contract"
-                                               style={{ color: '#a78bfa' }} />
-                                            {selected.nombre || `${t('auditor.tabs.reports')} — ${fmtDate(selected.createdAt)}`}
+
+                        {/* RIGHT: detalle del reporte seleccionado */}
+                        <div style={{
+                            flex: 1, overflowY: 'auto', minWidth: 0,
+                            display: (isMobile && !selected) ? 'none' : 'block',
+                        }}>
+                            {!selected ? (
+                                <SelectPrompt t={t} />
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {/* Volver en mobile */}
+                                    {isMobile && (
+                                        <button
+                                            onClick={() => setSelected(null)}
+                                            style={{
+                                                alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8,
+                                                border: '1px solid rgba(255,255,255,0.12)',
+                                                background: 'rgba(255,255,255,0.04)',
+                                                color: 'rgba(255,255,255,0.65)', fontSize: '0.82rem',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            <i className="fa-solid fa-arrow-left" style={{ marginRight: 6 }} />
+                                            {t('auditor.backToHistory')}
+                                        </button>
+                                    )}
+
+                                    {/* ── Cabecera del reporte ── */}
+                                    <div className="db-card" style={{ gap: 12 }}>
+                                        {/* Chip de título — mismo patrón que ReportRow */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                                            <ReportChip r={selected} />
+                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                {fpCount > 0 && (
+                                                    <button
+                                                        onClick={() => setHideFP(v => !v)}
+                                                        style={{
+                                                            fontSize: '0.73rem', padding: '4px 10px',
+                                                            borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)',
+                                                            background: hideFP ? 'rgba(255,255,255,0.05)' : 'rgba(167,139,250,0.12)',
+                                                            color: hideFP ? 'rgba(255,255,255,0.45)' : '#c4b5fd',
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        <i className="fa-solid fa-eye-slash" style={{ marginRight: 4 }} />
+                                                        {hideFP
+                                                            ? `${t('auditor.showFP')} ${fpCount} ${fpCount > 1 ? t('auditor.falsePositives') : t('auditor.falsePositive')}`
+                                                            : t('auditor.hideFP')}
+                                                    </button>
+                                                )}
+                                                <IncumplimientosBadge n={selected.incumplimientos} t={t} />
+                                            </div>
                                         </div>
-                                        <div style={{
-                                            fontSize: '0.75rem', color: 'rgba(255,255,255,0.38)',
-                                            marginTop: 4,
-                                        }}>
+                                        <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)' }}>
                                             {t('auditor.period')}: {fmtPeriod(selected.periodoInicio, selected.periodoFin)}
                                             {selected.nombre && (
-                                                <span style={{ marginLeft: 10, color: 'rgba(255,255,255,0.30)' }}>
-                                                    · {fmtDate(selected.createdAt)}
-                                                </span>
+                                                <span style={{ marginLeft: 10 }}>· {fmtDate(selected.createdAt)}</span>
                                             )}
                                         </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                                        {fpCount > 0 && (
-                                            <button
-                                                onClick={() => setHideFP(v => !v)}
-                                                style={{
-                                                    fontSize: '0.73rem', padding: '4px 10px',
-                                                    borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)',
-                                                    background: hideFP ? 'rgba(255,255,255,0.05)' : 'rgba(167,139,250,0.12)',
-                                                    color: hideFP ? 'rgba(255,255,255,0.45)' : '#c4b5fd',
-                                                    cursor: 'pointer',
-                                                }}
-                                            >
-                                                <i className="fa-solid fa-eye-slash"
-                                                   style={{ marginRight: 4 }} />
-                                                {hideFP
-                                                    ? `${t('auditor.showFP')} ${fpCount} ${fpCount > 1 ? t('auditor.falsePositives') : t('auditor.falsePositive')}`
-                                                    : t('auditor.hideFP')}
-                                            </button>
+
+                                        {/* Resumen ejecutivo */}
+                                        {(resumen_ejecutivo || selected.resumen) && (
+                                            <div style={{
+                                                padding: '14px 18px', borderRadius: 10,
+                                                background: 'rgba(167,139,250,0.05)',
+                                                border: '1px solid rgba(167,139,250,0.14)',
+                                                fontSize: '0.87rem', color: 'rgba(255,255,255,0.78)',
+                                                lineHeight: 1.7, whiteSpace: 'pre-wrap',
+                                            }}>
+                                                <div style={{
+                                                    fontSize: '0.70rem', color: '#c4b5fd',
+                                                    textTransform: 'uppercase', letterSpacing: '0.08em',
+                                                    marginBottom: 8, fontWeight: 700,
+                                                }}>
+                                                    <i className="fa-solid fa-clipboard-list" style={{ marginRight: 6 }} />
+                                                    {t('auditor.executiveSummary')}
+                                                </div>
+                                                {resumen_ejecutivo || selected.resumen}
+                                            </div>
                                         )}
-                                        <div style={{
-                                            fontSize: '0.78rem', fontWeight: 700, padding: '4px 12px',
-                                            borderRadius: 8,
-                                            background: selected.incumplimientos === 0
-                                                ? 'rgba(16,185,129,0.12)'
-                                                : selected.incumplimientos <= 3
-                                                    ? 'rgba(245,158,11,0.12)'
-                                                    : 'rgba(239,68,68,0.12)',
-                                            color: selected.incumplimientos === 0 ? '#10b981'
-                                                : selected.incumplimientos <= 3 ? '#f59e0b' : '#ef4444',
-                                            border: `1px solid ${selected.incumplimientos === 0
-                                                ? 'rgba(16,185,129,0.25)'
-                                                : selected.incumplimientos <= 3
-                                                    ? 'rgba(245,158,11,0.25)'
-                                                    : 'rgba(239,68,68,0.25)'}`,
-                                        }}>
-                                            {selected.incumplimientos === 0
-                                                ? t('auditor.noIncidentsShort')
-                                                : `${selected.incumplimientos} ${selected.incumplimientos > 1 ? t('auditor.incidents') : t('auditor.incident')}`}
-                                        </div>
-                                    </div>
-                                </div>
 
-                                {/* Resumen ejecutivo: prioriza el campo extendido (2-3 párrafos) */}
-                                {(resumen_ejecutivo || selected.resumen) && (
-                                    <div style={{
-                                        padding: '14px 18px', borderRadius: 8,
-                                        background: 'rgba(255,255,255,0.02)',
-                                        border: '1px solid rgba(255,255,255,0.06)',
-                                        fontSize: '0.87rem', color: 'rgba(255,255,255,0.78)',
-                                        lineHeight: 1.7, whiteSpace: 'pre-wrap',
-                                    }}>
-                                        <div style={{
-                                            fontSize: '0.70rem', color: 'rgba(255,255,255,0.45)',
-                                            textTransform: 'uppercase', letterSpacing: '0.08em',
-                                            marginBottom: 8,
-                                        }}>
-                                            <i className="fa-solid fa-clipboard-list"
-                                               style={{ marginRight: 6, color: '#a78bfa' }} />
-                                            {t('auditor.executiveSummary')}
-                                        </div>
-                                        {resumen_ejecutivo || selected.resumen}
-                                    </div>
-                                )}
+                                        {selected.notas && (
+                                            <div style={{
+                                                padding: '10px 14px', borderRadius: 8,
+                                                background: 'rgba(245,158,11,0.06)',
+                                                border: '1px solid rgba(245,158,11,0.18)',
+                                                fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)',
+                                                lineHeight: 1.6, whiteSpace: 'pre-wrap',
+                                            }}>
+                                                <div style={{
+                                                    fontSize: '0.68rem', color: '#fbbf24',
+                                                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4,
+                                                    fontWeight: 700,
+                                                }}>
+                                                    <i className="fa-regular fa-note-sticky" style={{ marginRight: 5 }} />
+                                                    {t('auditor.notes')}
+                                                </div>
+                                                {selected.notas}
+                                            </div>
+                                        )}
 
-                                {selected.notas && (
-                                    <div style={{
-                                        padding: '10px 14px', borderRadius: 8,
-                                        background: 'rgba(245,158,11,0.06)',
-                                        border: '1px solid rgba(245,158,11,0.18)',
-                                        fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)',
-                                        lineHeight: 1.6, whiteSpace: 'pre-wrap',
-                                    }}>
-                                        <div style={{
-                                            fontSize: '0.68rem', color: '#fbbf24',
-                                            textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4,
-                                        }}>
-                                            <i className="fa-regular fa-note-sticky" style={{ marginRight: 5 }} />
-                                            {t('auditor.notes')}
-                                        </div>
-                                        {selected.notas}
-                                    </div>
-                                )}
-
-                                <div style={{
-                                    fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)',
-                                    textAlign: 'right',
-                                }}>
-                                    {t('auditor.tokensUsed')}: {selected.tokensUsados?.toLocaleString('es-AR')}
-                                </div>
-                            </div>
-
-                            {/* Procedimientos auditados (punto por punto) */}
-                            {procedimientos.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                    <div style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                        padding: '0 4px',
-                                    }}>
-                                        <div style={{
-                                            fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)',
-                                            textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
-                                        }}>
-                                            <i className="fa-solid fa-list-check"
-                                               style={{ marginRight: 6, color: '#a78bfa' }} />
-                                            {t('auditor.procedures')} ({procedimientos.length})
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 6, fontSize: '0.72rem' }}>
-                                            {counts.cumplido > 0 && (
-                                                <span style={{ color: '#10b981' }}>
-                                                    <i className="fa-solid fa-circle-check" /> {counts.cumplido}
-                                                </span>
-                                            )}
-                                            {counts.parcial > 0 && (
-                                                <span style={{ color: '#f59e0b' }}>
-                                                    <i className="fa-solid fa-circle-exclamation" /> {counts.parcial}
-                                                </span>
-                                            )}
-                                            {counts.incumplido > 0 && (
-                                                <span style={{ color: '#ef4444' }}>
-                                                    <i className="fa-solid fa-circle-xmark" /> {counts.incumplido}
-                                                </span>
-                                            )}
+                                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.22)', textAlign: 'right' }}>
+                                            {t('auditor.tokensUsed')}: {selected.tokensUsados?.toLocaleString('es-AR')}
                                         </div>
                                     </div>
 
-                                    {procedimientos.map((p, i) => {
-                                        const meta = ESTADO_META[p.estado] || ESTADO_META.parcial;
-                                        const isOpen = !!expandedProcs[i];
-                                        const evidencias = Array.isArray(p.evidencias) ? p.evidencias : [];
-                                        return (
-                                            <div
-                                                key={i}
-                                                className="db-card"
-                                                style={{
-                                                    gap: 8, padding: 0, overflow: 'hidden',
-                                                    borderLeft: `3px solid ${meta.color}`,
-                                                }}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setExpandedProcs(prev => ({ ...prev, [i]: !prev[i] }))}
-                                                    style={{
-                                                        all: 'unset', cursor: 'pointer',
-                                                        padding: '12px 16px', display: 'flex',
-                                                        justifyContent: 'space-between', alignItems: 'center',
-                                                        gap: 10,
-                                                    }}
-                                                >
-                                                    <div style={{
-                                                        fontSize: '0.90rem', fontWeight: 700,
-                                                        color: 'rgba(255,255,255,0.88)', flex: 1,
-                                                        lineHeight: 1.4,
-                                                    }}>
-                                                        {p.punto || `${t('auditor.procedures')} ${i + 1}`}
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                                    {/* ── Procedimientos auditados ── */}
+                                    {procedimientos.length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center',
+                                                justifyContent: 'space-between', padding: '0 2px',
+                                            }}>
+                                                <div style={{
+                                                    fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)',
+                                                    textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
+                                                    display: 'flex', alignItems: 'center', gap: 7,
+                                                }}>
+                                                    <i className="fa-solid fa-list-check" style={{ color: '#a78bfa' }} />
+                                                    {t('auditor.procedures')} ({procedimientos.length})
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    {counts.cumplido > 0 && (
                                                         <span style={{
                                                             fontSize: '0.72rem', fontWeight: 700,
-                                                            padding: '3px 10px', borderRadius: 6,
-                                                            background: meta.bg, color: meta.color,
-                                                            border: `1px solid ${meta.border}`,
-                                                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                            padding: '2px 8px', borderRadius: 12,
+                                                            background: 'rgba(16,185,129,0.12)',
+                                                            color: '#10b981', border: '1px solid rgba(16,185,129,0.25)',
                                                         }}>
-                                                            <i className={`fa-solid ${meta.icon}`} />
-                                                            {t(`auditor.states.${p.estado}`)}
+                                                            <i className="fa-solid fa-circle-check" style={{ marginRight: 3 }} />
+                                                            {counts.cumplido}
                                                         </span>
-                                                        {evidencias.length > 0 && (
-                                                            <span style={{
-                                                                fontSize: '0.70rem', color: 'rgba(255,255,255,0.45)',
-                                                            }}>
-                                                                {evidencias.length} {evidencias.length > 1 ? t('auditor.evidences') : t('auditor.evidence')}
-                                                            </span>
-                                                        )}
-                                                        <i className={`fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}
-                                                           style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem' }} />
-                                                    </div>
-                                                </button>
-
-                                                {isOpen && (
-                                                    <div style={{
-                                                        padding: '0 16px 14px 16px',
-                                                        display: 'flex', flexDirection: 'column', gap: 10,
-                                                        animation: 'fadeIn 0.18s ease-out',
-                                                    }}>
-                                                        {p.justificacion && (
-                                                            <div style={{
-                                                                fontSize: '0.83rem', color: 'rgba(255,255,255,0.62)',
-                                                                lineHeight: 1.6, padding: '8px 12px',
-                                                                background: 'rgba(255,255,255,0.02)',
-                                                                borderRadius: 6,
-                                                                borderLeft: `2px solid ${meta.border}`,
-                                                            }}>
-                                                                {p.justificacion}
-                                                            </div>
-                                                        )}
-
-                                                        {evidencias.length === 0 ? (
-                                                            <div style={{
-                                                                fontSize: '0.76rem', color: 'rgba(255,255,255,0.3)',
-                                                                fontStyle: 'italic', textAlign: 'center', padding: 6,
-                                                            }}>
-                                                                {t('auditor.noEvidences')}
-                                                            </div>
-                                                        ) : evidencias.map((ev, j) => (
-                                                            <div key={j} style={{
-                                                                padding: '10px 12px', borderRadius: 8,
-                                                                background: 'rgba(0,0,0,0.20)',
-                                                                border: '1px solid rgba(255,255,255,0.05)',
-                                                                display: 'flex', flexDirection: 'column', gap: 6,
-                                                            }}>
-                                                                <div style={{
-                                                                    display: 'flex', justifyContent: 'space-between',
-                                                                    alignItems: 'center', flexWrap: 'wrap', gap: 6,
-                                                                    fontSize: '0.77rem',
-                                                                }}>
-                                                                    <span style={{
-                                                                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                                                                    }}>
-                                                                        <i className="fa-solid fa-user"
-                                                                           style={{ color: '#a78bfa' }} />
-                                                                        <strong style={{ color: '#c4b5fd' }}>
-                                                                            {ev.vendedor || t('auditor.vendorUnknown')}
-                                                                        </strong>
-                                                                        {ev.cliente_id && (
-                                                                            <span style={{ color: 'rgba(255,255,255,0.3)' }}>
-                                                                                · {t('auditor.client')} #{ev.cliente_id}
-                                                                            </span>
-                                                                        )}
-                                                                    </span>
-                                                                    {ev.cuando && (
-                                                                        <span style={{
-                                                                            color: 'rgba(255,255,255,0.45)',
-                                                                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                                                                        }}>
-                                                                            <i className="fa-regular fa-clock" />
-                                                                            {ev.cuando}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-
-                                                                {ev.como && (
-                                                                    <div style={{
-                                                                        fontSize: '0.80rem', color: 'rgba(255,255,255,0.58)',
-                                                                        lineHeight: 1.55,
-                                                                    }}>
-                                                                        <span style={{
-                                                                            color: 'rgba(255,255,255,0.35)',
-                                                                            fontSize: '0.72rem', marginRight: 6,
-                                                                            textTransform: 'uppercase', letterSpacing: '0.06em',
-                                                                        }}>
-                                                                            {t('auditor.how')}:
-                                                                        </span>
-                                                                        {ev.como}
-                                                                    </div>
-                                                                )}
-
-                                                                {ev.cita_textual && (
-                                                                    <blockquote style={{
-                                                                        margin: 0, padding: '8px 12px',
-                                                                        background: 'rgba(0,0,0,0.30)',
-                                                                        borderLeft: `3px solid ${meta.color}80`,
-                                                                        borderRadius: '0 6px 6px 0',
-                                                                        fontSize: '0.80rem', fontStyle: 'italic',
-                                                                        color: 'rgba(255,255,255,0.70)', lineHeight: 1.55,
-                                                                    }}>
-                                                                        &quot;{ev.cita_textual}&quot;
-                                                                    </blockquote>
-                                                                )}
-
-                                                                {(ev.esperado || ev.ocurrido) && (
-                                                                    <div style={{
-                                                                        display: 'grid', gridTemplateColumns: '1fr 1fr',
-                                                                        gap: 8, marginTop: 2,
-                                                                    }}>
-                                                                        <div style={{
-                                                                            padding: '6px 10px', borderRadius: 6,
-                                                                            background: 'rgba(16,185,129,0.06)',
-                                                                            border: '1px solid rgba(16,185,129,0.15)',
-                                                                            fontSize: '0.74rem', lineHeight: 1.5,
-                                                                        }}>
-                                                                            <div style={{
-                                                                                color: '#34d399', fontWeight: 700,
-                                                                                marginBottom: 3, fontSize: '0.68rem',
-                                                                                textTransform: 'uppercase', letterSpacing: '0.06em',
-                                                                            }}>
-                                                                                {t('auditor.expected')}
-                                                                            </div>
-                                                                            <div style={{ color: 'rgba(255,255,255,0.6)' }}>
-                                                                                {ev.esperado || '—'}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div style={{
-                                                                            padding: '6px 10px', borderRadius: 6,
-                                                                            background: 'rgba(239,68,68,0.06)',
-                                                                            border: '1px solid rgba(239,68,68,0.15)',
-                                                                            fontSize: '0.74rem', lineHeight: 1.5,
-                                                                        }}>
-                                                                            <div style={{
-                                                                                color: '#f87171', fontWeight: 700,
-                                                                                marginBottom: 3, fontSize: '0.68rem',
-                                                                                textTransform: 'uppercase', letterSpacing: '0.06em',
-                                                                            }}>
-                                                                                {t('auditor.actual')}
-                                                                            </div>
-                                                                            <div style={{ color: 'rgba(255,255,255,0.6)' }}>
-                                                                                {ev.ocurrido || '—'}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                    )}
+                                                    {counts.parcial > 0 && (
+                                                        <span style={{
+                                                            fontSize: '0.72rem', fontWeight: 700,
+                                                            padding: '2px 8px', borderRadius: 12,
+                                                            background: 'rgba(245,158,11,0.12)',
+                                                            color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)',
+                                                        }}>
+                                                            <i className="fa-solid fa-circle-exclamation" style={{ marginRight: 3 }} />
+                                                            {counts.parcial}
+                                                        </span>
+                                                    )}
+                                                    {counts.incumplido > 0 && (
+                                                        <span style={{
+                                                            fontSize: '0.72rem', fontWeight: 700,
+                                                            padding: '2px 8px', borderRadius: 12,
+                                                            background: 'rgba(239,68,68,0.12)',
+                                                            color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)',
+                                                        }}>
+                                                            <i className="fa-solid fa-circle-xmark" style={{ marginRight: 3 }} />
+                                                            {counts.incumplido}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
 
-                            {/* Hallazgos individuales */}
-                            {hallazgos.length > 0 && (
-                                <>
-                                    <div style={{
-                                        fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)',
-                                        textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
-                                        padding: '0 4px', marginTop: 6,
-                                    }}>
-                                        <i className="fa-solid fa-triangle-exclamation"
-                                           style={{ marginRight: 6, color: '#f59e0b' }} />
-                                        {t('auditor.findings')} ({visibles.length})
-                                    </div>
+                                            {procedimientos.map((p, i) => {
+                                                const meta = ESTADO_META[p.estado] || ESTADO_META.parcial;
+                                                const isOpen = !!expandedProcs[i];
+                                                const evidencias = Array.isArray(p.evidencias) ? p.evidencias : [];
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className="db-card"
+                                                        style={{
+                                                            gap: 0, padding: 0, overflow: 'hidden',
+                                                            borderLeft: `3px solid ${meta.color}`,
+                                                        }}
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setExpandedProcs(prev => ({ ...prev, [i]: !prev[i] }))}
+                                                            style={{
+                                                                all: 'unset', cursor: 'pointer',
+                                                                padding: '13px 16px', display: 'flex',
+                                                                justifyContent: 'space-between', alignItems: 'center',
+                                                                gap: 10, width: '100%', boxSizing: 'border-box',
+                                                            }}
+                                                        >
+                                                            <div style={{
+                                                                fontSize: '0.88rem', fontWeight: 700,
+                                                                color: 'rgba(255,255,255,0.88)', flex: 1,
+                                                                lineHeight: 1.4,
+                                                            }}>
+                                                                {p.punto || `${t('auditor.procedures')} ${i + 1}`}
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                                                                <span style={{
+                                                                    fontSize: '0.72rem', fontWeight: 700,
+                                                                    padding: '3px 10px', borderRadius: 6,
+                                                                    background: meta.bg, color: meta.color,
+                                                                    border: `1px solid ${meta.border}`,
+                                                                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                                }}>
+                                                                    <i className={`fa-solid ${meta.icon}`} />
+                                                                    {t(`auditor.states.${p.estado}`)}
+                                                                </span>
+                                                                {evidencias.length > 0 && (
+                                                                    <span style={{ fontSize: '0.70rem', color: 'rgba(255,255,255,0.38)' }}>
+                                                                        {evidencias.length} {evidencias.length > 1 ? t('auditor.evidences') : t('auditor.evidence')}
+                                                                    </span>
+                                                                )}
+                                                                <i className={`fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}
+                                                                   style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.75rem' }} />
+                                                            </div>
+                                                        </button>
 
-                                    {visibles.length === 0 && hallazgos.length > 0 && (
-                                        <div style={{
-                                            textAlign: 'center', padding: '20px',
-                                            color: 'rgba(255,255,255,0.30)', fontSize: '0.85rem',
-                                        }}>
-                                            {t('auditor.allFP')}
+                                                        {isOpen && (
+                                                            <div style={{
+                                                                padding: '0 16px 14px 16px',
+                                                                display: 'flex', flexDirection: 'column', gap: 10,
+                                                                animation: 'fadeIn 0.18s ease-out',
+                                                                borderTop: '1px solid rgba(255,255,255,0.05)',
+                                                            }}>
+                                                                {p.justificacion && (
+                                                                    <div style={{
+                                                                        marginTop: 12,
+                                                                        fontSize: '0.83rem', color: 'rgba(255,255,255,0.62)',
+                                                                        lineHeight: 1.6, padding: '8px 12px',
+                                                                        background: 'rgba(255,255,255,0.02)',
+                                                                        borderRadius: 6,
+                                                                        borderLeft: `2px solid ${meta.border}`,
+                                                                    }}>
+                                                                        {p.justificacion}
+                                                                    </div>
+                                                                )}
+
+                                                                {evidencias.length === 0 ? (
+                                                                    <div style={{
+                                                                        fontSize: '0.76rem', color: 'rgba(255,255,255,0.3)',
+                                                                        fontStyle: 'italic', textAlign: 'center', padding: 8,
+                                                                    }}>
+                                                                        {t('auditor.noEvidences')}
+                                                                    </div>
+                                                                ) : evidencias.map((ev, j) => (
+                                                                    <EvidenciaCard key={j} ev={ev} meta={meta} t={t} />
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
 
-                                    {visibles.map((h) => {
-                                        const realIdx = hallazgos.indexOf(h);
-                                        const sev  = h.severidad || 'baja';
-                                        const isFP = h.false_positive === true;
-                                        return (
-                                            <div
-                                                key={realIdx}
-                                                className="db-card"
-                                                style={{
-                                                    gap: 10, opacity: isFP ? 0.5 : 1,
-                                                    borderLeft: `3px solid ${SEV_COLOR[sev] || '#475569'}`,
-                                                    paddingLeft: 16,
-                                                }}
-                                            >
+                                    {/* ── Hallazgos individuales ── */}
+                                    {hallazgos.length > 0 && (
+                                        <>
+                                            <div style={{
+                                                fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)',
+                                                textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
+                                                padding: '0 2px', marginTop: 4,
+                                                display: 'flex', alignItems: 'center', gap: 7,
+                                            }}>
+                                                <i className="fa-solid fa-triangle-exclamation" style={{ color: '#f59e0b' }} />
+                                                {t('auditor.findings')} ({visibles.length})
+                                            </div>
+
+                                            {visibles.length === 0 && hallazgos.length > 0 && (
                                                 <div style={{
-                                                    display: 'flex', justifyContent: 'space-between',
-                                                    alignItems: 'flex-start', gap: 8,
+                                                    textAlign: 'center', padding: '20px',
+                                                    color: 'rgba(255,255,255,0.30)', fontSize: '0.85rem',
                                                 }}>
-                                                    <div style={{
-                                                        fontSize: '0.90rem', fontWeight: 700,
-                                                        color: 'rgba(255,255,255,0.88)', flex: 1,
-                                                    }}>
-                                                        {h.regla_violada || t('auditor.states.incumplido')}
-                                                    </div>
-                                                    <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                                                        <span style={{
-                                                            fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px',
-                                                            borderRadius: 6, background: SEV_BG[sev] || SEV_BG.baja,
-                                                            color: SEV_COLOR[sev] || SEV_COLOR.baja,
-                                                            border: `1px solid ${(SEV_COLOR[sev] || SEV_COLOR.baja)}40`,
-                                                            textTransform: 'uppercase', letterSpacing: '0.05em',
-                                                        }}>
-                                                            {sev}
-                                                        </span>
-                                                        {h.tipo === 'advertencia' && (
-                                                            <span style={{
-                                                                fontSize: '0.68rem', padding: '2px 8px',
-                                                                borderRadius: 6, background: 'rgba(99,102,241,0.12)',
-                                                                color: '#818cf8',
-                                                                border: '1px solid rgba(99,102,241,0.25)',
-                                                            }}>
-                                                                {t('auditor.warning')}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    {t('auditor.allFP')}
                                                 </div>
+                                            )}
 
-                                                {h.descripcion && (
-                                                    <div style={{
-                                                        fontSize: '0.83rem', color: 'rgba(255,255,255,0.58)',
-                                                        lineHeight: 1.6,
-                                                    }}>
-                                                        {h.descripcion}
-                                                    </div>
-                                                )}
-
-                                                {h.cita_textual && (
-                                                    <blockquote style={{
-                                                        margin: 0, padding: '10px 14px',
-                                                        background: 'rgba(0,0,0,0.30)',
-                                                        borderLeft: '3px solid rgba(167,139,250,0.45)',
-                                                        borderRadius: '0 8px 8px 0',
-                                                        fontSize: '0.82rem', fontStyle: 'italic',
-                                                        color: 'rgba(255,255,255,0.65)', lineHeight: 1.6,
-                                                    }}>
-                                                        &quot;{h.cita_textual}&quot;
-                                                    </blockquote>
-                                                )}
-
-                                                <div style={{
-                                                    display: 'flex', justifyContent: 'space-between',
-                                                    alignItems: 'center', flexWrap: 'wrap', gap: 8,
-                                                }}>
-                                                    <div style={{
-                                                        fontSize: '0.73rem', color: 'rgba(255,255,255,0.35)',
-                                                    }}>
-                                                        {h.vendedor && (
-                                                            <span>
-                                                                <i className="fa-solid fa-user"
-                                                                   style={{ marginRight: 4, color: '#a78bfa' }} />
-                                                                <strong style={{ color: '#c4b5fd' }}>{h.vendedor}</strong>
-                                                            </span>
-                                                        )}
-                                                        {h.cuando && <span style={{ marginLeft: 10 }}>
-                                                            <i className="fa-regular fa-clock" style={{ marginRight: 4 }} />
-                                                            {h.cuando}
-                                                        </span>}
-                                                        {h.confianza && <span style={{ marginLeft: 10 }}>{t('auditor.confidence')}: {h.confianza}</span>}
-                                                        {h.cliente_id && <span style={{ marginLeft: 10 }}>{t('auditor.client')} ID: {h.cliente_id}</span>}
-                                                    </div>
-                                                    <button
-                                                        onClick={() => toggleFP(selected.id, realIdx)}
+                                            {visibles.map((h) => {
+                                                const realIdx = hallazgos.indexOf(h);
+                                                const sev  = h.severidad || 'baja';
+                                                const isFP = h.false_positive === true;
+                                                return (
+                                                    <div
+                                                        key={realIdx}
+                                                        className="db-card"
                                                         style={{
-                                                            fontSize: '0.72rem', padding: '3px 10px',
-                                                            borderRadius: 7,
-                                                            border: isFP
-                                                                ? '1px solid rgba(167,139,250,0.40)'
-                                                                : '1px solid rgba(255,255,255,0.12)',
-                                                            background: isFP
-                                                                ? 'rgba(167,139,250,0.12)'
-                                                                : 'rgba(255,255,255,0.04)',
-                                                            color: isFP ? '#c4b5fd' : 'rgba(255,255,255,0.38)',
-                                                            cursor: 'pointer', transition: '0.15s',
+                                                            gap: 10, opacity: isFP ? 0.5 : 1,
+                                                            borderLeft: `3px solid ${SEV_COLOR[sev] || '#475569'}`,
+                                                            paddingLeft: 16,
                                                         }}
                                                     >
-                                                        <i className={`fa-solid ${isFP ? 'fa-rotate-left' : 'fa-ban'}`}
-                                                           style={{ marginRight: 4 }} />
-                                                        {isFP ? t('auditor.restore') : t('auditor.markFP')}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </>
-                            )}
+                                                        <div style={{
+                                                            display: 'flex', justifyContent: 'space-between',
+                                                            alignItems: 'flex-start', gap: 8,
+                                                        }}>
+                                                            <div style={{
+                                                                fontSize: '0.90rem', fontWeight: 700,
+                                                                color: 'rgba(255,255,255,0.88)', flex: 1,
+                                                            }}>
+                                                                {h.regla_violada || t('auditor.states.incumplido')}
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+                                                                <span style={{
+                                                                    fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px',
+                                                                    borderRadius: 6, background: SEV_BG[sev] || SEV_BG.baja,
+                                                                    color: SEV_COLOR[sev] || SEV_COLOR.baja,
+                                                                    border: `1px solid ${(SEV_COLOR[sev] || SEV_COLOR.baja)}40`,
+                                                                    textTransform: 'uppercase', letterSpacing: '0.05em',
+                                                                }}>
+                                                                    {sev}
+                                                                </span>
+                                                                {h.tipo === 'advertencia' && (
+                                                                    <span style={{
+                                                                        fontSize: '0.68rem', padding: '2px 8px',
+                                                                        borderRadius: 6, background: 'rgba(99,102,241,0.12)',
+                                                                        color: '#818cf8',
+                                                                        border: '1px solid rgba(99,102,241,0.25)',
+                                                                    }}>
+                                                                        {t('auditor.warning')}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
 
-                            {procedimientos.length === 0 && hallazgos.length === 0 && (
-                                <div style={{
-                                    textAlign: 'center', padding: '32px',
-                                    color: '#10b981', fontSize: '0.92rem',
-                                    display: 'flex', flexDirection: 'column',
-                                    alignItems: 'center', gap: 10,
-                                }}>
-                                    <i className="fa-solid fa-circle-check"
-                                       style={{ fontSize: '2rem', opacity: 0.7 }} />
-                                    {t('auditor.noIncidents')}
+                                                        {h.descripcion && (
+                                                            <div style={{
+                                                                fontSize: '0.83rem', color: 'rgba(255,255,255,0.58)',
+                                                                lineHeight: 1.6,
+                                                            }}>
+                                                                {h.descripcion}
+                                                            </div>
+                                                        )}
+
+                                                        {h.cita_textual && (
+                                                            <blockquote style={{
+                                                                margin: 0, padding: '10px 14px',
+                                                                background: 'rgba(0,0,0,0.30)',
+                                                                borderLeft: '3px solid rgba(167,139,250,0.45)',
+                                                                borderRadius: '0 8px 8px 0',
+                                                                fontSize: '0.82rem', fontStyle: 'italic',
+                                                                color: 'rgba(255,255,255,0.65)', lineHeight: 1.6,
+                                                            }}>
+                                                                &quot;{h.cita_textual}&quot;
+                                                            </blockquote>
+                                                        )}
+
+                                                        <div style={{
+                                                            display: 'flex', justifyContent: 'space-between',
+                                                            alignItems: 'center', flexWrap: 'wrap', gap: 8,
+                                                        }}>
+                                                            <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.35)' }}>
+                                                                {h.vendedor && (
+                                                                    <span>
+                                                                        <i className="fa-solid fa-user" style={{ marginRight: 4, color: '#a78bfa' }} />
+                                                                        <strong style={{ color: '#c4b5fd' }}>{h.vendedor}</strong>
+                                                                    </span>
+                                                                )}
+                                                                {h.cuando && (
+                                                                    <span style={{ marginLeft: 10 }}>
+                                                                        <i className="fa-regular fa-clock" style={{ marginRight: 4 }} />
+                                                                        {h.cuando}
+                                                                    </span>
+                                                                )}
+                                                                {h.confianza && <span style={{ marginLeft: 10 }}>{t('auditor.confidence')}: {h.confianza}</span>}
+                                                                {h.cliente_id && <span style={{ marginLeft: 10 }}>{t('auditor.client')} ID: {h.cliente_id}</span>}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => toggleFP(selected.id, realIdx)}
+                                                                style={{
+                                                                    fontSize: '0.72rem', padding: '3px 10px',
+                                                                    borderRadius: 7,
+                                                                    border: isFP
+                                                                        ? '1px solid rgba(167,139,250,0.40)'
+                                                                        : '1px solid rgba(255,255,255,0.12)',
+                                                                    background: isFP
+                                                                        ? 'rgba(167,139,250,0.12)'
+                                                                        : 'rgba(255,255,255,0.04)',
+                                                                    color: isFP ? '#c4b5fd' : 'rgba(255,255,255,0.38)',
+                                                                    cursor: 'pointer', transition: '0.15s',
+                                                                }}
+                                                            >
+                                                                <i className={`fa-solid ${isFP ? 'fa-rotate-left' : 'fa-ban'}`}
+                                                                   style={{ marginRight: 4 }} />
+                                                                {isFP ? t('auditor.restore') : t('auditor.markFP')}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </>
+                                    )}
+
+                                    {procedimientos.length === 0 && hallazgos.length === 0 && (
+                                        <div style={{
+                                            textAlign: 'center', padding: '32px',
+                                            color: '#10b981', fontSize: '0.92rem',
+                                            display: 'flex', flexDirection: 'column',
+                                            alignItems: 'center', gap: 10,
+                                        }}>
+                                            <i className="fa-solid fa-circle-check" style={{ fontSize: '2rem', opacity: 0.7 }} />
+                                            {t('auditor.noIncidents')}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
+                    </div>
                 </div>
             )}
 
-            {/* Tab Configuración */}
+            {/* ── Tab Configuración ── */}
             {tab === 'config' && (
                 <ConfigForm
                     cfg={cfg} setCfg={setCfg}
@@ -938,16 +842,12 @@ export default function Auditoria() {
             {/* Modal edición de metadatos */}
             {editingMeta && (
                 <Modal onClose={() => setEditingMeta(null)}>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: 4 }}>
-                        {t('auditor.modal.editTitle')}
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginBottom: 14 }}>
+                    <h3 style={{ margin: '0 0 4px', fontSize: '1rem' }}>{t('auditor.modal.editTitle')}</h3>
+                    <p style={{ margin: '0 0 16px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)' }}>
                         {t('auditor.modal.editSubtitle')}
-                    </div>
+                    </p>
 
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {t('auditor.modal.name')}
-                    </label>
+                    <div className="db-metric-label" style={{ marginBottom: 5 }}>{t('auditor.modal.name')}</div>
                     <input
                         type="text"
                         value={editingMeta.nombre}
@@ -956,17 +856,16 @@ export default function Auditoria() {
                         style={inputStyle}
                     />
 
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', margin: '14px 0 5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {t('auditor.modal.notes')}
-                    </label>
-                    <textarea
+                    <div className="db-metric-label" style={{ margin: '14px 0 5px' }}>{t('auditor.modal.notes')}</div>
+                    <AutoTextarea
                         value={editingMeta.notas}
                         onChange={e => setEditingMeta(m => ({ ...m, notas: e.target.value }))}
                         placeholder={t('auditor.modal.notesPlaceholder')}
-                        style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }}
+                        minHeight={90}
+                        style={inputStyle}
                     />
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+                    <div className="db-modal-actions" style={{ marginTop: 18 }}>
                         <button onClick={() => setEditingMeta(null)} style={btnGhost}>{t('auditor.modal.cancel')}</button>
                         <button onClick={saveMeta} className="btn-primary" style={{ background: 'rgba(167,139,250,0.85)' }}>
                             <i className="fa-solid fa-floppy-disk" style={{ marginRight: 5 }} />
@@ -979,16 +878,18 @@ export default function Auditoria() {
             {/* Modal confirmación eliminación */}
             {deleting && (
                 <Modal onClose={() => setDeleting(null)}>
-                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: 8 }}>
-                        <i className="fa-solid fa-triangle-exclamation" style={{ color: '#ef4444', marginRight: 6 }} />
+                    <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>
+                        <i className="fa-solid fa-triangle-exclamation" style={{ color: '#ef4444', marginRight: 8 }} />
                         {t('auditor.modal.deleteTitle')}
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.6 }}>
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', lineHeight: 1.6, margin: '0 0 20px' }}>
                         {t('auditor.modal.deleteConfirm')}
-                        {deleting.nombre ? <strong style={{ color: '#fff' }}> &quot;{deleting.nombre}&quot;</strong> : <span> {fmtDate(deleting.createdAt)}</span>}?
+                        {deleting.nombre
+                            ? <strong style={{ color: '#fff' }}> &quot;{deleting.nombre}&quot;</strong>
+                            : <span> {fmtDate(deleting.createdAt)}</span>}?
                         {' '}{t('auditor.modal.deleteIrreversible')}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+                    </p>
+                    <div className="db-modal-actions">
                         <button onClick={() => setDeleting(null)} style={btnGhost}>{t('auditor.modal.cancel')}</button>
                         <button onClick={confirmDelete} style={{
                             ...btnGhost, background: 'rgba(239,68,68,0.18)',
@@ -1002,16 +903,193 @@ export default function Auditoria() {
             )}
 
             <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
-                @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes fadeIn  { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:translateY(0); } }
+                @keyframes slideUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
+                @keyframes shimmer { 0%,100% { background-position:0% 50%; } 50% { background-position:100% 50%; } }
             `}</style>
         </div>
     );
 }
 
-// ─── Subcomponentes ────────────────────────────────────────────────────────
+// ─── Subcomponentes auxiliares ──────────────────────────────────────────────
 
-function TabButton({ active, onClick, icon, label, count }) {
+// Chip coloreado con el estado de cumplimiento — reutilizado en lista y detalle
+function ReportChip({ r }) {
+    const n = r.incumplimientos || 0;
+    const chipColor = n === 0 ? '#10b981' : n <= 3 ? '#f59e0b' : '#ef4444';
+    const chipBg    = n === 0 ? 'rgba(16,185,129,0.14)' : n <= 3 ? 'rgba(245,158,11,0.14)' : 'rgba(239,68,68,0.14)';
+    const chipIcon  = n === 0 ? 'fa-circle-check' : n <= 3 ? 'fa-circle-exclamation' : 'fa-circle-xmark';
+    const label     = r.nombre || fmtDateShort(r.createdAt);
+    return (
+        <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '4px 12px 4px 9px', borderRadius: 20,
+            background: chipBg, color: chipColor,
+            border: `1px solid ${chipColor}28`,
+            fontSize: '0.82rem', fontWeight: 700,
+            maxWidth: '100%', overflow: 'hidden',
+            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+            <i className={`fa-solid ${chipIcon}`} style={{ fontSize: '0.70rem', flexShrink: 0 }} />
+            {label}
+        </span>
+    );
+}
+
+function IncumplimientosBadge({ n, t }) {
+    const color = n === 0 ? '#10b981' : n <= 3 ? '#f59e0b' : '#ef4444';
+    const bg    = n === 0 ? 'rgba(16,185,129,0.12)' : n <= 3 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
+    const bord  = n === 0 ? 'rgba(16,185,129,0.25)' : n <= 3 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
+    return (
+        <div style={{
+            fontSize: '0.78rem', fontWeight: 700, padding: '4px 12px',
+            borderRadius: 8, background: bg, color, border: `1px solid ${bord}`,
+        }}>
+            {n === 0
+                ? t('auditor.noIncidentsShort')
+                : `${n} ${n > 1 ? t('auditor.incidents') : t('auditor.incident')}`}
+        </div>
+    );
+}
+
+function EvidenciaCard({ ev, meta, t }) {
+    return (
+        <div style={{
+            padding: '10px 12px', borderRadius: 8,
+            background: 'rgba(0,0,0,0.18)',
+            border: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+            <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', flexWrap: 'wrap', gap: 6,
+                fontSize: '0.77rem',
+            }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <i className="fa-solid fa-user" style={{ color: '#a78bfa' }} />
+                    <strong style={{ color: '#c4b5fd' }}>{ev.vendedor || t('auditor.vendorUnknown')}</strong>
+                    {ev.cliente_id && (
+                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>
+                            · {t('auditor.client')} #{ev.cliente_id}
+                        </span>
+                    )}
+                </span>
+                {ev.cuando && (
+                    <span style={{ color: 'rgba(255,255,255,0.45)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <i className="fa-regular fa-clock" />
+                        {ev.cuando}
+                    </span>
+                )}
+            </div>
+
+            {ev.como && (
+                <div style={{ fontSize: '0.80rem', color: 'rgba(255,255,255,0.58)', lineHeight: 1.55 }}>
+                    <span style={{
+                        color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem', marginRight: 6,
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                    }}>
+                        {t('auditor.how')}:
+                    </span>
+                    {ev.como}
+                </div>
+            )}
+
+            {ev.cita_textual && (
+                <blockquote style={{
+                    margin: 0, padding: '8px 12px',
+                    background: 'rgba(0,0,0,0.30)',
+                    borderLeft: `3px solid ${meta.color}80`,
+                    borderRadius: '0 6px 6px 0',
+                    fontSize: '0.80rem', fontStyle: 'italic',
+                    color: 'rgba(255,255,255,0.70)', lineHeight: 1.55,
+                }}>
+                    &quot;{ev.cita_textual}&quot;
+                </blockquote>
+            )}
+
+            {(ev.esperado || ev.ocurrido) && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 2 }}>
+                    <div style={{
+                        padding: '6px 10px', borderRadius: 6,
+                        background: 'rgba(16,185,129,0.06)',
+                        border: '1px solid rgba(16,185,129,0.15)',
+                        fontSize: '0.74rem', lineHeight: 1.5,
+                    }}>
+                        <div style={{
+                            color: '#34d399', fontWeight: 700, marginBottom: 3,
+                            fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
+                        }}>
+                            {t('auditor.expected')}
+                        </div>
+                        <div style={{ color: 'rgba(255,255,255,0.6)' }}>{ev.esperado || '—'}</div>
+                    </div>
+                    <div style={{
+                        padding: '6px 10px', borderRadius: 6,
+                        background: 'rgba(239,68,68,0.06)',
+                        border: '1px solid rgba(239,68,68,0.15)',
+                        fontSize: '0.74rem', lineHeight: 1.5,
+                    }}>
+                        <div style={{
+                            color: '#f87171', fontWeight: 700, marginBottom: 3,
+                            fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
+                        }}>
+                            {t('auditor.actual')}
+                        </div>
+                        <div style={{ color: 'rgba(255,255,255,0.6)' }}>{ev.ocurrido || '—'}</div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SelectPrompt({ t }) {
+    return (
+        <div style={{
+            height: '100%', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', flexDirection: 'column', gap: 14,
+            color: 'rgba(255,255,255,0.22)',
+        }}>
+            <div style={{
+                width: 56, height: 56, borderRadius: 14,
+                background: 'rgba(167,139,250,0.08)',
+                border: '1px solid rgba(167,139,250,0.18)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.4rem', color: 'rgba(167,139,250,0.6)',
+            }}>
+                <i className="fa-solid fa-file-contract" />
+            </div>
+            <span style={{ fontSize: '0.88rem' }}>{t('auditor.selectReport')}</span>
+        </div>
+    );
+}
+
+function EmptyHistory({ t }) {
+    return (
+        <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 10, padding: '32px 16px', textAlign: 'center',
+        }}>
+            <div style={{
+                width: 52, height: 52, borderRadius: 14,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.3rem', color: 'rgba(255,255,255,0.2)',
+            }}>
+                <i className="fa-solid fa-folder-open" />
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.30)', fontSize: '0.83rem', lineHeight: 1.7 }}>
+                {t('auditor.emptyState')}<br />
+                {t('auditor.emptyStateHint')} <strong style={{ color: 'rgba(255,255,255,0.5)' }}>&quot;{t('auditor.runNow')}&quot;</strong>.
+            </div>
+        </div>
+    );
+}
+
+// ─── TabButton ──────────────────────────────────────────────────────────────
+
+function TabButton({ active, onClick, icon, label, count, dot }) {
     return (
         <button
             onClick={onClick}
@@ -1035,84 +1113,84 @@ function TabButton({ active, onClick, icon, label, count }) {
                     {count}
                 </span>
             )}
+            {dot && (
+                <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: '#10b981', display: 'inline-block',
+                    boxShadow: '0 0 6px #10b981',
+                }} />
+            )}
         </button>
     );
 }
 
-// Fila del historial: card con metadata, acciones en hover y expansión inline
+// ─── ReportRow ──────────────────────────────────────────────────────────────
+
 function ReportRow({ r, idx, total, selected, expanded, onSelect, onToggleExpand, onEdit, onDelete, onMoveUp, onMoveDown, t }) {
-    const color = r.incumplimientos === 0 ? '#10b981'
-        : r.incumplimientos <= 3 ? '#f59e0b' : '#ef4444';
+    const sub = r.nombre ? fmtDate(r.createdAt) : fmtPeriod(r.periodoInicio, r.periodoFin);
 
     return (
-        <div
-            style={{
-                padding: '10px 12px', borderRadius: 10,
-                background: selected ? 'rgba(167,139,250,0.12)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${selected ? 'rgba(167,139,250,0.35)' : 'rgba(255,255,255,0.07)'}`,
-                transition: '0.15s', display: 'flex', flexDirection: 'column', gap: 6,
-            }}
-        >
+        <div style={{
+            borderRadius: 14,
+            background: selected ? 'rgba(167,139,250,0.12)' : 'rgba(20,20,25,0.65)',
+            border: `1px solid ${selected ? 'rgba(167,139,250,0.32)' : 'rgba(255,255,255,0.07)'}`,
+            overflow: 'hidden', transition: 'border-color 0.15s, background 0.15s',
+            display: 'flex', flexDirection: 'column',
+        }}>
+            {/* Área principal clickeable */}
             <button
                 type="button"
                 onClick={onSelect}
-                style={{ all: 'unset', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4 }}
+                style={{
+                    all: 'unset', cursor: 'pointer',
+                    padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8,
+                    width: '100%', boxSizing: 'border-box',
+                }}
             >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>
-                        {r.nombre || fmtDate(r.createdAt)}
-                    </span>
-                    <span style={{
-                        fontSize: '0.70rem', fontWeight: 700, padding: '1px 7px',
-                        borderRadius: 8, background: color + '1a', color,
-                        border: `1px solid ${color}40`,
+                <ReportChip r={r} />
+
+                {/* Fecha / período en muted */}
+                <div style={{ fontSize: '0.71rem', color: 'rgba(255,255,255,0.36)', lineHeight: 1.3 }}>
+                    {sub}
+                </div>
+
+                {/* Preview expandido inline */}
+                {expanded && (
+                    <div style={{
+                        fontSize: '0.78rem', color: 'rgba(255,255,255,0.58)',
+                        lineHeight: 1.55, whiteSpace: 'pre-wrap',
+                        animation: 'fadeIn 0.18s ease-out',
+                        paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)',
                     }}>
-                        {r.incumplimientos === 0 ? 'OK' : r.incumplimientos + ' ⚠'}
-                    </span>
-                </div>
-                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.40)' }}>
-                    {r.nombre ? fmtDate(r.createdAt) : fmtPeriod(r.periodoInicio, r.periodoFin)}
-                </div>
+                        {r.resumen || t('auditor.row.noSummary')}
+                        {r.notas && (
+                            <div style={{ marginTop: 6, color: '#fbbf24', fontSize: '0.72rem' }}>
+                                <i className="fa-regular fa-note-sticky" style={{ marginRight: 4 }} />
+                                {r.notas}
+                            </div>
+                        )}
+                    </div>
+                )}
             </button>
 
-            {/* Acciones de fila */}
+            {/* Footer con acciones */}
             <div style={{
-                display: 'flex', gap: 4, justifyContent: 'space-between',
-                borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 6,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '5px 10px',
+                borderTop: '1px solid rgba(255,255,255,0.05)',
+                background: 'rgba(0,0,0,0.20)',
             }}>
-                <div style={{ display: 'flex', gap: 3 }}>
+                <div style={{ display: 'flex', gap: 2 }}>
                     <IconButton onClick={onMoveUp} disabled={idx === 0} icon="fa-arrow-up" title={t('auditor.row.moveUp')} />
                     <IconButton onClick={onMoveDown} disabled={idx === total - 1} icon="fa-arrow-down" title={t('auditor.row.moveDown')} />
                 </div>
-                <div style={{ display: 'flex', gap: 3 }}>
+                <div style={{ display: 'flex', gap: 2 }}>
                     <IconButton onClick={onToggleExpand} icon={expanded ? 'fa-chevron-up' : 'fa-chevron-down'}
                                 title={expanded ? t('auditor.row.collapse') : t('auditor.row.expand')} />
                     <IconButton onClick={onEdit} icon="fa-pen" title={t('auditor.row.edit')} />
                     <IconButton onClick={onDelete} icon="fa-trash" title={t('auditor.row.delete')} danger />
                 </div>
             </div>
-
-            {/* Preview inline */}
-            {expanded && (
-                <div style={{
-                    padding: '8px 10px', borderRadius: 6,
-                    background: 'rgba(0,0,0,0.18)',
-                    fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)',
-                    lineHeight: 1.55, animation: 'fadeIn 0.18s ease-out',
-                    whiteSpace: 'pre-wrap',
-                }}>
-                    {r.resumen || t('auditor.row.noSummary')}
-                    {r.notas && (
-                        <div style={{
-                            marginTop: 6, paddingTop: 6, borderTop: '1px dashed rgba(255,255,255,0.08)',
-                            color: '#fbbf24', fontSize: '0.72rem',
-                        }}>
-                            <i className="fa-regular fa-note-sticky" style={{ marginRight: 4 }} />
-                            {r.notas}
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     );
 }
@@ -1128,11 +1206,11 @@ function IconButton({ onClick, icon, title, disabled, danger }) {
                 background: 'transparent',
                 color: disabled
                     ? 'rgba(255,255,255,0.15)'
-                    : danger ? '#fca5a5' : 'rgba(255,255,255,0.55)',
+                    : danger ? '#fca5a5' : 'rgba(255,255,255,0.50)',
                 cursor: disabled ? 'not-allowed' : 'pointer',
                 fontSize: '0.72rem', transition: '0.12s',
             }}
-            onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; }}
+            onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = danger ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.08)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         >
             <i className={`fa-solid ${icon}`} />
@@ -1140,16 +1218,13 @@ function IconButton({ onClick, icon, title, disabled, danger }) {
     );
 }
 
-// Skeleton mientras carga la lista de reportes
 function ReportListSkeleton() {
     return (
         <>
             {[1, 2, 3, 4].map(k => (
-                <div key={k} style={{
-                    padding: 12, borderRadius: 10,
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    display: 'flex', flexDirection: 'column', gap: 8,
+                <div key={k} className="db-card" style={{
+                    padding: 12, borderRadius: 14, gap: 8,
+                    borderLeft: '3px solid rgba(255,255,255,0.08)',
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <div style={skel(120, 10)} />
@@ -1162,24 +1237,42 @@ function ReportListSkeleton() {
     );
 }
 
+// Textarea que se expande automáticamente al contenido. Sin handle de resize.
+function AutoTextarea({ value, onChange, placeholder, style, minHeight = 130 }) {
+    const ref = useRef(null);
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.max(el.scrollHeight, minHeight) + 'px';
+    }, [value, minHeight]);
+    return (
+        <textarea
+            ref={ref}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            style={{ ...style, resize: 'none', overflow: 'hidden' }}
+        />
+    );
+}
+
 function skel(w, h) {
     return {
         width: w, height: h, borderRadius: 4,
-        background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+        background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 100%)',
         backgroundSize: '200% 100%',
         animation: 'shimmer 1.5s ease-in-out infinite',
     };
 }
 
-// Formulario de configuración (movido desde AgenteIA.jsx)
+// ─── ConfigForm ─────────────────────────────────────────────────────────────
+
 function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile }) {
     const { t } = useLanguage();
     const update = (k, v) => setCfg(prev => ({ ...prev, [k]: v }));
-
-    // Validación: rango de horario coherente
     const horarioOk = !cfg.horarioInicio || !cfg.horarioFin || cfg.horarioInicio < cfg.horarioFin;
 
-    // En mobile aumentamos el font-size y padding de los inputs para que sean cómodos al touch
     const baseInput = isMobile
         ? { ...inputStyle, fontSize: '1rem', padding: '12px 14px' }
         : inputStyle;
@@ -1188,85 +1281,96 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
         <div style={{
             flex: 1, overflowY: 'auto', maxWidth: 780, width: '100%', margin: '0 auto',
             padding: isMobile ? '6px 0 32px' : '6px 4px 24px',
+            display: 'flex', flexDirection: 'column', gap: 12,
         }}>
-            <div className="db-card" style={{ gap: 16 }}>
-                <div className="db-card-title" style={{ margin: 0 }}>
-                    <i className="fa-solid fa-magnifying-glass-chart" style={{ color: '#a78bfa' }} />
-                    {t('auditor.config.cardTitle')}
+            {/* ── Habilitación del auditor (db-metric-card horizontal, igual que AgenteIA) ── */}
+            <div className="db-metric-card" style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+                <div className="db-metric-icon">
+                    <i className="fa-solid fa-magnifying-glass-chart" />
                 </div>
-
-                {/* Toggle */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <label style={{
-                        position: 'relative', display: 'inline-block',
-                        width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
-                    }}>
-                        <input
-                            type="checkbox"
-                            checked={cfg.auditEnabled}
-                            onChange={e => update('auditEnabled', e.target.checked)}
-                            style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
-                        />
-                        <span style={{
-                            position: 'absolute', inset: 0, borderRadius: 13,
-                            background: cfg.auditEnabled ? '#a78bfa' : 'rgba(255,255,255,0.15)',
-                            transition: '0.2s',
-                        }}>
-                            <span style={{
-                                position: 'absolute', top: 3, left: cfg.auditEnabled ? 23 : 3,
-                                width: 20, height: 20, borderRadius: '50%',
-                                background: '#fff', transition: '0.2s',
-                            }} />
-                        </span>
-                    </label>
-                    <div>
-                        <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
-                            {t('auditor.config.enableLabel')}
-                        </div>
-                        <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.42)', marginTop: 2 }}>
-                            {t('auditor.config.enableHint')}
-                        </div>
+                <div style={{ flex: 1 }}>
+                    <div className="db-metric-label">{t('auditor.config.enableLabel')}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.40)', marginTop: 3 }}>
+                        {t('auditor.config.enableHint')}
                     </div>
                 </div>
-
-                <Field
-                    label={t('auditor.config.proceduresLabel')}
-                    hint={t('auditor.config.proceduresHint')}
-                >
-                    <textarea
-                        value={cfg.auditProcedures}
-                        onChange={e => update('auditProcedures', e.target.value)}
-                        placeholder={t('auditor.config.proceduresPlaceholder')}
-                        style={{ ...baseInput, minHeight: 130, resize: 'vertical', fontFamily: 'inherit' }}
+                <label style={{
+                    position: 'relative', display: 'inline-block',
+                    width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
+                }}>
+                    <input
+                        type="checkbox"
+                        checked={cfg.auditEnabled}
+                        onChange={e => update('auditEnabled', e.target.checked)}
+                        style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
                     />
-                </Field>
+                    <span style={{
+                        position: 'absolute', inset: 0, borderRadius: 13,
+                        background: cfg.auditEnabled ? '#a78bfa' : 'rgba(255,255,255,0.15)',
+                        transition: '0.2s',
+                    }}>
+                        <span style={{
+                            position: 'absolute', top: 3, left: cfg.auditEnabled ? 23 : 3,
+                            width: 20, height: 20, borderRadius: '50%',
+                            background: '#fff', transition: '0.2s',
+                        }} />
+                    </span>
+                </label>
+            </div>
 
-                <Field
-                    label={t('auditor.config.scheduleLabel')}
-                    hint={t('auditor.config.scheduleHint')}
-                >
-                    <TimeRangePicker
-                        inicio={cfg.horarioInicio}
-                        fin={cfg.horarioFin}
-                        onChange={(ini, fin) => setCfg(prev => ({ ...prev, horarioInicio: ini, horarioFin: fin }))}
-                        baseInput={baseInput}
-                        t={t}
-                    />
-                    {!horarioOk && (
-                        <div style={{
-                            marginTop: 6, fontSize: '0.74rem', color: '#fca5a5',
-                            display: 'flex', alignItems: 'center', gap: 5,
-                        }}>
-                            <i className="fa-solid fa-triangle-exclamation" />
-                            {t('auditor.config.scheduleError')}
-                        </div>
-                    )}
-                </Field>
+            {/* ── Procedimientos ── */}
+            <div className="db-card" style={{ gap: 14 }}>
+                <div className="db-card-title" style={{ margin: 0 }}>
+                    <i className="fa-solid fa-list-check" style={{ color: '#a78bfa' }} />
+                    {t('auditor.config.proceduresLabel')}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, marginTop: -6 }}>
+                    {t('auditor.config.proceduresHint')}
+                </div>
+                <AutoTextarea
+                    value={cfg.auditProcedures}
+                    onChange={e => update('auditProcedures', e.target.value)}
+                    placeholder={t('auditor.config.proceduresPlaceholder')}
+                    minHeight={130}
+                    style={{ ...baseInput, fontFamily: 'inherit' }}
+                />
+            </div>
 
-                <Field
-                    label={t('auditor.config.emailLabel')}
-                    hint={t('auditor.config.emailHint')}
-                >
+            {/* ── Horario de análisis ── */}
+            <div className="db-card" style={{ gap: 14 }}>
+                <div className="db-card-title" style={{ margin: 0 }}>
+                    <i className="fa-solid fa-clock" style={{ color: '#a78bfa' }} />
+                    {t('auditor.config.scheduleLabel')}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, marginTop: -6 }}>
+                    {t('auditor.config.scheduleHint')}
+                </div>
+                <TimeRangePicker
+                    inicio={cfg.horarioInicio}
+                    fin={cfg.horarioFin}
+                    onChange={(ini, fin) => setCfg(prev => ({ ...prev, horarioInicio: ini, horarioFin: fin }))}
+                    baseInput={baseInput}
+                    t={t}
+                />
+                {!horarioOk && (
+                    <div style={{
+                        fontSize: '0.74rem', color: '#fca5a5',
+                        display: 'flex', alignItems: 'center', gap: 5,
+                    }}>
+                        <i className="fa-solid fa-triangle-exclamation" />
+                        {t('auditor.config.scheduleError')}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Notificaciones ── */}
+            <div className="db-card" style={{ gap: 14 }}>
+                <div className="db-card-title" style={{ margin: 0 }}>
+                    <i className="fa-solid fa-bell" style={{ color: '#a78bfa' }} />
+                    {t('auditor.config.notificationsTitle')}
+                </div>
+
+                <Field label={t('auditor.config.emailLabel')} hint={t('auditor.config.emailHint')}>
                     <input
                         type="email"
                         inputMode="email"
@@ -1278,10 +1382,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                     />
                 </Field>
 
-                <Field
-                    label={t('auditor.config.whatsappLabel')}
-                    hint={t('auditor.config.whatsappHint')}
-                >
+                <Field label={t('auditor.config.whatsappLabel')} hint={t('auditor.config.whatsappHint')}>
                     <input
                         type="tel"
                         inputMode="numeric"
@@ -1293,10 +1394,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                     />
                 </Field>
 
-                <Field
-                    label={t('auditor.config.deviceLabel')}
-                    hint={t('auditor.config.deviceHint')}
-                >
+                <Field label={t('auditor.config.deviceLabel')} hint={t('auditor.config.deviceHint')}>
                     <select
                         value={cfg.auditDispositivoId}
                         onChange={e => update('auditDispositivoId', e.target.value)}
@@ -1310,32 +1408,31 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                         ))}
                     </select>
                 </Field>
-
-                <button
-                    onClick={onSave}
-                    disabled={saving || !horarioOk}
-                    className="btn-primary"
-                    style={{
-                        width: '100%', marginTop: 6,
-                        background: saved ? '#10b981' : 'rgba(167,139,250,0.85)',
-                        padding: isMobile ? '13px 0' : undefined,
-                        fontSize: isMobile ? '0.95rem' : undefined,
-                        opacity: !horarioOk ? 0.5 : 1,
-                        cursor: !horarioOk ? 'not-allowed' : 'pointer',
-                    }}
-                >
-                    <i className={`fa-solid ${saving ? 'fa-spinner fa-spin' : saved ? 'fa-check' : 'fa-floppy-disk'}`}
-                       style={{ marginRight: 6 }} />
-                    {saving ? t('auditor.config.savingBtn') : saved ? t('auditor.config.savedBtn') : t('auditor.config.saveBtn')}
-                </button>
             </div>
+
+            <button
+                onClick={onSave}
+                disabled={saving || !horarioOk}
+                className="btn-primary"
+                style={{
+                    width: '100%', marginTop: 4,
+                    background: saved ? '#10b981' : 'rgba(167,139,250,0.85)',
+                    padding: isMobile ? '13px 0' : undefined,
+                    fontSize: isMobile ? '0.95rem' : undefined,
+                    opacity: !horarioOk ? 0.5 : 1,
+                    cursor: !horarioOk ? 'not-allowed' : 'pointer',
+                }}
+            >
+                <i className={`fa-solid ${saving ? 'fa-spinner fa-spin' : saved ? 'fa-check' : 'fa-floppy-disk'}`}
+                   style={{ marginRight: 6 }} />
+                {saving ? t('auditor.config.savingBtn') : saved ? t('auditor.config.savedBtn') : t('auditor.config.saveBtn')}
+            </button>
         </div>
     );
 }
 
-// Time picker con presets rápidos. Cubre los rangos más usados (mañana, tarde,
-// día completo, 24 hs). El usuario sigue pudiendo ajustar manualmente con los
-// inputs nativos de tiempo.
+// ─── TimeRangePicker ─────────────────────────────────────────────────────────
+
 function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
     const presets = [
         { label: t('auditor.config.presets.morning'),   inicio: '08:00', fin: '13:00' },
@@ -1354,7 +1451,7 @@ function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
                     onChange={e => onChange(e.target.value, fin)}
                     style={{ ...baseInput, flex: 1 }}
                 />
-                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>a</span>
+                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>→</span>
                 <input
                     type="time"
                     value={fin}
@@ -1378,7 +1475,8 @@ function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
                                 fontSize: '0.74rem', cursor: 'pointer', transition: '0.15s',
                             }}
                         >
-                            {p.label} <span style={{ opacity: 0.55, marginLeft: 4 }}>{p.inicio}–{p.fin}</span>
+                            {p.label}
+                            <span style={{ opacity: 0.55, marginLeft: 4 }}>{p.inicio}–{p.fin}</span>
                         </button>
                     );
                 })}
@@ -1387,36 +1485,26 @@ function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
     );
 }
 
-// Campo de formulario con label + hint tooltip
+// ─── Field ───────────────────────────────────────────────────────────────────
+
 function Field({ label, hint, children }) {
     return (
         <div>
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6,
-                fontSize: '0.74rem', color: 'rgba(255,255,255,0.62)',
-                textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600,
-            }}>
+            <div className="db-metric-label" style={{ marginBottom: 6 }}>
                 {label}
                 {hint && (
                     <i className="fa-regular fa-circle-question"
                        title={hint}
-                       style={{ color: 'rgba(255,255,255,0.30)', cursor: 'help' }} />
+                       style={{ color: 'rgba(255,255,255,0.25)', cursor: 'help', marginLeft: 6 }} />
                 )}
             </div>
             {children}
-            {hint && (
-                <div style={{
-                    fontSize: '0.72rem', color: 'rgba(255,255,255,0.32)',
-                    marginTop: 4, lineHeight: 1.5,
-                }}>
-                    {hint}
-                </div>
-            )}
         </div>
     );
 }
 
-// Estilos compartidos para inputs del formulario de config
+// ─── Estilos compartidos ─────────────────────────────────────────────────────
+
 const inputStyle = {
     width: '100%', fontSize: '0.85rem', padding: '8px 11px',
     background: 'rgba(0,0,0,0.32)', border: '1px solid rgba(255,255,255,0.10)',
