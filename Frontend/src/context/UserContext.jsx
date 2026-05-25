@@ -7,29 +7,68 @@ export function UserProvider({ children }) {
     const [usuario, setUsuario] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const refresh = useCallback(async () => {
+    const hasValidToken = useCallback(() => {
+        const token = localStorage.getItem('token');
+        return token && token !== 'undefined' && token !== 'null';
+    }, []);
+
+    const clearUser = useCallback(() => {
+        setUsuario(null);
+        setLoading(false);
+    }, []);
+
+    const refresh = useCallback(async ({ showLoading = false } = {}) => {
+        if (!hasValidToken()) {
+            clearUser();
+            return;
+        }
+
+        if (showLoading) {
+            setLoading(true);
+        }
+
         try {
             const res = await api.get('/perfil');
             setUsuario(res.data);
         } catch (err) {
             console.error('Error cargando perfil', err);
+            if (err.response?.status === 401 || err.response?.status === 403) {
+                localStorage.removeItem('token');
+                setUsuario(null);
+            }
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [clearUser, hasValidToken]);
 
     // Bootstrap: cargar el perfil si hay token; si no, marcar loading=false.
     // El setState al montar es el patrón "load on mount" descrito por la regla: aceptable.
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token && token !== 'undefined') {
-            refresh();
+        if (hasValidToken()) {
+            refresh({ showLoading: true });
         } else {
-            setLoading(false);
+            clearUser();
         }
-    }, [refresh]);
+    }, [clearUser, hasValidToken, refresh]);
     /* eslint-enable react-hooks/set-state-in-effect */
+
+    useEffect(() => {
+        const syncSession = () => {
+            if (hasValidToken()) {
+                refresh({ showLoading: true });
+            } else {
+                clearUser();
+            }
+        };
+
+        window.addEventListener('crm:auth-changed', syncSession);
+        window.addEventListener('storage', syncSession);
+        return () => {
+            window.removeEventListener('crm:auth-changed', syncSession);
+            window.removeEventListener('storage', syncSession);
+        };
+    }, [clearUser, hasValidToken, refresh]);
 
     // Listen for plan updates to refresh
     useEffect(() => {
@@ -41,7 +80,7 @@ export function UserProvider({ children }) {
     const agenciaId = usuario?.agencia?.id || null;
 
     return (
-        <UserContext.Provider value={{ usuario, agenciaId, loading, refresh }}>
+        <UserContext.Provider value={{ usuario, agenciaId, loading, refresh, clearUser }}>
             {children}
         </UserContext.Provider>
     );

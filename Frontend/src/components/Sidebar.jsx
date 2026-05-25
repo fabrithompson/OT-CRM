@@ -96,7 +96,11 @@ export default function Sidebar({ onHelpClick }) {
                 </li>
                 <li className="menu-item">
                     <button
-                        onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            window.dispatchEvent(new CustomEvent('crm:auth-changed'));
+                            navigate('/login');
+                        }}
                         className="nav-pill nav-logout"
                         title={t('common.logout')}
                     >
