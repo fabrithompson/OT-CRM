@@ -80,6 +80,7 @@ export default function Auth() {
             if (res.data?.token && res.data.token !== 'undefined') {
                 localStorage.setItem('token', res.data.token);
                 localStorage.removeItem('crm_theme');
+                window.dispatchEvent(new CustomEvent('crm:auth-changed'));
                 navigate('/dashboard');
             } else {
                 setError(t('auth.errors.serverError'));
