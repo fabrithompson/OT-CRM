@@ -160,9 +160,21 @@ export default function AgenteIA() {
 
     return (
         <div
-            className="db-root"
+            className="db-root agente-scope"
             style={{ '--db-accent': '#22d3ee', height: '100%', overflow: 'hidden' }}
         >
+            <style>{`
+                /* Cards con fondo morado oscuro translúcido (scoped a esta página) */
+                .agente-scope .db-card,
+                .agente-scope .db-metric-card {
+                    background: rgba(24,18,38,0.72);
+                    border-color: rgba(167,139,250,0.12);
+                }
+                .agente-scope .db-card:hover,
+                .agente-scope .db-metric-card:hover {
+                    border-color: rgba(167,139,250,0.26);
+                }
+            `}</style>
             {/* Topbar */}
             <div className="db-topbar" style={{ flexShrink: 0 }}>
                 <div>

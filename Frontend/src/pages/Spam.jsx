@@ -13,7 +13,7 @@ const C_AMBER_BDR  = 'rgba(245,158,11,0.30)';
 const C_GREEN      = '#10b981';
 const C_GREEN_SOFT = 'rgba(16,185,129,0.12)';
 const C_RED        = '#ef4444';
-const C_CARD       = 'rgba(20,20,25,0.70)';
+const C_CARD       = 'rgba(24,18,38,0.72)';   // morado oscuro translúcido
 const C_BDR        = 'rgba(255,255,255,0.07)';
 const C_BDR_SOFT   = 'rgba(255,255,255,0.04)';
 const C_TEXT       = '#fff';
@@ -720,10 +720,10 @@ function UpgradeWall() {
     return (
         <div style={{
             height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: '#07070a', fontFamily: "'Montserrat', sans-serif", padding: 24,
+            background: 'rgba(16,12,26,0.55)', fontFamily: "'Montserrat', sans-serif", padding: 24,
         }}>
             <div style={{
-                background: 'rgba(20,20,25,0.80)',
+                background: 'rgba(24,18,38,0.80)',
                 backdropFilter: BLUR, WebkitBackdropFilter: BLUR,
                 border: '1px solid rgba(245,158,11,0.22)',
                 borderRadius: 22, padding: '48px 52px',
@@ -980,7 +980,7 @@ export default function Spam() {
     // ── Gates (después de todos los hooks para no romper Rules of Hooks) ──────
     if (loadingUser) {
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#07070a' }}>
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,12,26,0.55)' }}>
                 <div className="spinner" />
             </div>
         );
@@ -989,11 +989,11 @@ export default function Spam() {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: 16, gap: 12, background: '#07070a', fontFamily: "'Montserrat', sans-serif" }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: 16, gap: 12, background: 'rgba(16,12,26,0.55)', fontFamily: "'Montserrat', sans-serif" }}>
 
             {/* ── Header estático (nunca cambia de tamaño) ── */}
             <div style={{
-                background: 'rgba(14,14,20,0.85)', backdropFilter: BLUR, WebkitBackdropFilter: BLUR,
+                background: 'rgba(22,16,36,0.85)', backdropFilter: BLUR, WebkitBackdropFilter: BLUR,
                 border: `1px solid ${C_BDR}`, borderRadius: 16,
                 padding: '11px 18px', flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14,

@@ -23,6 +23,15 @@ import '../assets/css/dashboard.css';
 const SEV_COLOR = { alta: '#ef4444', media: '#f59e0b', baja: '#94a3b8' };
 const SEV_BG    = { alta: 'rgba(239,68,68,0.10)', media: 'rgba(245,158,11,0.10)', baja: 'rgba(148,163,184,0.08)' };
 
+// Gradientes de las stat cards — mismos tonos que los KPI del Dashboard.
+const STAT_GRAD = {
+    violet: 'linear-gradient(135deg,#4a1d96 0%,#6d28d9 45%,#7c3aed 100%)',
+    blue:   'linear-gradient(135deg,#0c4a6e 0%,#0369a1 50%,#0284c7 100%)',
+    green:  'linear-gradient(135deg,#064e3b 0%,#065f46 45%,#059669 100%)',
+    amber:  'linear-gradient(135deg,#78350f 0%,#b45309 45%,#d97706 100%)',
+    red:    'linear-gradient(135deg,#7f1d1d 0%,#b91c1c 45%,#dc2626 100%)',
+};
+
 const ESTADO_META = {
     cumplido:    { icon: 'fa-circle-check',        color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.30)' },
     parcial:     { icon: 'fa-circle-exclamation',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.30)' },
@@ -84,25 +93,37 @@ function Modal({ children, onClose }) {
     );
 }
 
-// Tarjeta de métrica para el header de la pestaña Reportes
-function AuditStatCard({ icon, label, value, accentColor, small }) {
-    const color = accentColor || 'var(--db-accent, #a78bfa)';
+// Tarjeta de métrica para el header de la pestaña Reportes — gradiente full color
+// con el mismo look que los KPI del Dashboard.
+function AuditStatCard({ icon, label, value, gradient, small }) {
     return (
-        <div className="db-metric-card" style={{ '--db-accent': color }}>
-            <div className="db-metric-top">
-                <div className="db-metric-icon" style={{ color }}>
-                    <i className={`fa-solid ${icon}`} />
-                </div>
+        <div style={{
+            background: gradient || STAT_GRAD.violet,
+            borderRadius: 18, padding: '18px 20px',
+            display: 'flex', flexDirection: 'column', gap: 14,
+            minHeight: 116, overflow: 'hidden',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
+        }}>
+            <div style={{
+                background: 'rgba(255,255,255,0.18)', borderRadius: 10,
+                width: 38, height: 38, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                <i className={`fa-solid ${icon}`} style={{ color: '#fff', fontSize: '0.95rem' }} />
             </div>
             <div>
-                <div className="db-metric-label">{label}</div>
-                {small ? (
-                    <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff', lineHeight: 1.25, marginTop: 4 }}>
-                        {value}
-                    </div>
-                ) : (
-                    <div className="db-metric-value" style={{ color, fontSize: '2.2rem' }}>{value}</div>
-                )}
+                <div style={{
+                    fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase',
+                    letterSpacing: '0.08em', color: 'rgba(255,255,255,0.75)', marginBottom: 6,
+                }}>
+                    {label}
+                </div>
+                <div style={{
+                    fontSize: small ? '1.05rem' : '2.2rem', fontWeight: 800,
+                    color: '#fff', lineHeight: small ? 1.25 : 1,
+                }}>
+                    {value}
+                </div>
             </div>
         </div>
     );
@@ -313,10 +334,11 @@ export default function Auditoria() {
 
     // Métricas agregadas para el stats row
     const totalIncumplimientos = reports.reduce((s, r) => s + (r.incumplimientos || 0), 0);
-    const incColor = totalIncumplimientos === 0 ? '#10b981' : totalIncumplimientos <= 5 ? '#f59e0b' : '#ef4444';
+    const incGrad = totalIncumplimientos === 0 ? STAT_GRAD.green
+        : totalIncumplimientos <= 5 ? STAT_GRAD.amber : STAT_GRAD.red;
 
     return (
-        <div className="db-root" style={{ '--db-accent': '#a78bfa', height: '100%', overflow: 'hidden' }}>
+        <div className="db-root audit-scope" style={{ '--db-accent': '#a78bfa', height: '100%', overflow: 'hidden' }}>
 
             {/* Topbar con tabs */}
             <div className="db-topbar" style={{ flexShrink: 0, alignItems: 'flex-end' }}>
@@ -378,19 +400,19 @@ export default function Auditoria() {
                                 icon="fa-file-contract"
                                 label={t('auditor.stats.total')}
                                 value={reports.length}
-                                accentColor="#a78bfa"
+                                gradient={STAT_GRAD.violet}
                             />
                             <AuditStatCard
                                 icon="fa-triangle-exclamation"
                                 label={t('auditor.stats.incumplimientos')}
                                 value={totalIncumplimientos}
-                                accentColor={incColor}
+                                gradient={incGrad}
                             />
                             <AuditStatCard
                                 icon="fa-calendar-check"
                                 label={t('auditor.stats.lastAudit')}
                                 value={reports[0] ? fmtDateShort(reports[0].createdAt) : '—'}
-                                accentColor="#a78bfa"
+                                gradient={STAT_GRAD.blue}
                                 small
                             />
                         </div>
@@ -906,6 +928,17 @@ export default function Auditoria() {
                 @keyframes fadeIn  { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:translateY(0); } }
                 @keyframes slideUp { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
                 @keyframes shimmer { 0%,100% { background-position:0% 50%; } 50% { background-position:100% 50%; } }
+
+                /* Cards normales de Auditoría con tinte morado oscuro (scoped) */
+                .audit-scope .db-card,
+                .audit-scope .db-metric-card {
+                    background: linear-gradient(135deg, #181226 0%, #15111f 55%, #100c1a 100%);
+                    border-color: rgba(167,139,250,0.12);
+                }
+                .audit-scope .db-card:hover,
+                .audit-scope .db-metric-card:hover {
+                    border-color: rgba(167,139,250,0.28);
+                }
             `}</style>
         </div>
     );
@@ -1132,8 +1165,8 @@ function ReportRow({ r, idx, total, selected, expanded, onSelect, onToggleExpand
     return (
         <div style={{
             borderRadius: 14,
-            background: selected ? 'rgba(167,139,250,0.12)' : 'rgba(20,20,25,0.65)',
-            border: `1px solid ${selected ? 'rgba(167,139,250,0.32)' : 'rgba(255,255,255,0.07)'}`,
+            background: selected ? 'rgba(167,139,250,0.16)' : 'linear-gradient(135deg, #181226 0%, #15111f 55%, #100c1a 100%)',
+            border: `1px solid ${selected ? 'rgba(167,139,250,0.38)' : 'rgba(167,139,250,0.12)'}`,
             overflow: 'hidden', transition: 'border-color 0.15s, background 0.15s',
             display: 'flex', flexDirection: 'column',
         }}>
@@ -1286,8 +1319,9 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
 
     return (
         <div style={{
-            flex: 1, overflowY: 'auto', maxWidth: 780, width: '100%', margin: '0 auto',
-            padding: isMobile ? '6px 0 32px' : '6px 4px 24px',
+            flex: 1, width: '100%',
+            overflowY: isMobile ? 'auto' : 'hidden', minHeight: 0,
+            padding: isMobile ? '6px 0 32px' : '8px 2px 2px',
             display: 'flex', flexDirection: 'column', gap: 12,
         }}>
             {/* ── Habilitación del auditor (db-metric-card horizontal, igual que AgenteIA) ── */}
@@ -1325,8 +1359,15 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                 </label>
             </div>
 
+            {/* ── Grilla full-page: todo visible sin scroll en desktop ── */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1.15fr 1fr 1fr',
+                gap: 12, flex: 1, minHeight: 0,
+                alignItems: 'stretch',
+            }}>
             {/* ── Procedimientos ── */}
-            <div className="db-card" style={{ gap: 14 }}>
+            <div className="db-card" style={{ gap: 14, minHeight: 0 }}>
                 <div className="db-card-title" style={{ margin: 0 }}>
                     <i className="fa-solid fa-list-check" style={{ color: '#a78bfa' }} />
                     {t('auditor.config.proceduresLabel')}
@@ -1339,8 +1380,8 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                     onChange={e => update('auditProcedures', e.target.value)}
                     placeholder={t('auditor.config.proceduresPlaceholder')}
                     minHeight={130}
-                    maxHeight={140}
-                    style={{ ...baseInput, fontFamily: 'inherit' }}
+                    maxHeight={isMobile ? 140 : 260}
+                    style={{ ...baseInput, fontFamily: 'inherit', flex: 1 }}
                 />
             </div>
 
@@ -1417,13 +1458,14 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                     </select>
                 </Field>
             </div>
+            </div>
 
             <button
                 onClick={onSave}
                 disabled={saving || !horarioOk}
                 className="btn-primary"
                 style={{
-                    width: '100%', marginTop: 4,
+                    width: '100%', marginTop: 4, flexShrink: 0,
                     background: saved ? '#10b981' : 'rgba(167,139,250,0.85)',
                     padding: isMobile ? '13px 0' : undefined,
                     fontSize: isMobile ? '0.95rem' : undefined,
