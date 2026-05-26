@@ -13,37 +13,15 @@ import { useToast } from '../context/ToastContext';
 import { getDisplayName } from '../utils/userUtils';
 
 /* ─────────────────────────────────────────────
-   Data derivation helpers (deterministic)
+   Data derivation helpers (datos reales del backend)
 ───────────────────────────────────────────── */
 
-function buildSparkLine(today, total, points = 7) {
-    const base = total > 0 ? Math.max(1, Math.floor(total / 30)) : 1;
-    return Array.from({ length: points }, (_, i) => ({
-        v: i === points - 1 ? today : Math.max(0, base + Math.floor(Math.sin(i * 1.7 + 0.4) * base * 0.35)),
-    }));
-}
-
-function buildWeeklyData(mensajesHoy, nuevosLeads, totalCarga, range) {
-    const maps = {
-        today:  ['00h','03h','06h','09h','12h','15h','18h','21h'],
-        sem:    ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],
-        mes:    ['S1','S2','S3','S4'],
-        anual:  ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-        custom: ['P1','P2','P3','P4','P5','P6','P7'],
-    };
-    const SCALE = { today: 1, sem: 7, mes: 30, anual: 365, custom: 1 };
-    const scale = SCALE[range] || 1;
-    const labels = maps[range] || maps['sem'];
-    const n = labels.length;
-    return labels.map((label, i) => {
-        const w = 0.45 + Math.abs(Math.sin(i * 1.1)) * 0.85;
-        return {
-            label,
-            leads:    nuevosLeads > 0 ? Math.round(nuevosLeads * scale / n * w) : 0,
-            mensajes: mensajesHoy > 0 ? Math.round(mensajesHoy * scale / n * w) : 0,
-            ingresos: totalCarga  > 0 ? Math.round(totalCarga  * scale / n * w * 0.12) : 0,
-        };
-    });
+// Sparkline = serie de un campo de los buckets reales ({ v: number }[]).
+// Recharts necesita al menos 2 puntos para dibujar una línea.
+function sparkFrom(buckets, campo) {
+    if (!buckets || buckets.length === 0) return [{ v: 0 }, { v: 0 }];
+    const serie = buckets.map(b => ({ v: Number(b[campo]) || 0 }));
+    return serie.length === 1 ? [{ v: 0 }, ...serie] : serie;
 }
 
 function buildLeadOrigin(wa, tg) {
@@ -250,6 +228,7 @@ export default function Dashboard() {
     const [topView, setTopView]               = useState('agentes');
     const [customFrom, setCustomFrom]         = useState('');
     const [customTo, setCustomTo]             = useState('');
+    const [series, setSeries]                 = useState([]); // buckets reales: [{label, leads, mensajes, ingresos}]
     const [now, setNow]                       = useState(new Date());
     const [pickerOpen, setPickerOpen]         = useState(false);
     const pickerRef                           = useRef(null);
@@ -307,18 +286,20 @@ export default function Dashboard() {
         if (!silent) setLoading(true);
         const params = buildTopParams(range, from, to);
         try {
-            const [statsRes, tgRes, waRes, etapasRes, topRes] = await Promise.allSettled([
+            const [statsRes, tgRes, waRes, etapasRes, topRes, seriesRes] = await Promise.allSettled([
                 api.get('/dashboard/stats', { params }),
                 api.get('/telegram-devices'),
                 api.get('/whatsapp'),
                 api.get('/etapas/stats'),
                 api.get('/dashboard/top-stats', { params }),
+                api.get('/dashboard/series', { params }),
             ]);
             const stats     = statsRes.status === 'fulfilled'  ? statsRes.value.data  : {};
             const tgDevices = tgRes.status === 'fulfilled'     ? tgRes.value.data     : [];
             const waDevices = waRes.status === 'fulfilled'     ? waRes.value.data     : [];
             if (etapasRes.status === 'fulfilled') setEtapasStats(etapasRes.value.data || []);
             if (topRes.status === 'fulfilled')    setTopStats(topRes.value.data || { topClientes: [], topAgentes: [] });
+            if (seriesRes.status === 'fulfilled') setSeries(seriesRes.value.data?.buckets || []);
 
             const telegramConnected = tgDevices.some(d => d.estado === 'CONECTADO');
             const whatsappConectado = waDevices.some(d => d.estado === 'CONNECTED');
@@ -422,14 +403,15 @@ export default function Dashboard() {
         } catch { toast('Error', 'No se pudo abandonar el equipo.', '#ef4444'); }
     };
 
-    /* ── Derived data (memoized & deterministic) ── */
-    const weeklyData = useMemo(() => buildWeeklyData(data.mensajesHoy, data.nuevosLeads, data.totalCarga, dateRange),
-        [data.mensajesHoy, data.nuevosLeads, data.totalCarga, dateRange]);
+    /* ── Derived data (series reales del backend: /dashboard/series) ── */
+    const weeklyData = series;
     const leadOrigin = useMemo(() => buildLeadOrigin(data.waLeads, data.tgLeads), [data.waLeads, data.tgLeads]);
-    const sparkLeads = useMemo(() => buildSparkLine(data.nuevosLeads, data.totalLeads), [data.nuevosLeads, data.totalLeads]);
-    const sparkMsgs  = useMemo(() => buildSparkLine(data.mensajesHoy, data.totalMensajes), [data.mensajesHoy, data.totalMensajes]);
-    const sparkCarga = useMemo(() => buildSparkLine(data.totalCarga, data.totalCarga * 5), [data.totalCarga]);
-    const sparkLeer  = useMemo(() => buildSparkLine(data.leadsSinLeer, data.totalLeads), [data.leadsSinLeer, data.totalLeads]);
+    const sparkLeads = useMemo(() => sparkFrom(series, 'leads'),    [series]);
+    const sparkMsgs  = useMemo(() => sparkFrom(series, 'mensajes'), [series]);
+    const sparkCarga = useMemo(() => sparkFrom(series, 'ingresos'), [series]);
+    // "Leads sin leer" no tiene serie histórica propia; mostramos la tendencia de
+    // entrada de leads del período, que es la métrica real relacionada.
+    const sparkLeer  = sparkLeads;
 
     const convPct  = data.totalLeads > 0 ? (((data.clientesConCarga ?? 0) / data.totalLeads) * 100).toFixed(1) : '0.0';
 
