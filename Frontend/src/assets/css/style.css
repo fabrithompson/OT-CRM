@@ -1281,7 +1281,7 @@ button:focus-visible {
     max-width: 280px !important; max-height: 350px !important;
     border-radius: 12px; margin-top: 5px; background: #000;
 }
-img[src$=".webp"], .msg-sticker {
+.msg-sticker {
     max-width: 130px !important; max-height: 130px !important;
     border-radius: 0 !important; background-color: transparent !important;
     box-shadow: none !important; padding: 0 !important; margin: 5px 0;

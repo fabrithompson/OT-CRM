@@ -84,13 +84,6 @@ jobs:
       - name: Build JAR de producción
         run: mvn package -DskipTests --no-transfer-progress -q
 
-      - name: Guardar JAR como artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: backend-jar
-          path: target/*.jar
-          retention-days: 1
-
 
   test-frontend:
     name: Frontend — Build check
