@@ -152,8 +152,12 @@ public class ChatController {
             return ResponseEntity.ok(Map.of("status", "SENT", "url", url));
         }
 
-        // WhatsApp: enviar base64 directo al bot, subir a Cloudinary async
-        whatsAppService.enviarArchivoDesdeCrm(cliente, file, nombreFinal, null, autor);
+        // WhatsApp: enviar base64 directo al bot (bytes ya leídos), subir a Cloudinary async
+        String contentType = file.getContentType();
+        boolean enviado = whatsAppService.enviarArchivoDesdeCrm(cliente, fileBytes, contentType, nombreFinal, null, autor);
+        if (!enviado) {
+            return ResponseEntity.status(503).body(Map.of("error", "Bot no disponible o sesión desconectada"));
+        }
 
         // Upload a Cloudinary en background — no bloquea la respuesta HTTP
         String uploadId = UUID.randomUUID().toString().substring(0, 8);
@@ -169,7 +173,7 @@ public class ChatController {
             return null;
         });
 
-        // Respuesta inmediata: archivo enviado, upload en progreso
+        // Respuesta inmediata: archivo enviado al bot, upload a Cloudinary en progreso
         return ResponseEntity.ok(Map.of("status", "PROCESSING", "uploadId", uploadId));
     }
 

@@ -1833,18 +1833,8 @@
   animation: heroImgFloat 7s ease-in-out infinite;
   display: block;
   margin: 0 auto;
-  -webkit-mask-image:
-    linear-gradient(to bottom, black 88%, transparent 100%),
-    linear-gradient(to right,  black 90%, transparent 100%),
-    linear-gradient(to left,   black 92%, transparent 100%),
-    linear-gradient(to top,    black 94%, transparent 100%);
-  -webkit-mask-composite: destination-in;
-  mask-image:
-    linear-gradient(to bottom, black 88%, transparent 100%),
-    linear-gradient(to right,  black 90%, transparent 100%),
-    linear-gradient(to left,   black 92%, transparent 100%),
-    linear-gradient(to top,    black 94%, transparent 100%);
-  mask-composite: intersect;
+  -webkit-mask-image: radial-gradient(ellipse 88% 85% at 50% 48%, black 52%, transparent 88%);
+  mask-image:         radial-gradient(ellipse 88% 85% at 50% 48%, black 52%, transparent 88%);
 }
 
 @keyframes heroImgFloat {

@@ -1,6 +1,5 @@
 package service;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.time.ZoneId;
@@ -24,8 +23,6 @@ import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
 import dto.SystemNotification;
 import exception.RegistroException;
 import model.Agencia;
@@ -240,10 +237,10 @@ public class WhatsAppService {
     }
 
     @Transactional
-    public void enviarArchivoDesdeCrm(Cliente cliente, MultipartFile file, String nombreOriginal, String urlLocal,
-            String autor) {
+    public boolean enviarArchivoDesdeCrm(Cliente cliente, byte[] fileBytes, String contentType,
+            String nombreOriginal, String urlLocal, String autor) {
         if (cliente == null || cliente.getAgencia() == null) {
-            return;
+            return false;
         }
 
         Dispositivo disp = cliente.getDispositivo();
@@ -254,24 +251,22 @@ public class WhatsAppService {
 
         if (disp == null) {
             log.error("No hay bot disponible para enviar el archivo.");
-            return;
+            return false;
         }
 
         String telefonoDestino = limpiarTelefono(cliente.getTelefono());
-        Mensaje.TipoMensaje tipo = inferirTipoArchivo(nombreOriginal, file.getContentType());
-
-        try {
-            String base64Data = Base64.getEncoder().encodeToString(file.getBytes());
-            String mimeType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
-            String waId = enviarArchivoBase64AlBot(telefonoDestino, disp.getSessionId(), base64Data, mimeType,
-                    nombreOriginal, tipo);
-            if (waId != null) {
-                String contenidoMensaje = obtenerContenidoSegunTipo(tipo, nombreOriginal);
-                guardarYNotificarSalida(cliente, contenidoMensaje, tipo, waId, urlLocal, autor);
-            }
-        } catch (IOException e) {
-            log.error("Error leyendo bytes del archivo para envío directo", e);
+        Mensaje.TipoMensaje tipo = inferirTipoArchivo(nombreOriginal, contentType);
+        String mimeType = contentType != null ? contentType : "application/octet-stream";
+        String base64Data = Base64.getEncoder().encodeToString(fileBytes);
+        String waId = enviarArchivoBase64AlBot(telefonoDestino, disp.getSessionId(), base64Data, mimeType,
+                nombreOriginal, tipo);
+        if (waId != null) {
+            String contenidoMensaje = obtenerContenidoSegunTipo(tipo, nombreOriginal);
+            guardarYNotificarSalida(cliente, contenidoMensaje, tipo, waId, urlLocal, autor);
+            return true;
         }
+        log.error("Bot no devolvió waId al enviar archivo para cliente {}", cliente.getId());
+        return false;
     }
 
     private String enviarArchivoBase64AlBot(String to, String sessionId, String base64Data,
