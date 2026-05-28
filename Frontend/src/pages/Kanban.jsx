@@ -262,15 +262,24 @@ export default function Kanban() {
 
 
 
-    const clientesForEtapa = (etapaId) => clientes.filter(c => {
-        if (c.etapa?.id !== etapaId) return false;
-        if (debouncedSearch) {
-            const q = debouncedSearch.toLowerCase();
-            const text = `${c.nombre || ''} ${c.telefono || ''} ${c.ultimoMensajeResumen || ''}`.toLowerCase();
-            return text.includes(q);
-        }
-        return true;
-    });
+    const clientesForEtapa = (etapaId) => clientes
+        .filter(c => {
+            if (c.etapa?.id !== etapaId) return false;
+            if (debouncedSearch) {
+                const q = debouncedSearch.toLowerCase();
+                const text = `${c.nombre || ''} ${c.telefono || ''} ${c.ultimoMensajeResumen || ''}`.toLowerCase();
+                return text.includes(q);
+            }
+            return true;
+        })
+        .sort((a, b) => {
+            const unreadA = a.mensajesSinLeer || 0;
+            const unreadB = b.mensajesSinLeer || 0;
+            if (unreadA !== unreadB) return unreadB - unreadA;
+            const dateA = a.ultimoMensajeFecha ? new Date(a.ultimoMensajeFecha).getTime() : 0;
+            const dateB = b.ultimoMensajeFecha ? new Date(b.ultimoMensajeFecha).getTime() : 0;
+            return dateB - dateA;
+        });
 
     const renderBoard = () => {
         if (loading) return (

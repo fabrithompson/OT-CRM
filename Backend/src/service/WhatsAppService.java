@@ -465,9 +465,16 @@ public class WhatsAppService {
         }
         if (dispositivo.getProposito() == Dispositivo.Proposito.CAMPANIAS) return;
 
+        // Deduplicación temprana: si el CRM ya envió este mensaje, salir sin adquirir ningún lock
+        if (whatsappId != null && mensajeRepository.findByWhatsappId(whatsappId).isPresent()) {
+            log.debug("guardarMensajeSalidaExterno: waId {} ya registrado, ignorando.", whatsappId);
+            return;
+        }
+
         String telefono = limpiarTelefono(to);
+        // Lookup sin lock — no bloquea otros hilos que accedan al mismo cliente
         Optional<Cliente> clienteOpt = clienteRepository
-                .findByAgenciaIdAndTelefonoAndDispositivoWithLock(dispositivo.getAgencia().getId(), telefono, dispositivo);
+                .findByAgenciaIdAndTelefonoAndDispositivo(dispositivo.getAgencia().getId(), telefono, dispositivo);
         if (clienteOpt.isEmpty()) {
             clienteOpt = clienteRepository
                     .findByAgenciaIdAndTelefonoAndDispositivoIsNull(dispositivo.getAgencia().getId(), telefono);
@@ -493,12 +500,6 @@ public class WhatsAppService {
                         telefono, e.getMessage());
                 return;
             }
-        }
-
-        // Deduplicación: el CRM ya guardó el mensaje si lo envió él mismo
-        if (whatsappId != null && mensajeRepository.findByWhatsappId(whatsappId).isPresent()) {
-            log.debug("guardarMensajeSalidaExterno: waId {} ya registrado, ignorando.", whatsappId);
-            return;
         }
 
         String waId = whatsappId != null ? whatsappId : "EXT_" + System.currentTimeMillis();
