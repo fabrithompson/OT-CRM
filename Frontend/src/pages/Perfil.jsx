@@ -127,9 +127,9 @@ export default function Perfil() {
     );
 
     return (
-        <div id="profile-wrapper" className="profile-wrapper" style={{ height: '100vh', overflowY: 'auto', padding: '2rem' }}>
-            <div className="profile-content" style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <h2 style={{ marginBottom: '25px', fontSize: '2rem', color: '#fff' }}>{t('perfil.title')}</h2>
+        <div id="profile-wrapper" className="profile-wrapper" style={{ height: '100vh', overflowY: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+            <div className="profile-content" style={{ width: '100%', maxWidth: 1400, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h2 style={{ margin: 0, fontSize: '1.55rem', fontWeight: 800, color: '#fff' }}>{t('perfil.title')}</h2>
 
                 {mensaje.texto && (
                     <div style={{
@@ -144,15 +144,21 @@ export default function Perfil() {
                     </div>
                 )}
 
-                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px', marginBottom: '24px' }}>
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                {/* Grid: configuración (izq) | equipo + solicitudes (der) */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+                    gap: 14, alignItems: 'start',
+                }}>
+                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '22px' }}>
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
                         {/* Avatar */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', paddingBottom: '20px', borderBottom: '1px solid var(--border-glass)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingBottom: '14px', borderBottom: '1px solid var(--border-glass)' }}>
                             {previewUrl ? (
-                                <img src={previewUrl} alt="Perfil" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '3px solid white', boxShadow: '0 0 20px rgba(255,255,255,0.2)' }} />
+                                <img src={previewUrl} alt="Perfil" style={{ width: '96px', height: '96px', borderRadius: '50%', objectFit: 'cover', border: '3px solid white', boxShadow: '0 0 20px rgba(255,255,255,0.2)' }} />
                             ) : (
-                                <div style={{ width: '120px', height: '120px', fontSize: '2.5rem', border: '3px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', borderRadius: '50%', background: '#333', color: '#fff' }}>
+                                <div style={{ width: '96px', height: '96px', fontSize: '2.5rem', border: '3px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', borderRadius: '50%', background: '#333', color: '#fff' }}>
                                     {(usuario.nombreCompleto || usuario.username || 'U').charAt(0).toUpperCase()}
                                 </div>
                             )}
@@ -220,9 +226,11 @@ export default function Perfil() {
                         </button>
                     </form>
                 </div>
+                {/* Columna derecha: Equipo + Solicitudes apiladas */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
                 {/* Equipo */}
-                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px', marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--border-glass)' }}>
+                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '22px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--border-glass)' }}>
                         <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <i className="fas fa-users" style={{ color: '#6366f1', fontSize: '1.1rem' }}></i>
                         </div>
@@ -295,8 +303,8 @@ export default function Perfil() {
 
                 {/* Solicitudes pendientes — solo admins */}
                 {isAdmin && (
-                    <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '30px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid var(--border-glass)' }}>
+                    <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '22px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--border-glass)' }}>
                             <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(167,139,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <i className="fas fa-user-plus" style={{ color: '#a78bfa', fontSize: '1.1rem' }}></i>
                             </div>
@@ -366,6 +374,8 @@ export default function Perfil() {
                         )}
                     </div>
                 )}
+                </div>
+                </div>
             </div>
         </div>
     );

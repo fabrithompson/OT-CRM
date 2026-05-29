@@ -720,7 +720,7 @@ function UpgradeWall() {
     return (
         <div style={{
             height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(16,12,26,0.55)', fontFamily: "'Montserrat', sans-serif", padding: 24,
+            background: 'transparent', fontFamily: "'Montserrat', sans-serif", padding: 24,
         }}>
             <div style={{
                 background: 'rgba(24,18,38,0.80)',
@@ -980,7 +980,7 @@ export default function Spam() {
     // ── Gates (después de todos los hooks para no romper Rules of Hooks) ──────
     if (loadingUser) {
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16,12,26,0.55)' }}>
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
                 <div className="spinner" />
             </div>
         );
@@ -989,7 +989,7 @@ export default function Spam() {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: 16, gap: 12, background: 'rgba(16,12,26,0.55)', fontFamily: "'Montserrat', sans-serif" }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: 16, gap: 12, background: 'transparent', fontFamily: "'Montserrat', sans-serif" }}>
 
             {/* ── Header estático (nunca cambia de tamaño) ── */}
             <div style={{
