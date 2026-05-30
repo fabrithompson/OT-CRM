@@ -79,6 +79,22 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
     };
 
     const handleStatusUpdate = (ev) => {
+        // El topic /status emite dos tipos de eventos:
+        //  - Cambios de estado de envío: { whatsappId, nuevoEstado }
+        //  - Updates de URL de archivo: { whatsappId, urlArchivo, tipo }
+        //    (mensajes que se persistieron con urlArchivo=null y completaron
+        //    la subida a Cloudinary en background)
+        if (ev.urlArchivo) {
+            setMessages(prev => prev.map(m =>
+                m.whatsappId === ev.whatsappId ? { ...m, urlArchivo: ev.urlArchivo, tipo: ev.tipo || m.tipo } : m
+            ));
+            if (ev.tipo === 'IMAGEN' || ev.tipo === 'VIDEO') {
+                setMedia(prev => prev.some(x => x.urlArchivo === ev.urlArchivo)
+                    ? prev
+                    : [...prev, { whatsappId: ev.whatsappId, urlArchivo: ev.urlArchivo, tipo: ev.tipo }]);
+            }
+            return;
+        }
         setMessages(prev => prev.map(m => m.whatsappId === ev.whatsappId ? { ...m, estado: ev.nuevoEstado } : m));
     };
 
@@ -192,8 +208,19 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                 body: form,
             });
             if (!res.ok) {
-                const err = await res.text().catch(() => res.status);
-                toast('Error', `No se pudo enviar: ${err}`, '#ef4444');
+                // El proxy (Cloudflare/nginx) puede devolver una página HTML enorme
+                // en 502/504. No la volcamos al toast — mostramos un mensaje útil
+                // según el código y mandamos el detalle a la consola.
+                const detalle = await res.text().catch(() => '');
+                console.error(`send-file ${res.status}:`, detalle);
+                const motivo = res.status === 502 || res.status === 504
+                    ? 'el servidor tardó demasiado en responder'
+                    : res.status === 503
+                        ? 'el bot está desconectado'
+                        : res.status === 413
+                            ? 'el archivo es muy grande'
+                            : `HTTP ${res.status}`;
+                toast('Error', `No se pudo enviar: ${motivo}`, '#ef4444');
                 return;
             }
             toast('Éxito', 'Archivo enviado', '#10b981');

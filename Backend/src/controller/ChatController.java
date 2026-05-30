@@ -103,16 +103,16 @@ public class ChatController {
     }
 
     /**
-     * Envío de archivo con upload sincrónico a Cloudinary.
-     * 1. Lee los bytes del archivo en memoria
-     * 2. Sube a Cloudinary y obtiene la URL pública
-     * 3. Persiste el Mensaje con urlArchivo y envía al bot (WhatsApp/Telegram)
-     * 4. Difunde el mensaje saliente por WebSocket con la URL ya disponible
-     *    para que la imagen/audio se renderice en el chat y aparezca en multimedia.
+     * Envío de archivo en dos etapas para evitar timeouts del proxy:
+     * 1. Sincrónico: envía al bot (rápido, base64) y persiste el Mensaje con
+     *    urlArchivo=null. Difunde el mensaje por WS para que el chat lo muestre.
+     * 2. Asincrónico: sube a Cloudinary en background. Cuando termina,
+     *    {@code WhatsAppService.completarUrlArchivo} actualiza el Mensaje y
+     *    emite un evento WS con la URL para que el frontend complete el bubble
+     *    y agregue el item a la galería de multimedia.
      *
-     * Se descartó el flujo async previo porque dejaba urlArchivo=null en la
-     * base de datos: el mensaje aparecía vacío y nunca se actualizaba al
-     * terminar la subida a Cloudinary.
+     * Antes lo hacíamos sincrónico, pero la transcodificación de audio en
+     * Cloudinary podía exceder el timeout del proxy y devolver 502.
      */
     @SuppressWarnings("null")
     @PostMapping("/{clienteId}/send-file")
@@ -144,32 +144,34 @@ public class ChatController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Error leyendo archivo");
         }
 
-        // Subir a Cloudinary primero para tener la URL antes de persistir/notificar.
-        // Si falla, no avanzamos al bot porque sin URL la UI del chat queda en blanco.
-        String urlPublica;
-        try {
-            urlPublica = cloudStorageService.uploadBytes(fileBytes, nombreFinal);
-        } catch (RuntimeException e) {
-            log.error("Fallo subiendo archivo a Cloudinary para cliente {}: {}", clienteId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(Map.of("error", "No se pudo subir el archivo al almacenamiento"));
-        }
-
         if ("TELEGRAM".equalsIgnoreCase(cliente.getOrigen())) {
-            telegramBridgeService.enviarArchivoDesdeCrm(cliente, urlPublica, nombreFinal, autor);
-            return ResponseEntity.ok(Map.of("status", "SENT", "url", urlPublica));
+            // Telegram exige URL pública, sigue siendo sincrónico
+            String url = cloudStorageService.uploadBytes(fileBytes, nombreFinal);
+            telegramBridgeService.enviarArchivoDesdeCrm(cliente, url, nombreFinal, autor);
+            return ResponseEntity.ok(Map.of("status", "SENT", "url", url));
         }
 
-        // WhatsApp: el bot recibe base64 (más rápido que esperar a que descargue la URL)
-        // y el Mensaje en BD/WS se guarda con la URL pública de Cloudinary.
+        // WhatsApp: el bot acepta base64 directo, así que no necesitamos esperar
+        // a Cloudinary para enviar el mensaje. Persistimos el Mensaje con
+        // urlArchivo=null y completamos la URL cuando termine el upload async.
         String contentType = file.getContentType();
-        boolean enviado = whatsAppService.enviarArchivoDesdeCrm(
-                cliente, fileBytes, contentType, nombreFinal, urlPublica, autor);
-        if (!enviado) {
+        Mensaje mensaje = whatsAppService.enviarArchivoDesdeCrm(
+                cliente, fileBytes, contentType, nombreFinal, null, autor);
+        if (mensaje == null) {
             return ResponseEntity.status(503).body(Map.of("error", "Bot no disponible o sesión desconectada"));
         }
 
-        return ResponseEntity.ok(Map.of("status", "SENT", "url", urlPublica));
+        // Upload a Cloudinary en background. Cuando completa, actualiza el
+        // Mensaje en BD y notifica al frontend por WS con la URL final.
+        Long mensajeId = mensaje.getId();
+        cloudStorageService.uploadFileAsync(fileBytes, nombreFinal)
+                .thenAccept(urlPublica -> whatsAppService.completarUrlArchivo(mensajeId, urlPublica))
+                .exceptionally(ex -> {
+                    log.error("Fallo upload async Cloudinary mensaje {}: {}", mensajeId, ex.getMessage());
+                    return null;
+                });
+
+        return ResponseEntity.ok(Map.of("status", "SENT", "mensajeId", mensajeId));
     }
 
     @GetMapping("/metrics")
