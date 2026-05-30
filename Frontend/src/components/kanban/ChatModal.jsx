@@ -62,14 +62,19 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
 
     const handleInboundMessage = (ev) => {
         const m = { ...ev, esSalida: !ev.inbound, fechaHora: ev.fecha };
+        let isNew = false;
         setMessages(prev => {
             if (m.whatsappId && prev.some(x => x.whatsappId === m.whatsappId)) return prev;
             if (m.esSalida) {
                 const tempIdx = prev.findIndex(x => typeof x.id === 'string' && x.id.startsWith('temp-'));
-                if (tempIdx !== -1) return prev.map((x, i) => i === tempIdx ? m : x);
+                if (tempIdx !== -1) { isNew = true; return prev.map((x, i) => i === tempIdx ? m : x); }
             }
+            isNew = true;
             return [...prev, m];
         });
+        if (isNew && (m.tipo === 'IMAGEN' || m.tipo === 'VIDEO') && m.urlArchivo) {
+            setMedia(prev => prev.some(x => x.urlArchivo === m.urlArchivo) ? prev : [...prev, m]);
+        }
         if (!m.esSalida) scrollToBottom();
     };
 
@@ -205,17 +210,32 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
             audioChunksRef.current = [];
             recorder.ondataavailable = e => audioChunksRef.current.push(e.data);
             recorder.onstop = () => {
+                // Liberar el micrófono al terminar la grabación para que el ícono
+                // del navegador desaparezca y no quede el stream activo.
+                stream.getTracks().forEach(t => t.stop());
                 const file = new File([new Blob(audioChunksRef.current, { type: 'audio/webm' })], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
                 uploadFile(file);
             };
             recorder.start();
             mediaRecorderRef.current = recorder;
             setIsRecording(true);
-        } catch { toast('Error', 'No se pudo acceder al micrófono', '#ef4444'); }
+        } catch (err) {
+            console.error('No se pudo acceder al micrófono:', err);
+            const msg = err?.name === 'NotAllowedError'
+                ? 'Permiso del micrófono denegado'
+                : 'No se pudo acceder al micrófono';
+            toast('Error', msg, '#ef4444');
+        }
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current?.state !== 'inactive') { mediaRecorderRef.current.stop(); }
+        const rec = mediaRecorderRef.current;
+        // Si startRecording falló (sin permiso), rec queda null y onMouseUp dispara
+        // este handler igualmente — hay que salir limpio en vez de hacer null.stop().
+        if (rec && rec.state !== 'inactive') {
+            try { rec.stop(); } catch (e) { console.warn('stopRecording:', e); }
+        }
+        mediaRecorderRef.current = null;
         setIsRecording(false);
     };
 
