@@ -4,14 +4,12 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +48,6 @@ public class ChatController {
     private final ClienteRepository clienteRepository;
     private final CloudStorageService cloudStorageService;
     private final UsuarioRepository usuarioRepository;
-    private final SimpMessagingTemplate messaging;
     private final AiAgentService aiAgentService;
 
     @Value("${bot.secret.key}")
@@ -62,7 +59,6 @@ public class ChatController {
                           ClienteRepository clienteRepository,
                           CloudStorageService cloudStorageService,
                           UsuarioRepository usuarioRepository,
-                          SimpMessagingTemplate messaging,
                           AiAgentService aiAgentService) {
         this.chatService = chatService;
         this.whatsAppService = whatsAppService;
@@ -70,7 +66,6 @@ public class ChatController {
         this.clienteRepository = clienteRepository;
         this.cloudStorageService = cloudStorageService;
         this.usuarioRepository = usuarioRepository;
-        this.messaging = messaging;
         this.aiAgentService = aiAgentService;
     }
 
@@ -108,11 +103,16 @@ public class ChatController {
     }
 
     /**
-     * Envío de archivo con upload asíncrono a Cloudinary.
-     * 1. Lee los bytes del archivo en memoria inmediatamente
-     * 2. Envía al bot de WhatsApp/Telegram (rápido, base64 directo)
-     * 3. Sube a Cloudinary en background (sin bloquear al usuario)
-     * 4. Cuando Cloudinary responde, notifica al frontend por WebSocket
+     * Envío de archivo con upload sincrónico a Cloudinary.
+     * 1. Lee los bytes del archivo en memoria
+     * 2. Sube a Cloudinary y obtiene la URL pública
+     * 3. Persiste el Mensaje con urlArchivo y envía al bot (WhatsApp/Telegram)
+     * 4. Difunde el mensaje saliente por WebSocket con la URL ya disponible
+     *    para que la imagen/audio se renderice en el chat y aparezca en multimedia.
+     *
+     * Se descartó el flujo async previo porque dejaba urlArchivo=null en la
+     * base de datos: el mensaje aparecía vacío y nunca se actualizaba al
+     * terminar la subida a Cloudinary.
      */
     @SuppressWarnings("null")
     @PostMapping("/{clienteId}/send-file")
@@ -144,37 +144,32 @@ public class ChatController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Error leyendo archivo");
         }
 
-        // Enviar al bot inmediatamente (no depende de Cloudinary)
-        if ("TELEGRAM".equalsIgnoreCase(cliente.getOrigen())) {
-            // Telegram necesita URL, hacer upload sincrónico en este caso
-            String url = cloudStorageService.uploadBytes(fileBytes, nombreFinal);
-            telegramBridgeService.enviarArchivoDesdeCrm(cliente, url, nombreFinal, autor);
-            return ResponseEntity.ok(Map.of("status", "SENT", "url", url));
+        // Subir a Cloudinary primero para tener la URL antes de persistir/notificar.
+        // Si falla, no avanzamos al bot porque sin URL la UI del chat queda en blanco.
+        String urlPublica;
+        try {
+            urlPublica = cloudStorageService.uploadBytes(fileBytes, nombreFinal);
+        } catch (RuntimeException e) {
+            log.error("Fallo subiendo archivo a Cloudinary para cliente {}: {}", clienteId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("error", "No se pudo subir el archivo al almacenamiento"));
         }
 
-        // WhatsApp: enviar base64 directo al bot (bytes ya leídos), subir a Cloudinary async
+        if ("TELEGRAM".equalsIgnoreCase(cliente.getOrigen())) {
+            telegramBridgeService.enviarArchivoDesdeCrm(cliente, urlPublica, nombreFinal, autor);
+            return ResponseEntity.ok(Map.of("status", "SENT", "url", urlPublica));
+        }
+
+        // WhatsApp: el bot recibe base64 (más rápido que esperar a que descargue la URL)
+        // y el Mensaje en BD/WS se guarda con la URL pública de Cloudinary.
         String contentType = file.getContentType();
-        boolean enviado = whatsAppService.enviarArchivoDesdeCrm(cliente, fileBytes, contentType, nombreFinal, null, autor);
+        boolean enviado = whatsAppService.enviarArchivoDesdeCrm(
+                cliente, fileBytes, contentType, nombreFinal, urlPublica, autor);
         if (!enviado) {
             return ResponseEntity.status(503).body(Map.of("error", "Bot no disponible o sesión desconectada"));
         }
 
-        // Upload a Cloudinary en background — no bloquea la respuesta HTTP
-        String uploadId = UUID.randomUUID().toString().substring(0, 8);
-        cloudStorageService.uploadFileAsync(fileBytes, nombreFinal).thenAccept(urlPublica -> {
-            log.info("Upload async completado para cliente {}: {}", clienteId, urlPublica);
-            // Notificar al frontend que la URL del archivo está lista
-            messaging.convertAndSend("/topic/chat/" + clienteId + "/upload",
-                    Map.of("uploadId", uploadId, "url", urlPublica, "status", "COMPLETED"));
-        }).exceptionally(ex -> {
-            log.error("Error en upload async para cliente {}: {}", clienteId, ex.getMessage());
-            messaging.convertAndSend("/topic/chat/" + clienteId + "/upload",
-                    Map.of("uploadId", uploadId, "status", "FAILED", "error", ex.getMessage()));
-            return null;
-        });
-
-        // Respuesta inmediata: archivo enviado al bot, upload a Cloudinary en progreso
-        return ResponseEntity.ok(Map.of("status", "PROCESSING", "uploadId", uploadId));
+        return ResponseEntity.ok(Map.of("status", "SENT", "url", urlPublica));
     }
 
     @GetMapping("/metrics")
