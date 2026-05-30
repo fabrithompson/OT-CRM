@@ -113,6 +113,16 @@ public class WhatsAppService {
     }
 
     /**
+     * Evento de actualización de URL de archivo. Se emite cuando un mensaje
+     * saliente ya estaba persistido (con urlArchivo=null) y la subida a
+     * Cloudinary terminó en background. El frontend lo escucha en el topic
+     * /status y patchea el mensaje + lo agrega a la galería multimedia.
+     */
+    public record MensajeUrlEvent(String whatsappId, String urlArchivo, String tipo) {
+
+    }
+
+    /**
      * @deprecated Usar {@link BotHttpClient#getBaseUrl()} directamente. Se mantiene
      * mientras {@code WhatsAppController} todavía lo invoca para construir URLs ad-hoc.
      */
@@ -236,11 +246,18 @@ public class WhatsAppService {
         return enviarARobot(to, texto, dispositivo.getSessionId(), null, null) != null;
     }
 
+    /**
+     * Envía un archivo al bot de WhatsApp y persiste el Mensaje saliente.
+     * Devuelve el Mensaje persistido (con su id) si el envío al bot fue exitoso,
+     * o {@code null} si no hay bot disponible o el bot no devolvió waId.
+     * El caller puede usar el id retornado para completar después la
+     * {@code urlArchivo} cuando termine la subida asincrónica a Cloudinary.
+     */
     @Transactional
-    public boolean enviarArchivoDesdeCrm(Cliente cliente, byte[] fileBytes, String contentType,
+    public Mensaje enviarArchivoDesdeCrm(Cliente cliente, byte[] fileBytes, String contentType,
             String nombreOriginal, String urlLocal, String autor) {
         if (cliente == null || cliente.getAgencia() == null) {
-            return false;
+            return null;
         }
 
         Dispositivo disp = cliente.getDispositivo();
@@ -251,7 +268,7 @@ public class WhatsAppService {
 
         if (disp == null) {
             log.error("No hay bot disponible para enviar el archivo.");
-            return false;
+            return null;
         }
 
         String telefonoDestino = limpiarTelefono(cliente.getTelefono());
@@ -262,11 +279,10 @@ public class WhatsAppService {
                 nombreOriginal, tipo);
         if (waId != null) {
             String contenidoMensaje = obtenerContenidoSegunTipo(tipo, nombreOriginal);
-            guardarYNotificarSalida(cliente, contenidoMensaje, tipo, waId, urlLocal, autor);
-            return true;
+            return guardarYNotificarSalida(cliente, contenidoMensaje, tipo, waId, urlLocal, autor);
         }
         log.error("Bot no devolvió waId al enviar archivo para cliente {}", cliente.getId());
-        return false;
+        return null;
     }
 
     private String enviarArchivoBase64AlBot(String to, String sessionId, String base64Data,
@@ -324,6 +340,30 @@ public class WhatsAppService {
                 mensaje.setEstado(nuevoEstado);
                 mensajeRepository.save(mensaje);
                 notificarCambioEstadoFrontend(mensaje.getCliente().getId(), mensaje.getWhatsappId(), nuevoEstado);
+            }
+        });
+    }
+
+    /**
+     * Completa la URL de archivo de un mensaje saliente que se persistió antes
+     * de que terminara la subida asincrónica a Cloudinary. Actualiza la fila y
+     * emite un evento en /topic/chat/{id}/status para que el frontend reemplace
+     * la URL en el bubble y agregue el item a la galería de multimedia.
+     */
+    @Transactional
+    public void completarUrlArchivo(Long mensajeId, String url) {
+        if (mensajeId == null || url == null || url.isBlank()) {
+            return;
+        }
+        mensajeRepository.findById(mensajeId).ifPresent(mensaje -> {
+            mensaje.setUrlArchivo(url);
+            mensajeRepository.save(mensaje);
+            try {
+                messaging.convertAndSend(
+                        "/topic/chat/" + mensaje.getCliente().getId() + "/status",
+                        new MensajeUrlEvent(mensaje.getWhatsappId(), url, mensaje.getTipo().name()));
+            } catch (MessagingException e) {
+                log.warn("Error enviando WebSocket URL update: {}", e.getMessage());
             }
         });
     }
@@ -534,7 +574,7 @@ public class WhatsAppService {
         notificarCambio(cliente, m, false);
     }
 
-    private void guardarYNotificarSalida(Cliente c, String cont, Mensaje.TipoMensaje tipo, String waId, String url,
+    private Mensaje guardarYNotificarSalida(Cliente c, String cont, Mensaje.TipoMensaje tipo, String waId, String url,
             String autor) {
         Mensaje m = new Mensaje();
         m.setCliente(c);
@@ -547,12 +587,13 @@ public class WhatsAppService {
         m.setUrlArchivo(url);
         m.setEstado(Mensaje.EstadoMensaje.ENVIADO);
 
-        mensajeRepository.save(m);
+        m = mensajeRepository.save(m);
         c.setUltimoMensajeResumen((autor != null ? autor : "Tú") + ": " + cont);
         c.setUltimoMensajeFecha(m.getFechaHora());
         c.setMensajesSinLeer(0);
         clienteRepository.save(c);
         notificarCambio(c, m, true);
+        return m;
     }
 
     private Cliente obtenerOCrearCliente(Agencia agencia, String telefono, String nombre, String photo, String origen,
