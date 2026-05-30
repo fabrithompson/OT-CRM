@@ -662,38 +662,98 @@ function AudioPlayer({ src, sent }) {
     const audioRef  = useRef(null);
     const [playing, setPlaying]   = useState(false);
     const [progress, setProgress] = useState(0);
-    const [duration, setDuration] = useState('0:00');
-    
+    const [timer, setTimer]       = useState('0:00');
+    const [realDuration, setRealDuration] = useState(0);
+    const [errored, setErrored]   = useState(false);
+
+    // Los voice notes de WhatsApp son OGG/opus sin metadata de duración:
+    // el browser reporta duration=Infinity hasta que se hace seek al final.
+    // Forzamos un seek a un valor enorme para que Chrome calcule la duración
+    // real, y luego volvemos al inicio.
+    const onLoadedMetadata = () => {
+        const a = audioRef.current;
+        if (!a) return;
+        if (!isFinite(a.duration)) {
+            const onTU = () => {
+                if (isFinite(a.duration)) {
+                    a.removeEventListener('timeupdate', onTU);
+                    setRealDuration(a.duration);
+                    a.currentTime = 0;
+                }
+            };
+            a.addEventListener('timeupdate', onTU);
+            a.currentTime = 1e10;
+        } else {
+            setRealDuration(a.duration);
+        }
+    };
+
     const toggle = () => {
-        if (!audioRef.current) return;
+        const a = audioRef.current;
+        if (!a) return;
         if (playing) {
-            audioRef.current.pause();
+            a.pause();
             setPlaying(false);
         } else {
-            audioRef.current.play();
-            setPlaying(true);
+            setErrored(false);
+            const p = a.play();
+            if (p && typeof p.catch === 'function') {
+                p.then(() => setPlaying(true))
+                 .catch((err) => {
+                     console.error('Audio play() falló:', err);
+                     setErrored(true);
+                     setPlaying(false);
+                 });
+            } else {
+                setPlaying(true);
+            }
         }
     };
 
     const onTimeUpdate = () => {
-        if (!audioRef.current) return;
-        setProgress((audioRef.current.currentTime / audioRef.current.duration) * 100 || 0);
-        const s = Math.floor(audioRef.current.currentTime);
-        setDuration(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
+        const a = audioRef.current;
+        if (!a) return;
+        const d = realDuration || (isFinite(a.duration) ? a.duration : 0);
+        setProgress(d > 0 ? (a.currentTime / d) * 100 : 0);
+        const s = Math.floor(a.currentTime);
+        setTimer(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`);
     };
-    
-    const onEnded  = () => { setPlaying(false); setProgress(0); };
-    const onSeek   = (e) => { if (audioRef.current) { audioRef.current.currentTime = (audioRef.current.duration / 100) * e.target.value; } };
-    
+
+    const onEnded = () => { setPlaying(false); setProgress(0); };
+    const onError = () => {
+        console.error('Audio error al cargar:', src);
+        setErrored(true);
+        setPlaying(false);
+    };
+    const onSeek = (e) => {
+        const a = audioRef.current;
+        const d = realDuration || (isFinite(a?.duration) ? a.duration : 0);
+        if (a && d > 0) a.currentTime = (d / 100) * Number(e.target.value);
+    };
+
     return (
         <div className={`custom-audio-player ${sent ? 'sent' : 'received'}`}>
             <div className="audio-mic-icon"><i className="fas fa-microphone"></i></div>
-            <button className="audio-btn-play" onClick={toggle}><i className={`fas fa-${playing ? 'pause' : 'play'}`}></i></button>
+            <button
+                className="audio-btn-play"
+                onClick={toggle}
+                title={errored ? 'No se pudo reproducir el audio' : ''}
+            >
+                <i className={`fas fa-${errored ? 'exclamation' : (playing ? 'pause' : 'play')}`}></i>
+            </button>
             <div className="audio-progress-container">
                 <input type="range" className="audio-slider" value={progress} max={100} onChange={onSeek} />
-                <span className="audio-timer">{duration}</span>
+                <span className="audio-timer">{timer}</span>
             </div>
-            <audio ref={audioRef} src={src} onTimeUpdate={onTimeUpdate} onEnded={onEnded}>
+            <audio
+                ref={audioRef}
+                src={src}
+                preload="metadata"
+                onLoadedMetadata={onLoadedMetadata}
+                onTimeUpdate={onTimeUpdate}
+                onEnded={onEnded}
+                onError={onError}
+            >
                 <track kind="captions" />
             </audio>
         </div>
