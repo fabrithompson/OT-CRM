@@ -51,8 +51,11 @@ public class SecurityConfig {
                                 .preload(true));
                         headers.referrerPolicy(referrer -> referrer
                                 .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+                        // microphone=self habilita grabación de voz en el chat del CRM
+                        // (mismo origen). Cámara y geolocalización quedan deshabilitadas
+                        // porque la app no las usa.
                         headers.permissionsPolicy(permissions -> permissions
-                                .policy("camera=(), microphone=(), geolocation=()"));
+                                .policy("camera=(), microphone=(self), geolocation=()"));
                         headers.addHeaderWriter(
                                 new org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter(
                                         "default-src 'self'; " +
