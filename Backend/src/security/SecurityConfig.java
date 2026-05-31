@@ -63,6 +63,11 @@ public class SecurityConfig {
                                         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                                         "font-src 'self' https://fonts.gstatic.com; " +
                                         "img-src 'self' data: blob: https:; " +
+                                        // media-src: requerido para <audio>/<video>. Sin esta línea
+                                        // el browser cae al default-src 'self' y bloquea el audio
+                                        // entrante (servido por el bot en railway) y el saliente
+                                        // (servido por Cloudinary).
+                                        "media-src 'self' blob: https:; " +
                                         "connect-src 'self' wss://ot-crm.com https://ot-crm.com; " +
                                         "frame-src 'none'; " +
                                         "object-src 'none'; " +
