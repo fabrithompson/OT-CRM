@@ -102,19 +102,20 @@ public class CloudStorageService {
             String extLower = ext.toLowerCase();
             boolean isImage = extLower.matches("\\.(jpg|jpeg|png|gif|webp|bmp|svg)");
             boolean isVideo = extLower.matches("\\.(mp4|mov|avi|mkv)");
-            // Audio (incluye webm de MediaRecorder, que es contenedor sin pista de video):
-            // si lo subimos como "auto" Cloudinary lo clasifica como video, intenta
-            // transcodificar y la URL resultante puede no reproducirse en <audio>.
-            // Con "raw" guarda los bytes tal cual y la URL los sirve sin tocar.
+            // Cloudinary clasifica todo lo audiovisual bajo resource_type=video.
+            // Webm de MediaRecorder, ogg, mp3, etc se entregan con su MIME real
+            // (audio/webm, audio/ogg, audio/mpeg) y se reproducen en <audio>.
+            // Si se sube como "raw", Cloudinary fuerza Content-Type: application/octet-stream
+            // y el browser no decodifica el archivo.
             boolean isAudio = extLower.matches("\\.(webm|ogg|mp3|m4a|aac|wav|opus)");
-            // Imágenes y video usan "auto" para que Cloudinary detecte y sirva con
-            // el content-type correcto. Documentos, audio y todo lo demás van "raw".
-            String resourceType = (isImage || isVideo) ? "auto" : "raw";
-            if (isAudio) {
-                // El nombre va sin extensión cuando Cloudinary lo trata como raw, así
-                // que la mantenemos explícita en el public_id.
-                resourceType = "raw";
-            }
+            // Imágenes: "auto" para que detecte y entregue como image/*.
+            // Audio/video: "video" explícito (no transcodea sin transformations).
+            // PDFs, docs, etc: "raw" para acceso público directo.
+            String resourceType;
+            if (isImage)        resourceType = "auto";
+            else if (isVideo)   resourceType = "video";
+            else if (isAudio)   resourceType = "video";
+            else                resourceType = "raw";
 
             Map<String, Object> params = Map.of(
                     "public_id", "crm_chat_files/" + cleanId,

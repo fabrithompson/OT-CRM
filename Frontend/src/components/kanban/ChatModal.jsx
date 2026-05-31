@@ -230,22 +230,51 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         }
     };
 
+    // Grabación de voz click-to-toggle estilo WhatsApp Web:
+    //  - mic idle  → click: pide permiso y empieza a grabar
+    //  - grabando  → click ✓: detiene y envía
+    //              → click ✕: detiene y descarta
+    // El push-to-talk (mousedown/mouseup) generaba audios de milisegundos
+    // cuando el usuario hacía click corto, así que se sacó.
+    const MIN_RECORDING_MS = 500;
+    const recordStartRef = useRef(0);
+    const discardRef     = useRef(false);
+    const [recordSecs, setRecordSecs] = useState(0);
+    const recordTimerRef = useRef(null);
+
     const startRecording = async () => {
+        if (mediaRecorderRef.current) return;
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const recorder = new MediaRecorder(stream);
             audioChunksRef.current = [];
-            recorder.ondataavailable = e => audioChunksRef.current.push(e.data);
+            discardRef.current = false;
+            recordStartRef.current = Date.now();
+            recorder.ondataavailable = e => { if (e.data?.size > 0) audioChunksRef.current.push(e.data); };
             recorder.onstop = () => {
-                // Liberar el micrófono al terminar la grabación para que el ícono
-                // del navegador desaparezca y no quede el stream activo.
                 stream.getTracks().forEach(t => t.stop());
-                const file = new File([new Blob(audioChunksRef.current, { type: 'audio/webm' })], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+                clearInterval(recordTimerRef.current);
+                recordTimerRef.current = null;
+                setRecordSecs(0);
+                const duration = Date.now() - recordStartRef.current;
+                if (discardRef.current) return;
+                if (duration < MIN_RECORDING_MS || audioChunksRef.current.length === 0) {
+                    toast('Aviso', 'Mantené el micrófono apretado un momento', '#f59e0b');
+                    return;
+                }
+                const file = new File(
+                    [new Blob(audioChunksRef.current, { type: 'audio/webm' })],
+                    `voice_${Date.now()}.webm`,
+                    { type: 'audio/webm' }
+                );
                 uploadFile(file);
             };
             recorder.start();
             mediaRecorderRef.current = recorder;
             setIsRecording(true);
+            recordTimerRef.current = setInterval(() => {
+                setRecordSecs(Math.floor((Date.now() - recordStartRef.current) / 1000));
+            }, 250);
         } catch (err) {
             console.error('No se pudo acceder al micrófono:', err);
             const msg = err?.name === 'NotAllowedError'
@@ -255,16 +284,25 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         }
     };
 
-    const stopRecording = () => {
+    const finishRecording = (discard) => {
         const rec = mediaRecorderRef.current;
-        // Si startRecording falló (sin permiso), rec queda null y onMouseUp dispara
-        // este handler igualmente — hay que salir limpio en vez de hacer null.stop().
+        discardRef.current = !!discard;
         if (rec && rec.state !== 'inactive') {
-            try { rec.stop(); } catch (e) { console.warn('stopRecording:', e); }
+            try { rec.stop(); } catch (e) { console.warn('finishRecording:', e); }
         }
         mediaRecorderRef.current = null;
         setIsRecording(false);
     };
+
+    const stopRecording   = () => finishRecording(false);
+    const cancelRecording = () => finishRecording(true);
+
+    useEffect(() => {
+        return () => {
+            if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+            if (mediaRecorderRef.current) cancelRecording();
+        };
+    }, []);
 
     const saveInfo = async () => {
         if (!cliente || !clienteId) return;
@@ -576,8 +614,36 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                             <input placeholder={t('chat.msgPlaceholder')} value={msgInput} onChange={e => setMsgInput(e.target.value)} onKeyDown={e => { slashKeyDown(e); if (!e.defaultPrevented && e.key === 'Enter' && !e.shiftKey) sendMessage(); }} onPaste={e => { const files = Array.from(e.clipboardData?.items ?? []).filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean); if (files.length > 0) { e.preventDefault(); addFilesToQueue(files); } }} />
                         </div>
 
-                        <button className={`btn-icon ${isRecording ? 'mic-active' : ''}`} onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}><i className="fas fa-microphone"></i></button>
-                        <button className="btn-send-round" onClick={sendMessage}><i className="fas fa-paper-plane"></i></button>
+                        {isRecording ? (
+                            <>
+                                <button className="btn-icon" onClick={cancelRecording} title="Cancelar" style={{ color: '#ef4444' }}>
+                                    <i className="fas fa-times"></i>
+                                </button>
+                                <span className="rec-indicator" style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    color: '#ef4444', fontVariantNumeric: 'tabular-nums',
+                                    fontSize: '0.85rem', fontWeight: 600,
+                                }}>
+                                    <span style={{
+                                        width: 8, height: 8, borderRadius: '50%', background: '#ef4444',
+                                        animation: 'pulse 1s infinite',
+                                    }} />
+                                    {`${Math.floor(recordSecs / 60)}:${String(recordSecs % 60).padStart(2, '0')}`}
+                                </span>
+                                <button className="btn-send-round" onClick={stopRecording} title="Enviar grabación">
+                                    <i className="fas fa-paper-plane"></i>
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button className="btn-icon" onClick={startRecording} title="Grabar audio">
+                                    <i className="fas fa-microphone"></i>
+                                </button>
+                                <button className="btn-send-round" onClick={sendMessage}>
+                                    <i className="fas fa-paper-plane"></i>
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
