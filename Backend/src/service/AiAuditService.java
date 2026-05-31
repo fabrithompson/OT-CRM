@@ -36,6 +36,7 @@ public class AiAuditService {
     private static final Logger log = LoggerFactory.getLogger(AiAuditService.class);
     private static final int MAX_CLIENTES = 30;
     private static final int MAX_MENSAJES_POR_CLIENTE = 25;
+    private static final int MAX_MEDIA_POR_CLIENTE = 3;
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM HH:mm");
 
     private final ChatClient chatClient;
@@ -45,6 +46,7 @@ public class AiAuditService {
     private final MensajeRepository mensajeRepository;
     private final AgenciaRepository agenciaRepository;
     private final ObjectMapper objectMapper;
+    private final MediaAuditEnricher mediaEnricher;
 
     public AiAuditService(ChatClient chatClient,
                           AgentConfigRepository agentConfigRepository,
@@ -52,7 +54,8 @@ public class AiAuditService {
                           ClienteRepository clienteRepository,
                           MensajeRepository mensajeRepository,
                           AgenciaRepository agenciaRepository,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          MediaAuditEnricher mediaEnricher) {
         this.chatClient = chatClient;
         this.agentConfigRepository = agentConfigRepository;
         this.auditReportRepository = auditReportRepository;
@@ -60,6 +63,7 @@ public class AiAuditService {
         this.mensajeRepository = mensajeRepository;
         this.agenciaRepository = agenciaRepository;
         this.objectMapper = objectMapper;
+        this.mediaEnricher = mediaEnricher;
     }
 
     @SuppressWarnings("null")
@@ -241,13 +245,24 @@ public class AiAuditService {
                     ? cliente.getNombre() : cliente.getTelefono();
             sb.append("=== CLIENTE: ").append(nombre).append(" (ID:").append(clienteId).append(") ===\n");
 
+            int mediaEnriquecida = 0;
             for (Mensaje m : mensajes) {
                 String hora = m.getFechaHora() != null ? m.getFechaHora().format(FMT) : "?";
                 String quien = m.isEsSalida()
                         ? "VENDEDOR[" + (m.getAutor() != null ? m.getAutor() : "?") + "]"
                         : "CLIENTE";
                 sb.append("[").append(hora).append("] ").append(quien)
-                  .append(": ").append(m.getContenido()).append("\n");
+                  .append(": ").append(m.getContenido());
+
+                // Enriquecer con contenido real del archivo (audio/documento)
+                if (mediaEnriquecida < MAX_MEDIA_POR_CLIENTE) {
+                    String extra = mediaEnricher.enriquecer(m);
+                    if (extra != null) {
+                        sb.append(" ").append(extra);
+                        mediaEnriquecida++;
+                    }
+                }
+                sb.append("\n");
             }
             sb.append("\n");
         }
@@ -261,6 +276,11 @@ public class AiAuditService {
         return "Sos un auditor experto y exigente de conversaciones de ventas por WhatsApp. "
                 + "Tu tarea es producir un INFORME DETALLADO de cumplimiento, punto por punto, "
                 + "sobre la lista de procedimientos de atención configurada por la agencia.\n\n"
+                + "NOTA SOBRE EL CONTEXTO: Algunos mensajes incluyen contenido enriquecido entre corchetes:\n"
+                + "- [Transcripción de audio: \"...\"] — texto extraído de un audio enviado por el vendedor o cliente.\n"
+                + "- [Contenido del documento (PDF/DOCX/TXT): ...] — texto de un documento adjunto.\n"
+                + "Analizá ese contenido con el mismo criterio que los mensajes de texto. "
+                + "Si el audio o documento contiene información relevante para el cumplimiento de un procedimiento, citá su transcripción como evidencia.\n\n"
                 + "PROCEDIMIENTOS A AUDITAR (cada línea o ítem es un punto de control):\n"
                 + "\"\"\"\n" + procedures + "\n\"\"\"\n\n"
                 + "INSTRUCCIONES OBLIGATORIAS:\n"

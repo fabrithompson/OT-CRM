@@ -104,6 +104,13 @@
             <version>4.1.2</version>
         </dependency>
 
+        <!-- Apache PDFBox — extracción de texto de PDFs para auditoría -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.5</version>
+        </dependency>
+
         <!-- Apache Commons -->
         <dependency>
             <groupId>commons-io</groupId>
