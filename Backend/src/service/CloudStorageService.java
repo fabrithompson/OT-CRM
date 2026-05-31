@@ -93,32 +93,38 @@ public class CloudStorageService {
 
     private String executeUpload(byte[] bytes, String fileName) {
         try {
-            // Preservar extensión en el public_id para que la URL tenga el tipo correcto
             String ext = fileName.contains(".") ? fileName.substring(fileName.lastIndexOf(".")) : "";
             String baseName = fileName.contains(".") ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
             String cleanBase = baseName.replaceAll("[^a-zA-Z0-9_-]", "_");
-            String cleanId = cleanBase + ext.toLowerCase(); // ej: uuid_reporte.pdf
 
             String extLower = ext.toLowerCase();
             boolean isImage = extLower.matches("\\.(jpg|jpeg|png|gif|webp|bmp|svg)");
             boolean isVideo = extLower.matches("\\.(mp4|mov|avi|mkv)");
             // Cloudinary clasifica todo lo audiovisual bajo resource_type=video.
             // Webm de MediaRecorder, ogg, mp3, etc se entregan con su MIME real
-            // (audio/webm, audio/ogg, audio/mpeg) y se reproducen en <audio>.
-            // Si se sube como "raw", Cloudinary fuerza Content-Type: application/octet-stream
-            // y el browser no decodifica el archivo.
+            // y se reproducen en <audio>. Si se sube como "raw", Cloudinary fuerza
+            // Content-Type: application/octet-stream y el browser no decodifica.
             boolean isAudio = extLower.matches("\\.(webm|ogg|mp3|m4a|aac|wav|opus)");
-            // Imágenes: "auto" para que detecte y entregue como image/*.
-            // Audio/video: "video" explícito (no transcodea sin transformations).
-            // PDFs, docs, etc: "raw" para acceso público directo.
+
+            // Para image/video, Cloudinary agrega el formato detectado a la URL
+            // (ej: voice.webm.webm). El public_id NO debe llevar extensión.
+            // Para raw, en cambio, el public_id se conserva tal cual: tiene que
+            // incluir la extensión para que el browser sepa qué es.
             String resourceType;
-            if (isImage)        resourceType = "auto";
-            else if (isVideo)   resourceType = "video";
-            else if (isAudio)   resourceType = "video";
-            else                resourceType = "raw";
+            String publicId;
+            if (isImage) {
+                resourceType = "auto";
+                publicId = "crm_chat_files/" + cleanBase;
+            } else if (isVideo || isAudio) {
+                resourceType = "video";
+                publicId = "crm_chat_files/" + cleanBase;
+            } else {
+                resourceType = "raw";
+                publicId = "crm_chat_files/" + cleanBase + extLower;
+            }
 
             Map<String, Object> params = Map.of(
-                    "public_id", "crm_chat_files/" + cleanId,
+                    "public_id", publicId,
                     "resource_type", resourceType
             );
 
@@ -130,7 +136,7 @@ public class CloudStorageService {
                 throw new FileStorageException("Cloudinary no devolvió una URL segura.");
             }
 
-            log.info("Archivo persistido en Cloudinary: {}", cleanId);
+            log.info("Archivo persistido en Cloudinary: {}", publicId);
             return secureUrl.toString();
 
         } catch (IOException e) {
