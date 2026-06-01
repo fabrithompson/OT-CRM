@@ -84,6 +84,11 @@ const FAILED_QUEUE_FOLDER = process.env.RAILWAY_VOLUME_MOUNT_PATH
     ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'failed_queue')
     : path.join(__dirname, 'failed_queue');
 
+// Archivo donde persistimos el mapeo LID → teléfono para que sobreviva reinicios
+const LID_MAP_FILE = process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'lid_map.json')
+    : path.join(__dirname, 'lid_map.json');
+
 if (!fs.existsSync(UPLOADS_FOLDER)) fs.mkdirSync(UPLOADS_FOLDER, { recursive: true });
 if (!fs.existsSync(SESSION_FOLDER_NAME)) fs.mkdirSync(SESSION_FOLDER_NAME, { recursive: true });
 if (!fs.existsSync(FAILED_QUEUE_FOLDER)) fs.mkdirSync(FAILED_QUEUE_FOLDER, { recursive: true });
@@ -104,7 +109,69 @@ const messageQueues = new Map();
 // apunta a NUESTRO teléfono y no sirve para identificar al destinatario.
 // Sin esto, el bot tomaba el LID como si fuera el teléfono y el backend
 // creaba un cliente duplicado.
-const lidToPhone = new NodeCache({ stdTTL: 7 * 24 * 3600, checkperiod: 3600, maxKeys: 50000 });
+//
+// Se persiste a disco porque la cache en memoria se vaciaba en cada reinicio,
+// y un fromMe que llegara antes del primer entrante del contacto quedaba sin
+// resolverse y se perdía silenciosamente.
+const lidMap = (() => {
+    try {
+        if (fs.existsSync(LID_MAP_FILE)) {
+            const data = JSON.parse(fs.readFileSync(LID_MAP_FILE, 'utf8'));
+            return new Map(Object.entries(data));
+        }
+    } catch (err) {
+        logger?.warn?.({ err: err.message }, 'No se pudo cargar lid_map.json, empezando vacío');
+    }
+    return new Map();
+})();
+
+let lidMapDirty = false;
+const persistLidMap = () => {
+    if (!lidMapDirty) return;
+    lidMapDirty = false;
+    try {
+        const obj = Object.fromEntries(lidMap);
+        fs.writeFileSync(LID_MAP_FILE, JSON.stringify(obj), 'utf8');
+    } catch (err) {
+        logger.warn({ err: err.message }, 'No se pudo persistir lid_map.json');
+        lidMapDirty = true;
+    }
+};
+// Flush periódico para amortiguar muchas escrituras seguidas
+setInterval(persistLidMap, 5000);
+// Flush al apagar para no perder lo último aprendido
+process.on('SIGTERM', persistLidMap);
+process.on('SIGINT', persistLidMap);
+
+const lidToPhone = {
+    get: (lidUser) => lidMap.get(lidUser),
+    set: (lidUser, phone) => {
+        if (!lidUser || !phone) return;
+        if (lidMap.get(lidUser) === phone) return;
+        lidMap.set(lidUser, phone);
+        lidMapDirty = true;
+    }
+};
+
+// Store de mensajes salientes (LRU simple). Cuando WhatsApp del destinatario
+// no puede descifrar un mensaje nuestro, manda un "retry receipt" y Baileys
+// llama a getMessage(key) para reenviarlo encriptado con sesión fresca. Sin
+// este store el mensaje se pierde para el destinatario — es una de las causas
+// de los Bad MAC / failed to decrypt que se ven en logs cuando combinados con
+// fallos de sincronización Signal del otro lado.
+const SENT_STORE_MAX = 1000;
+const sentMessages = new Map();
+const recordSentMessage = (key, message) => {
+    if (!key?.id || !message) return;
+    if (sentMessages.has(key.id)) {
+        sentMessages.delete(key.id);
+    } else if (sentMessages.size >= SENT_STORE_MAX) {
+        // Evict el más viejo (Map preserva orden de inserción)
+        const oldest = sentMessages.keys().next().value;
+        if (oldest !== undefined) sentMessages.delete(oldest);
+    }
+    sentMessages.set(key.id, message);
+};
 
 // ── Autenticacion de endpoints ────────────────────────────────────────────
 const requireAuth = (req, res, next) => {
@@ -568,6 +635,60 @@ const downloadMediaWithRetry = async (msg, sock, maxRetries = 3) => {
     return null;
 };
 
+// Extrae el contenido relevante de un mensaje WhatsApp y, si trae media,
+// la descarga + guarda en UPLOADS_FOLDER. Compartido por entrantes y
+// salientes-desde-celular para que ambos flujos manejen los mismos tipos.
+// Retorna { texto, mediaUrl, mimeType } o null si el mensaje no tiene contenido.
+const extractMessageContent = async (msg, sessionId, sock) => {
+    const messageType = Object.keys(msg.message)[0];
+
+    let texto = msg.message?.conversation
+                || msg.message?.extendedTextMessage?.text
+                || msg.message?.imageMessage?.caption
+                || msg.message?.videoMessage?.caption
+                || msg.message?.documentMessage?.caption
+                || msg.message?.viewOnceMessage?.message?.imageMessage?.caption
+                || msg.message?.viewOnceMessage?.message?.videoMessage?.caption
+                || "";
+
+    const isMedia = [
+        'imageMessage', 'videoMessage', 'audioMessage',
+        'documentMessage', 'stickerMessage', 'viewOnceMessage'
+    ].includes(messageType);
+
+    if (!texto && !isMedia) return null;
+
+    let mediaUrl = null;
+    let mimeType = null;
+
+    if (isMedia) {
+        const buffer = await downloadMediaWithRetry(msg, sock);
+
+        if (buffer) {
+            // Para viewOnce, el media esta anidado
+            const mediaObject = messageType === 'viewOnceMessage'
+                ? (msg.message.viewOnceMessage?.message?.imageMessage
+                   || msg.message.viewOnceMessage?.message?.videoMessage)
+                : msg.message[messageType];
+
+            mimeType = mediaObject?.mimetype || 'application/octet-stream';
+            const ext = getExtension(mimeType);
+            const fileName = `${sessionId}_${Date.now()}.${ext}`;
+            const filePath = path.join(UPLOADS_FOLDER, fileName);
+
+            await writeFile(filePath, buffer);
+            mediaUrl = `${PUBLIC_URL}/uploads/${fileName}`;
+
+            if (!texto) texto = `[${messageType.replace('Message', '')}]`;
+        } else {
+            if (!texto) texto = `[${messageType.replace('Message', '')} - no se pudo descargar]`;
+            logger.warn({ sessionId, messageType }, 'Media no descargable, enviando solo texto');
+        }
+    }
+
+    return { texto, mediaUrl, mimeType };
+};
+
 // ── Procesamiento de mensajes entrantes ────────────────────────────────────
 const processIncomingMessage = async (msg, sessionId, sock) => {
     try {
@@ -591,53 +712,9 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
 
         logger.info(`Mensaje entrante - From: ${remoteJid} | Numero: ${numeroReal}`);
 
-        // Extraer tipo y texto del mensaje
-        const messageType = Object.keys(msg.message)[0];
-
-        let texto = msg.message?.conversation
-                    || msg.message?.extendedTextMessage?.text
-                    || msg.message?.imageMessage?.caption
-                    || msg.message?.videoMessage?.caption
-                    || msg.message?.documentMessage?.caption
-                    || msg.message?.viewOnceMessage?.message?.imageMessage?.caption
-                    || msg.message?.viewOnceMessage?.message?.videoMessage?.caption
-                    || "";
-
-        const isMedia = [
-            'imageMessage', 'videoMessage', 'audioMessage',
-            'documentMessage', 'stickerMessage', 'viewOnceMessage'
-        ].includes(messageType);
-
-        if (!texto && !isMedia) return;
-
-        let mediaUrl = null;
-        let mimeType = null;
-
-        if (isMedia) {
-            const buffer = await downloadMediaWithRetry(msg, sock);
-
-            if (buffer) {
-                // Para viewOnce, el media esta anidado
-                const mediaObject = messageType === 'viewOnceMessage'
-                    ? (msg.message.viewOnceMessage?.message?.imageMessage
-                       || msg.message.viewOnceMessage?.message?.videoMessage)
-                    : msg.message[messageType];
-
-                mimeType = mediaObject?.mimetype || 'application/octet-stream';
-                const ext = getExtension(mimeType);
-                const fileName = `${sessionId}_${Date.now()}.${ext}`;
-                const filePath = path.join(UPLOADS_FOLDER, fileName);
-
-                await writeFile(filePath, buffer);
-                mediaUrl = `${PUBLIC_URL}/uploads/${fileName}`;
-
-                if (!texto) texto = `[${messageType.replace('Message', '')}]`;
-            } else {
-                // Media no descargable: enviar el mensaje de texto igualmente
-                if (!texto) texto = `[${messageType.replace('Message', '')} - no se pudo descargar]`;
-                logger.warn({ sessionId, messageType }, 'Media no descargable, enviando solo texto');
-            }
-        }
+        const content = await extractMessageContent(msg, sessionId, sock);
+        if (!content) return;
+        const { texto, mediaUrl, mimeType } = content;
 
         let profilePicUrl = "";
         try {
@@ -660,6 +737,42 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
 
     } catch (e) {
         logger.error({ error: e.message }, 'Error procesando mensaje entrante');
+    }
+};
+
+// ── Procesamiento de mensajes salientes desde el celular del vendedor ──────
+// El vendedor escribe directo en WhatsApp desde su celular; el linked device
+// (bot) recibe el mensaje como fromMe. Capturamos texto y media para que
+// aparezcan en el CRM como si se hubieran enviado desde la interfaz web.
+const processOutgoingExternalMessage = async (msg, sessionId, sock) => {
+    try {
+        const remoteJid = msg.key.remoteJid;
+
+        const to = resolverTelefonoContacto(msg);
+        if (!to) {
+            logger.warn({ sessionId, remoteJid, msgId: msg.key.id },
+                'fromMe a LID sin PN conocido, ignorando para no duplicar contacto');
+            return;
+        }
+
+        const content = await extractMessageContent(msg, sessionId, sock);
+        if (!content) return;
+        const { texto, mediaUrl, mimeType } = content;
+
+        logger.info({ sessionId, to, msgId: msg.key.id, hasMedia: !!mediaUrl, preview: texto?.substring(0, 30) },
+            'fromMe desde celular del vendedor');
+
+        await axiosWithRetry({
+            method: 'post',
+            url: `${getBaseUrl()}/outbound-external`,
+            data: { sessionId, to, body: texto, whatsappId: msg.key.id, mediaUrl, mimeType },
+            headers: { 'X-Bot-Token': SECRET_KEY },
+            timeout: 15000
+        }, 2, 500).catch(err =>
+            logger.warn({ to, error: err.message }, 'Error reenviando mensaje saliente externo a Java')
+        );
+    } catch (e) {
+        logger.error({ error: e.message }, 'Error procesando mensaje saliente externo');
     }
 };
 
@@ -722,7 +835,15 @@ const startSession = async (sessionId, phoneNumber = null) => {
             keepAliveIntervalMs: 20000,
             retryRequestDelayMs: 500,
             msgRetryCounterCache,
-            mobile: false
+            mobile: false,
+            // Permite que WhatsApp pida reenvío de un mensaje nuestro cuando
+            // el destinatario no pudo descifrarlo. Sin esto, los retry
+            // receipts se pierden y el mensaje nunca llega.
+            getMessage: async (key) => {
+                const stored = sentMessages.get(key.id);
+                if (stored) return stored;
+                return undefined;
+            }
         });
 
         sessions.set(sessionId, sock);
@@ -803,33 +924,17 @@ const startSession = async (sessionId, phoneNumber = null) => {
                 if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') continue;
 
                 if (msg.key.fromMe) {
-                    // Mensajes enviados desde el celular del vendedor (no por el bot del CRM).
-                    // Solo texto — media saliente desde el celular no se captura.
-                    const texto = msg.message?.conversation
-                        || msg.message?.extendedTextMessage?.text
-                        || '';
-                    if (!texto) continue;
-                    // Si el destinatario es @lid y aún no aprendimos su PN
-                    // (porque nunca nos escribió), resolverTelefonoContacto
-                    // devuelve null y descartamos el mensaje en lugar de
-                    // crear un contacto fake con el LID como teléfono.
-                    const to = resolverTelefonoContacto(msg);
-                    if (!to) {
-                        logger.warn({ sessionId, remoteJid }, 'fromMe a LID sin PN conocido, ignorando para no duplicar contacto');
-                        continue;
-                    }
+                    // Cualquier saliente que vea el linked device (sea de bot,
+                    // CRM o celular) se guarda por si el destinatario pide retry.
+                    recordSentMessage(msg.key, msg.message);
+
                     const outKey = 'out_' + msg.key.id;
                     if (processedMsgIds.get(outKey)) continue;
                     processedMsgIds.set(outKey, true);
-                    axiosWithRetry({
-                        method: 'post',
-                        url: `${getBaseUrl()}/outbound-external`,
-                        data: { sessionId, to, body: texto, whatsappId: msg.key.id },
-                        headers: { 'X-Bot-Token': SECRET_KEY },
-                        timeout: 15000
-                    }, 2, 500).catch(err =>
-                        logger.warn({ to, error: err.message }, 'Error reenviando mensaje saliente externo a Java')
-                    );
+
+                    // Encolado por contacto para preservar orden y permitir la
+                    // descarga async de media sin bloquear el handler.
+                    enqueueMessage('out_' + remoteJid, () => processOutgoingExternalMessage(msg, sessionId, sock));
                     continue;
                 }
 
@@ -1081,6 +1186,7 @@ app.post('/send-message', requireAuth, async (req, res) => {
 
         await waitForRateLimit(number);
         const sent = await sock.sendMessage(finalJid, { text: message });
+        recordSentMessage(sent.key, sent.message);
         res.json({ status: 'SENT', jid: finalJid, id: sent.key.id });
     } catch (e) {
         logger.error({ sessionId, number, error: e.message }, "Error enviando mensaje");
@@ -1203,6 +1309,7 @@ app.post('/send-media', requireAuth, async (req, res) => {
 
         await waitForRateLimit(number);
         const sent = await sock.sendMessage(jid, mediaPayload);
+        recordSentMessage(sent.key, sent.message);
         res.json({ status: 'SENT', id: sent.key.id });
     } catch (e) {
         logger.error({ error: e.message }, "Error enviando media");
