@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y \
     dumb-init \
     procps \
     curl \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # corepack administra pnpm — forzamos 9.15.4 porque pnpm 11.x ignora

@@ -201,6 +201,12 @@ public class BotHttpClient {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set(HEADER_API_KEY, botSecretKey);
+        // El bot Express cierra conexiones keep-alive a los 5s (header
+        // Keep-Alive: timeout=5). Si el RestTemplate reutiliza una conexión
+        // ya cerrada por el servidor, falla con "HTTP/1.1 header parser
+        // received no bytes". Forzar Connection: close abre una TCP nueva
+        // por request — overhead despreciable, robustez total.
+        headers.setConnection("close");
         return headers;
     }
 }
