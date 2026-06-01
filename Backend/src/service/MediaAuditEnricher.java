@@ -86,6 +86,7 @@ public class MediaAuditEnricher {
         }
     }
 
+    @SuppressWarnings("null")
     @Nullable
     private String transcribirWhisper(byte[] bytes, String filename) {
         if (openAiApiKey == null || openAiApiKey.isBlank()) {
@@ -163,6 +164,7 @@ public class MediaAuditEnricher {
 
     // ─── HTTP helper ──────────────────────────────────────────────────────────
 
+    @SuppressWarnings("null")
     @Nullable
     private byte[] descargar(String url) {
         try {

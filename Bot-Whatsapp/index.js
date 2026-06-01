@@ -20,9 +20,40 @@ const path = require('path');
 const pino = require('pino');
 const NodeCache = require('node-cache');
 const { writeFile, readFile, unlink, readdir } = require('fs/promises');
+const { spawn } = require('child_process');
 
 const http = require('http');
 const { Server } = require('socket.io');
+
+// Convierte cualquier buffer de audio (webm de MediaRecorder, mp3, m4a, etc)
+// a ogg/opus, que es el único formato que WhatsApp acepta como voice note.
+// Si WhatsApp recibe el audio en otro contenedor (ej: webm) lo acepta en la
+// API pero no se lo entrega al destinatario, así que la conversión es
+// obligatoria. Usamos ffmpeg via stdin/stdout para no escribir archivos
+// temporales en disco.
+const convertToOggOpus = (inputBuffer) => new Promise((resolve, reject) => {
+    const ff = spawn('ffmpeg', [
+        '-hide_banner', '-loglevel', 'error',
+        '-i', 'pipe:0',
+        '-vn',                              // descarta cualquier pista de video
+        '-c:a', 'libopus',
+        '-b:a', '64k',
+        '-application', 'voip',             // optimización para voz
+        '-f', 'ogg',
+        'pipe:1'
+    ]);
+    const chunks = [];
+    let stderr = '';
+    ff.stdout.on('data', d => chunks.push(d));
+    ff.stderr.on('data', d => { stderr += d.toString(); });
+    ff.on('error', reject);
+    ff.on('close', code => {
+        if (code !== 0) return reject(new Error(`ffmpeg salida ${code}: ${stderr.slice(0, 200)}`));
+        resolve(Buffer.concat(chunks));
+    });
+    ff.stdin.on('error', reject);
+    ff.stdin.end(inputBuffer);
+});
 
 const PORT = process.env.PORT || 8080;
 if (!process.env.JAVA_BACKEND_URL) {
@@ -65,6 +96,15 @@ const logger = pino({
 const msgRetryCounterCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
 const processedMsgIds = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const messageQueues = new Map();
+
+// Mapeo LID → teléfono real. WhatsApp asigna a algunos contactos un JID
+// "Linked Identity" (xxx@lid) que NO es el teléfono. Lo aprendemos de
+// mensajes entrantes (que traen senderPn / participantPn) y lo reutilizamos
+// cuando llega un mensaje saliente fromMe al mismo LID, donde senderPn
+// apunta a NUESTRO teléfono y no sirve para identificar al destinatario.
+// Sin esto, el bot tomaba el LID como si fuera el teléfono y el backend
+// creaba un cliente duplicado.
+const lidToPhone = new NodeCache({ stdTTL: 7 * 24 * 3600, checkperiod: 3600, maxKeys: 50000 });
 
 // ── Autenticacion de endpoints ────────────────────────────────────────────
 const requireAuth = (req, res, next) => {
@@ -335,6 +375,60 @@ const getRealNumber = (jid) => {
     return digits || baseNumber;
 };
 
+// Extrae solo la parte "user" del JID (sin server ni device).
+const getJidUser = (jid) => {
+    if (!jid) return null;
+    const decoded = jidDecode(jid);
+    const user = decoded ? decoded.user : jid.split('@')[0];
+    return user.split(':')[0];
+};
+
+// Resuelve el teléfono real del OTRO extremo de la conversación a partir
+// de un mensaje. Maneja tanto entrantes como salientes y los JIDs @lid.
+// Devuelve null si no se puede resolver (caller debe descartar el mensaje
+// en lugar de crear un contacto con identificador LID).
+const resolverTelefonoContacto = (msg) => {
+    const remoteJid = msg.key.remoteJid;
+    if (!remoteJid) return null;
+
+    // 1:1 con JID normal: el "user" del remoteJid es el teléfono.
+    if (!remoteJid.includes('@lid')) {
+        return getRealNumber(remoteJid) || null;
+    }
+
+    const lidUser = getJidUser(remoteJid);
+
+    // Para mensajes entrantes (no fromMe), senderPn es el teléfono del
+    // contacto que escribió. Lo cacheamos para usarlo en futuros salientes.
+    if (!msg.key.fromMe && msg.key.senderPn) {
+        const pn = getRealNumber(msg.key.senderPn);
+        if (pn) {
+            if (lidUser) lidToPhone.set(lidUser, pn);
+            return pn;
+        }
+    }
+
+    // participantPn a veces viene populado por WhatsApp con el PN del
+    // contraparte. Sirve tanto para entrantes como salientes.
+    if (msg.key.participantPn) {
+        const pn = getRealNumber(msg.key.participantPn);
+        if (pn) {
+            if (lidUser) lidToPhone.set(lidUser, pn);
+            return pn;
+        }
+    }
+
+    // Fallback: cache previamente alimentado por mensajes entrantes del
+    // mismo contacto. Cubre el caso fromMe (donde senderPn es nuestro
+    // propio teléfono y no sirve para identificar al destinatario).
+    if (lidUser) {
+        const cached = lidToPhone.get(lidUser);
+        if (cached) return cached;
+    }
+
+    return null;
+};
+
 const getExtension = (mimetype) => {
     if (!mimetype) return 'bin';
     const mt = mimetype.toLowerCase();
@@ -484,22 +578,16 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
             return;
         }
 
-        // Resolver telefono real:
-        // Si es @lid (Linked Identity), el numero real viene en senderPn
-        let numeroRaw;
-        if (remoteJid.includes('@lid')) {
-            numeroRaw = msg.key.senderPn;
-            if (!numeroRaw) {
-                logger.warn({ sessionId, lid: remoteJid }, 'Mensaje LID sin senderPn, ignorando');
-                return;
-            }
-            logger.info({ sessionId, lid: remoteJid, senderPn: numeroRaw }, 'LID resuelto via senderPn');
-        } else {
-            numeroRaw = msg.key.senderPn || msg.key.participant || msg.key.remoteJid;
+        // Resolver telefono real del contacto. Maneja JIDs @lid (Linked
+        // Identity) usando senderPn / participantPn y un cache LID→PN.
+        const numeroReal = resolverTelefonoContacto(msg);
+        if (!numeroReal) {
+            logger.warn({ sessionId, remoteJid }, 'No se pudo resolver telefono real del contacto, ignorando mensaje');
+            return;
         }
-
-        const numeroReal = getRealNumber(numeroRaw);
-        if (!numeroReal) return;
+        if (remoteJid.includes('@lid')) {
+            logger.info({ sessionId, lid: remoteJid, phone: numeroReal }, 'LID resuelto a telefono');
+        }
 
         logger.info(`Mensaje entrante - From: ${remoteJid} | Numero: ${numeroReal}`);
 
@@ -721,8 +809,15 @@ const startSession = async (sessionId, phoneNumber = null) => {
                         || msg.message?.extendedTextMessage?.text
                         || '';
                     if (!texto) continue;
-                    const to = getRealNumber(remoteJid);
-                    if (!to) continue;
+                    // Si el destinatario es @lid y aún no aprendimos su PN
+                    // (porque nunca nos escribió), resolverTelefonoContacto
+                    // devuelve null y descartamos el mensaje en lugar de
+                    // crear un contacto fake con el LID como teléfono.
+                    const to = resolverTelefonoContacto(msg);
+                    if (!to) {
+                        logger.warn({ sessionId, remoteJid }, 'fromMe a LID sin PN conocido, ignorando para no duplicar contacto');
+                        continue;
+                    }
                     const outKey = 'out_' + msg.key.id;
                     if (processedMsgIds.get(outKey)) continue;
                     processedMsgIds.set(outKey, true);
@@ -975,6 +1070,13 @@ app.post('/send-message', requireAuth, async (req, res) => {
             }
             finalJid = result.jid;
             verifiedJids.set(number, finalJid);
+            // Si WhatsApp asignó un JID @lid, mapearlo al teléfono real
+            // para que un futuro mensaje fromMe (vendedor desde celular)
+            // se resuelva al mismo contacto y no genere duplicado.
+            if (finalJid && finalJid.includes('@lid')) {
+                const lidUser = getJidUser(finalJid);
+                if (lidUser) lidToPhone.set(lidUser, number);
+            }
         }
 
         await waitForRateLimit(number);
@@ -1006,6 +1108,12 @@ app.post('/send-media', requireAuth, async (req, res) => {
             }
             jid = result.jid;
             verifiedJids.set(number, jid);
+            // Mismo cacheo LID→PN que en /send-message: evita que un
+            // posterior fromMe al mismo @lid se interprete como contacto nuevo.
+            if (jid && jid.includes('@lid')) {
+                const lidUser = getJidUser(jid);
+                if (lidUser) lidToPhone.set(lidUser, number);
+            }
         }
 
         let buffer, contentType;
@@ -1043,16 +1151,32 @@ app.post('/send-media', requireAuth, async (req, res) => {
             };
         } else if (type === 'AUDIO') {
             const isOgg = contentType.includes('ogg') || (url && url.endsWith('.ogg'));
-            if (isOgg) {
+            let audioBuffer = buffer;
+            let asVoiceNote = isOgg;
+            if (!isOgg) {
+                // WhatsApp solo entrega voice notes en ogg/opus. Cualquier otro
+                // contenedor (webm de MediaRecorder, mp3, m4a) lo acepta la API
+                // pero no se lo envía al destinatario. Convertimos con ffmpeg.
+                try {
+                    audioBuffer = await convertToOggOpus(buffer);
+                    asVoiceNote = true;
+                    logger.info({ originalMime: contentType, ogSize: buffer.length, oggSize: audioBuffer.length }, 'Audio convertido a ogg/opus');
+                } catch (e) {
+                    logger.error({ error: e.message, contentType }, 'Conversión a opus falló, fallback a audio regular');
+                    asVoiceNote = false;
+                    audioBuffer = buffer;
+                }
+            }
+            if (asVoiceNote) {
                 mediaPayload = {
-                    audio: buffer,
+                    audio: audioBuffer,
                     mimetype: 'audio/ogg; codecs=opus',
                     ptt: true
                 };
             } else {
                 const audMime = contentType.split(';')[0].trim() || 'audio/mpeg';
                 mediaPayload = {
-                    audio: buffer,
+                    audio: audioBuffer,
                     mimetype: audMime,
                     ptt: false
                 };
@@ -1093,6 +1217,14 @@ const KEEPALIVE_URL = process.env.RAILWAY_STATIC_URL
 setInterval(() => { axios.get(KEEPALIVE_URL).catch(() => {}); }, 600000);
 
 // ── Arranque ───────────────────────────────────────────────────────────────
+// Node default keepAliveTimeout = 5s. El RestTemplate del backend mantiene un
+// pool de conexiones HTTP que sobrevive más que eso, y al reutilizar una
+// conexión que el bot ya cerró tira "header parser received no bytes".
+// 65s es lo que recomienda AWS ELB / nginx por defecto para entornos detrás
+// de proxy, y elimina la race.
+server.keepAliveTimeout = 65000;
+server.headersTimeout   = 66000; // siempre > keepAliveTimeout
+
 server.listen(PORT, '0.0.0.0', () => {
     logger.info(`BOT SERVER LISTO EN PUERTO ${PORT}`);
     restoreExistingSessions();
