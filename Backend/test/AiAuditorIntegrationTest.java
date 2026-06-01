@@ -357,7 +357,8 @@ class AiAuditorIntegrationTest extends BaseIntegrationTest {
                 dispositivo.getSessionId(),
                 "5491199998888@s.whatsapp.net",
                 "Hola, te escribo desde el celular",
-                "wa_msg_" + System.nanoTime());
+                "wa_msg_" + System.nanoTime(),
+                null, null);
 
         // Cliente nuevo creado en la etapa inicial con origen=EXTERNO_WSP
         List<Cliente> clientes = clienteRepo.findByAgenciaIdOrderByFechaRegistroDesc(agencia.getId());
@@ -386,10 +387,12 @@ class AiAuditorIntegrationTest extends BaseIntegrationTest {
 
         // Primer número: se crea
         whatsAppService.guardarMensajeSalidaExterno(
-                dispositivo.getSessionId(), "5491100010001@s.whatsapp.net", "Primero", "wa1_" + System.nanoTime());
+                dispositivo.getSessionId(), "5491100010001@s.whatsapp.net", "Primero", "wa1_" + System.nanoTime(),
+                null, null);
         // Segundo número: se ignora por límite
         whatsAppService.guardarMensajeSalidaExterno(
-                dispositivo.getSessionId(), "5491100020002@s.whatsapp.net", "Segundo", "wa2_" + System.nanoTime());
+                dispositivo.getSessionId(), "5491100020002@s.whatsapp.net", "Segundo", "wa2_" + System.nanoTime(),
+                null, null);
 
         assertThat(clienteRepo.countByAgenciaId(agencia.getId()))
                 .as("Solo el primer cliente se crea, el segundo se ignora por limite")
@@ -404,7 +407,8 @@ class AiAuditorIntegrationTest extends BaseIntegrationTest {
                 dispositivo.getSessionId(),
                 "5491177776666@s.whatsapp.net",
                 "Probando origen",
-                "wa_orig_" + System.nanoTime());
+                "wa_orig_" + System.nanoTime(),
+                null, null);
 
         // Capturamos los broadcasts WS — debe haber al menos uno a /topic/chat/{id}
         // con un payload que contenga origenMensaje=EXTERNO_WSP.

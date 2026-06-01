@@ -491,13 +491,14 @@ public class WhatsAppService {
     }
 
     /**
-     * Guarda en DB un mensaje de texto enviado directamente desde el celular del
-     * vendedor (fuera del CRM). Nunca crea contactos nuevos — solo actúa sobre
-     * conversaciones ya existentes. La deduplicación por whatsappId evita
-     * double-save cuando el CRM también disparó ese mensaje.
+     * Guarda en DB un mensaje enviado directamente desde el celular del
+     * vendedor (fuera del CRM). Soporta texto y media (imagen, video, audio,
+     * documento, sticker). La deduplicación por whatsappId evita double-save
+     * cuando el CRM también disparó ese mensaje.
      */
     @Transactional
-    public void guardarMensajeSalidaExterno(String sessionId, String to, String body, String whatsappId) {
+    public void guardarMensajeSalidaExterno(String sessionId, String to, String body, String whatsappId,
+                                            String mediaUrl, String mimeType) {
         Dispositivo dispositivo = dispositivoRepository.findBySessionId(sessionId).orElse(null);
         if (dispositivo == null || dispositivo.getAgencia() == null) {
             log.debug("guardarMensajeSalidaExterno: sessionId '{}' desconocido, ignorando.", sessionId);
@@ -543,8 +544,19 @@ public class WhatsAppService {
         }
 
         String waId = whatsappId != null ? whatsappId : "EXT_" + System.currentTimeMillis();
-        guardarYNotificarSalida(clienteOpt.get(), body, Mensaje.TipoMensaje.TEXTO, waId, null, "EXTERNO_WSP");
-        log.info("Mensaje externo registrado: sessionId={}, to={}", sessionId, telefono);
+
+        Mensaje.TipoMensaje tipo;
+        String contenido;
+        if (mediaUrl != null && !mediaUrl.isBlank()) {
+            tipo = inferirTipoArchivo(null, mimeType);
+            contenido = (body != null && !body.isBlank()) ? body : "[" + tipo + "]";
+        } else {
+            tipo = Mensaje.TipoMensaje.TEXTO;
+            contenido = body;
+        }
+
+        guardarYNotificarSalida(clienteOpt.get(), contenido, tipo, waId, mediaUrl, "EXTERNO_WSP");
+        log.info("Mensaje externo registrado: sessionId={}, to={}, tipo={}", sessionId, telefono, tipo);
     }
 
     private void guardarMensajeEntrante(MensajeEntranteRequest req, Cliente cliente) {

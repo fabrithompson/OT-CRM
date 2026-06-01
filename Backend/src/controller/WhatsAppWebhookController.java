@@ -57,7 +57,8 @@ public class WhatsAppWebhookController {
     public record WebhookPayload(String from, String body, String name, String sessionId,
                                  String profilePicUrl, String origen, String mediaUrl, String mimeType) {}
     public record StatusPayload(String sessionId, String status, String phone, String qr) {}
-    public record OutboundExternalPayload(String sessionId, String to, String body, String whatsappId) {}
+    public record OutboundExternalPayload(String sessionId, String to, String body, String whatsappId,
+                                          String mediaUrl, String mimeType) {}
 
     // ─── Mensajes entrantes ───────────────────────────────────────────────────
 
@@ -128,7 +129,8 @@ public class WhatsAppWebhookController {
         CompletableFuture.runAsync(() -> {
             try {
                 whatsAppService.guardarMensajeSalidaExterno(
-                        payload.sessionId(), payload.to(), payload.body(), payload.whatsappId());
+                        payload.sessionId(), payload.to(), payload.body(), payload.whatsappId(),
+                        payload.mediaUrl(), payload.mimeType());
             } catch (Exception e) {
                 log.error("Error guardando mensaje saliente externo: {}", e.getMessage());
             }
