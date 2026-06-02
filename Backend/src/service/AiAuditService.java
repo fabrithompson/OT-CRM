@@ -97,7 +97,7 @@ public class AiAuditService {
 
         boolean legacyMode = stages.isEmpty();
         if (legacyMode && (config.getAuditProcedures() == null || config.getAuditProcedures().isBlank())) {
-            throw new IllegalStateException("No hay etapas configuradas para auditar");
+            throw new IllegalStateException("No hay etapas ni procedimientos configurados para auditar");
         }
         if (legacyMode) {
             log.info("[AiAuditService] Usando modo legacy (auditProcedures) para config {}", config.getId());
