@@ -66,15 +66,17 @@ function parseReportPayload(json) {
     try {
         const parsed = JSON.parse(json || '[]');
         if (Array.isArray(parsed)) {
-            return { resumen_ejecutivo: '', procedimientos: [], hallazgos: parsed };
+            return { resumen_ejecutivo: '', procedimientos: [], hallazgos: parsed, conversaciones: [], estadisticas: null };
         }
         return {
             resumen_ejecutivo: parsed.resumen_ejecutivo || '',
             procedimientos: Array.isArray(parsed.procedimientos) ? parsed.procedimientos : [],
             hallazgos: Array.isArray(parsed.hallazgos) ? parsed.hallazgos : [],
+            conversaciones: Array.isArray(parsed.conversaciones) ? parsed.conversaciones : [],
+            estadisticas: parsed.estadisticas || null,
         };
     } catch {
-        return { resumen_ejecutivo: '', procedimientos: [], hallazgos: [] };
+        return { resumen_ejecutivo: '', procedimientos: [], hallazgos: [], conversaciones: [], estadisticas: null };
     }
 }
 
@@ -151,7 +153,7 @@ export default function Auditoria() {
     const [deleting, setDeleting]         = useState(null);
 
     const [cfg, setCfg] = useState({
-        auditEnabled: false, auditProcedures: '', auditEmail: '',
+        auditEnabled: false, auditEmail: '',
         auditWhatsappPhone: '', auditDispositivoId: '',
         horarioInicio: '09:00', horarioFin: '18:00',
     });
@@ -181,7 +183,6 @@ export default function Auditoria() {
             const d = res.data || {};
             setCfg({
                 auditEnabled: d.auditEnabled || false,
-                auditProcedures: d.auditProcedures || '',
                 auditEmail: d.auditEmail || '',
                 auditWhatsappPhone: d.auditWhatsappPhone || '',
                 auditDispositivoId: d.auditDispositivoId ? String(d.auditDispositivoId) : '',
@@ -283,9 +284,10 @@ export default function Auditoria() {
     const saveConfig = async () => {
         setCfgSaving(true);
         try {
+            const { auditDispositivoId, ...rest } = cfg;
             await api.put('/agent-config/audit', {
-                ...cfg,
-                auditDispositivoId: cfg.auditDispositivoId ? Number(cfg.auditDispositivoId) : null,
+                ...rest,
+                auditDispositivoId: auditDispositivoId ? Number(auditDispositivoId) : null,
             });
             setCfgSaved(true);
             setTimeout(() => setCfgSaved(false), 2200);
@@ -323,7 +325,7 @@ export default function Auditoria() {
     }
     if (!isEnterprise) return <Navigate to="/planes" replace />;
 
-    const { resumen_ejecutivo, procedimientos, hallazgos } = payload;
+    const { resumen_ejecutivo, procedimientos, hallazgos, conversaciones } = payload;
     const visibles = hideFP ? hallazgos.filter(h => !h.false_positive) : hallazgos;
     const fpCount  = hallazgos.filter(h => h.false_positive).length;
 
@@ -370,13 +372,13 @@ export default function Auditoria() {
                         )}
                         <button
                             onClick={runAudit}
-                            disabled={runLoading || !cfg.auditEnabled || !cfg.auditProcedures.trim()}
-                            title={!cfg.auditEnabled || !cfg.auditProcedures.trim() ? t('auditor.runDisabledTip') : ''}
+                            disabled={runLoading || !cfg.auditEnabled}
+                            title={!cfg.auditEnabled ? t('auditor.runDisabledTip') : ''}
                             className="btn-primary"
                             style={{
                                 background: 'rgba(167,139,250,0.85)', color: '#fff', whiteSpace: 'nowrap',
-                                opacity: (!cfg.auditEnabled || !cfg.auditProcedures.trim()) ? 0.5 : 1,
-                                cursor: (!cfg.auditEnabled || !cfg.auditProcedures.trim()) ? 'not-allowed' : 'pointer',
+                                opacity: !cfg.auditEnabled ? 0.5 : 1,
+                                cursor: !cfg.auditEnabled ? 'not-allowed' : 'pointer',
                             }}
                         >
                             <i className={`fa-solid ${runLoading ? 'fa-spinner fa-spin' : 'fa-microscope'}`}
@@ -409,9 +411,11 @@ export default function Auditoria() {
                                 gradient={incGrad}
                             />
                             <AuditStatCard
-                                icon="fa-calendar-check"
-                                label={t('auditor.stats.lastAudit')}
-                                value={reports[0] ? fmtDateShort(reports[0].createdAt) : '—'}
+                                icon="fa-star-half-stroke"
+                                label="Score promedio"
+                                value={reports.length > 0
+                                    ? Math.round(reports.reduce((s, r) => s + (r.score || 0), 0) / reports.length) + '%'
+                                    : '—'}
                                 gradient={STAT_GRAD.blue}
                                 small
                             />
@@ -499,6 +503,7 @@ export default function Auditoria() {
                                                     </button>
                                                 )}
                                                 <IncumplimientosBadge n={selected.incumplimientos} t={t} />
+                                                <ScoreBar score={selected.score || 0} />
                                             </div>
                                         </div>
                                         <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)' }}>
@@ -832,6 +837,10 @@ export default function Auditoria() {
                                         </>
                                     )}
 
+                                    {conversaciones.length > 0 && (
+                                        <ConversacionesSection conversaciones={conversaciones} />
+                                    )}
+
                                     {procedimientos.length === 0 && hallazgos.length === 0 && (
                                         <div style={{
                                             textAlign: 'center', padding: '32px',
@@ -939,6 +948,13 @@ export default function Auditoria() {
                 .audit-scope .db-metric-card:hover {
                     border-color: rgba(167,139,250,0.28);
                 }
+
+                /* Scrollbar de la lista de etapas — siempre visible */
+                .stages-scroll { scrollbar-width: thin; scrollbar-color: #a78bfa rgba(255,255,255,0.06); }
+                .stages-scroll::-webkit-scrollbar { width: 6px; display: block; }
+                .stages-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 4px; }
+                .stages-scroll::-webkit-scrollbar-thumb { background: #a78bfa; border-radius: 4px; min-height: 40px; }
+                .stages-scroll::-webkit-scrollbar-thumb:hover { background: #c4b5fd; }
             `}</style>
         </div>
     );
@@ -1213,9 +1229,10 @@ function ReportRow({ r, idx, total, selected, expanded, onSelect, onToggleExpand
                 borderTop: '1px solid rgba(255,255,255,0.05)',
                 background: 'rgba(0,0,0,0.20)',
             }}>
-                <div style={{ display: 'flex', gap: 2 }}>
+                <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <IconButton onClick={onMoveUp} disabled={idx === 0} icon="fa-arrow-up" title={t('auditor.row.moveUp')} />
                     <IconButton onClick={onMoveDown} disabled={idx === total - 1} icon="fa-arrow-down" title={t('auditor.row.moveDown')} />
+                    {r.score > 0 && <ScoreBar score={r.score} size="sm" />}
                 </div>
                 <div style={{ display: 'flex', gap: 2 }}>
                     <IconButton onClick={onToggleExpand} icon={expanded ? 'fa-chevron-up' : 'fa-chevron-down'}
@@ -1306,6 +1323,387 @@ function skel(w, h) {
     };
 }
 
+// ─── ScoreBar ────────────────────────────────────────────────────────────────
+
+function ScoreBar({ score, size = 'md' }) {
+    const pct = Math.max(0, Math.min(100, score || 0));
+    const color = pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
+    const bg    = pct >= 80 ? 'rgba(16,185,129,0.12)' : pct >= 60 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
+    const bord  = pct >= 80 ? 'rgba(16,185,129,0.25)' : pct >= 60 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
+
+    if (size === 'sm') {
+        return (
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '2px 7px', borderRadius: 6,
+                background: bg, border: `1px solid ${bord}`,
+                fontSize: '0.70rem', fontWeight: 700, color,
+            }}>
+                <i className="fa-solid fa-star-half-stroke" style={{ fontSize: '0.60rem' }} />
+                {pct}%
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 110 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Score
+                </span>
+                <span style={{ fontSize: '0.80rem', fontWeight: 800, color }}>{pct}%</span>
+            </div>
+            <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                <div style={{
+                    height: '100%', width: `${pct}%`,
+                    borderRadius: 3, background: color,
+                    transition: 'width 0.4s ease',
+                }} />
+            </div>
+        </div>
+    );
+}
+
+// ─── ConversacionesSection ────────────────────────────────────────────────────
+
+const ESTADO_CONV = {
+    cerrado:       { icon: 'fa-circle-check',       color: '#10b981', label: 'Cerrado' },
+    presupuestado: { icon: 'fa-file-invoice-dollar', color: '#3b82f6', label: 'Presupuestado' },
+    sin_responder: { icon: 'fa-circle-xmark',        color: '#ef4444', label: 'Sin responder' },
+    incompleto:    { icon: 'fa-circle-half-stroke',  color: '#f59e0b', label: 'Incompleto' },
+    seguimiento:   { icon: 'fa-rotate-right',        color: '#a78bfa', label: 'Seguimiento' },
+};
+
+function ConversacionesSection({ conversaciones }) {
+    const [open, setOpen] = useState(false);
+    if (!conversaciones || conversaciones.length === 0) return null;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+                type="button"
+                onClick={() => setOpen(v => !v)}
+                style={{
+                    all: 'unset', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '0 2px',
+                    fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)',
+                    textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
+                }}
+            >
+                <i className="fa-solid fa-comments" style={{ color: '#a78bfa' }} />
+                Conversaciones analizadas ({conversaciones.length})
+                <i className={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'}`}
+                   style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.70rem', marginLeft: 4 }} />
+            </button>
+
+            {open && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, animation: 'fadeIn 0.18s ease-out' }}>
+                    {conversaciones.map((conv, i) => {
+                        const estadoMeta = ESTADO_CONV[conv.estado] || { icon: 'fa-circle', color: '#94a3b8', label: conv.estado };
+                        return (
+                            <div key={i} className="db-card" style={{
+                                gap: 8, padding: '12px 14px',
+                                borderLeft: `3px solid ${estadoMeta.color}`,
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.83rem', fontWeight: 700, color: 'rgba(255,255,255,0.88)' }}>
+                                        <i className="fa-solid fa-user" style={{ color: '#a78bfa', fontSize: '0.75rem' }} />
+                                        {conv.vendedor || 'Vendedor desconocido'}
+                                        {conv.cliente_id && (
+                                            <span style={{ fontSize: '0.70rem', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                                                · Cliente #{conv.cliente_id}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        {conv.tiempo_respuesta_minutos != null && (
+                                            <span style={{
+                                                fontSize: '0.68rem', padding: '2px 7px', borderRadius: 6,
+                                                background: conv.tiempo_ok ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.10)',
+                                                color: conv.tiempo_ok ? '#10b981' : '#ef4444',
+                                                border: `1px solid ${conv.tiempo_ok ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                                            }}>
+                                                <i className="fa-regular fa-clock" style={{ marginRight: 3 }} />
+                                                {conv.tiempo_respuesta_minutos}min
+                                            </span>
+                                        )}
+                                        <span style={{
+                                            fontSize: '0.70rem', fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                                            background: `${estadoMeta.color}18`, color: estadoMeta.color,
+                                            border: `1px solid ${estadoMeta.color}40`,
+                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                        }}>
+                                            <i className={`fa-solid ${estadoMeta.icon}`} style={{ fontSize: '0.62rem' }} />
+                                            {estadoMeta.label}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {conv.resumen && (
+                                    <div style={{ fontSize: '0.81rem', color: 'rgba(255,255,255,0.70)', lineHeight: 1.5 }}>
+                                        {conv.resumen}
+                                    </div>
+                                )}
+
+                                {conv.analisis && (
+                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.50)', lineHeight: 1.55 }}>
+                                        {conv.analisis}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── StagesManager ────────────────────────────────────────────────────────────
+
+function StagesManager({ isMobile }) {
+    const toast = useToast();
+    const [stages, setStages] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [adding, setAdding] = useState(false);
+
+    const load = useCallback(async () => {
+        try {
+            const res = await api.get('/agent-config/audit/stages');
+            setStages(Array.isArray(res.data) ? res.data : []);
+        } catch { /* silencioso */ }
+        finally { setLoading(false); }
+    }, []);
+
+    useEffect(() => { load(); }, [load]);
+
+    const updateStage = async (id, patch) => {
+        setStages(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+        try {
+            await api.patch(`/agent-config/audit/stages/${id}`, patch);
+        } catch { toast('Error', 'No se pudo guardar la etapa', '#ef4444'); }
+    };
+
+    const deleteStage = async (id) => {
+        if (!window.confirm('¿Eliminar esta etapa?')) return;
+        try {
+            await api.delete(`/agent-config/audit/stages/${id}`);
+            setStages(prev => prev.filter(s => s.id !== id));
+        } catch { toast('Error', 'No se pudo eliminar', '#ef4444'); }
+    };
+
+    const addStage = async () => {
+        setAdding(true);
+        try {
+            const res = await api.post('/agent-config/audit/stages', {
+                nombre: 'Nueva etapa', descripcion: '',
+                peso: 10, orden: stages.length, activa: true,
+            });
+            setStages(prev => [...prev, res.data]);
+        } catch { toast('Error', 'No se pudo agregar la etapa', '#ef4444'); }
+        finally { setAdding(false); }
+    };
+
+    const moveStage = async (id, delta) => {
+        const idx = stages.findIndex(s => s.id === id);
+        if (idx < 0) return;
+        const target = idx + delta;
+        if (target < 0 || target >= stages.length) return;
+        const next = [...stages];
+        [next[idx], next[target]] = [next[target], next[idx]];
+        setStages(next);
+        try {
+            await api.post('/agent-config/audit/stages/reorder', { orden: next.map(s => s.id) });
+        } catch { toast('Error', 'No se pudo reordenar', '#ef4444'); }
+    };
+
+    const pesoTotal = stages.reduce((s, st) => s + (st.activa ? st.peso : 0), 0);
+
+    return (
+        <div className="db-card" style={{ gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <div className="db-card-title" style={{ margin: 0 }}>
+                    <i className="fa-solid fa-list-check" style={{ color: '#a78bfa' }} />
+                    Etapas del proceso ({stages.length})
+                </div>
+                <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>Peso total:</span>
+                    <strong style={{ color: '#c4b5fd' }}>{pesoTotal}</strong>
+                </div>
+            </div>
+
+            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.40)', lineHeight: 1.5, marginTop: -4 }}>
+                Definí las etapas del proceso de venta. Cada etapa tiene un peso relativo que
+                determina su impacto en el score. Los pesos no necesitan sumar 100.
+            </div>
+
+            {loading ? (
+                <div style={{ padding: 20, color: 'rgba(255,255,255,0.30)', fontSize: '0.85rem', textAlign: 'center' }}>
+                    Cargando etapas...
+                </div>
+            ) : stages.length === 0 ? (
+                <div style={{
+                    padding: '20px 16px', borderRadius: 10,
+                    background: 'rgba(167,139,250,0.04)',
+                    border: '1px dashed rgba(167,139,250,0.20)',
+                    fontSize: '0.83rem', color: 'rgba(255,255,255,0.45)',
+                    textAlign: 'center', lineHeight: 1.6,
+                }}>
+                    Aún no hay etapas configuradas.<br />
+                    Hacé clic en &quot;Agregar etapa&quot; para empezar.
+                </div>
+            ) : (
+                <div className="stages-scroll" style={{
+                    display: 'flex', flexDirection: 'column', gap: 8,
+                    overflowY: 'scroll',
+                    maxHeight: isMobile ? 'none' : 380,
+                    paddingRight: 4,
+                }}>
+                    {stages.map((s, i) => (
+                        <StageCard
+                            key={s.id} stage={s}
+                            isFirst={i === 0} isLast={i === stages.length - 1}
+                            onUpdate={(patch) => updateStage(s.id, patch)}
+                            onDelete={() => deleteStage(s.id)}
+                            onMoveUp={() => moveStage(s.id, -1)}
+                            onMoveDown={() => moveStage(s.id, +1)}
+                        />
+                    ))}
+                </div>
+            )}
+
+            <button
+                onClick={addStage}
+                disabled={adding}
+                style={{
+                    width: '100%', padding: '9px 14px', borderRadius: 8,
+                    background: 'rgba(167,139,250,0.12)',
+                    border: '1px dashed rgba(167,139,250,0.40)',
+                    color: '#c4b5fd', cursor: adding ? 'not-allowed' : 'pointer',
+                    fontSize: '0.85rem', fontWeight: 600,
+                }}
+            >
+                <i className={`fa-solid ${adding ? 'fa-spinner fa-spin' : 'fa-plus'}`} style={{ marginRight: 6 }} />
+                {adding ? 'Agregando...' : 'Agregar etapa'}
+            </button>
+        </div>
+    );
+}
+
+function StageCard({ stage, isFirst, isLast, onUpdate, onDelete, onMoveUp, onMoveDown }) {
+    const [expanded, setExpanded] = useState(false);
+    const [localNombre, setLocalNombre] = useState(stage.nombre);
+    const [localDesc, setLocalDesc] = useState(stage.descripcion || '');
+    const [localPeso, setLocalPeso] = useState(stage.peso);
+
+    useEffect(() => {
+        setLocalNombre(stage.nombre);
+        setLocalDesc(stage.descripcion || '');
+        setLocalPeso(stage.peso);
+    }, [stage.nombre, stage.descripcion, stage.peso]);
+
+    const commit = () => {
+        const patch = {};
+        if (localNombre !== stage.nombre) patch.nombre = localNombre;
+        if (localDesc !== stage.descripcion) patch.descripcion = localDesc;
+        if (localPeso !== stage.peso) patch.peso = localPeso;
+        if (Object.keys(patch).length > 0) onUpdate(patch);
+    };
+
+    return (
+        <div style={{
+            borderRadius: 10, overflow: 'hidden',
+            flexShrink: 0,
+            background: stage.activa
+                ? 'linear-gradient(135deg, #181226 0%, #15111f 100%)'
+                : 'rgba(255,255,255,0.02)',
+            border: `1px solid ${stage.activa ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.05)'}`,
+            opacity: stage.activa ? 1 : 0.55,
+            transition: '0.15s',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 11px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <button onClick={onMoveUp} disabled={isFirst} style={miniBtn(isFirst)}>
+                        <i className="fa-solid fa-chevron-up" style={{ fontSize: '0.6rem' }} />
+                    </button>
+                    <button onClick={onMoveDown} disabled={isLast} style={miniBtn(isLast)}>
+                        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.6rem' }} />
+                    </button>
+                </div>
+                <input
+                    type="text"
+                    value={localNombre}
+                    onChange={e => setLocalNombre(e.target.value)}
+                    onBlur={commit}
+                    style={{
+                        flex: 1, fontSize: '0.88rem', padding: '6px 10px',
+                        background: 'rgba(0,0,0,0.30)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 6, color: '#fff', outline: 'none',
+                    }}
+                />
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: '4px 8px', borderRadius: 6,
+                    background: 'rgba(167,139,250,0.10)',
+                    border: '1px solid rgba(167,139,250,0.20)',
+                }}>
+                    <input
+                        type="number" min="1" max="100"
+                        value={localPeso}
+                        onChange={e => setLocalPeso(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+                        onBlur={commit}
+                        style={{
+                            width: 38, fontSize: '0.78rem', padding: '2px 4px',
+                            background: 'transparent', border: 'none',
+                            color: '#c4b5fd', outline: 'none', textAlign: 'center', fontWeight: 700,
+                        }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>pts</span>
+                </div>
+                <button onClick={() => setExpanded(v => !v)} style={miniBtn(false)}
+                        title={expanded ? 'Colapsar' : 'Editar descripción'}>
+                    <i className={`fa-solid ${expanded ? 'fa-chevron-up' : 'fa-pen'}`} style={{ fontSize: '0.7rem' }} />
+                </button>
+                <button onClick={() => onUpdate({ activa: !stage.activa })} style={miniBtn(false)}
+                        title={stage.activa ? 'Desactivar' : 'Activar'}>
+                    <i className={`fa-solid ${stage.activa ? 'fa-eye' : 'fa-eye-slash'}`} style={{ fontSize: '0.7rem' }} />
+                </button>
+                <button onClick={onDelete} style={{ ...miniBtn(false), color: '#fca5a5' }} title="Eliminar">
+                    <i className="fa-solid fa-trash" style={{ fontSize: '0.7rem' }} />
+                </button>
+            </div>
+
+            {expanded && (
+                <div style={{ padding: '0 11px 10px 40px', animation: 'fadeIn 0.18s ease-out' }}>
+                    <textarea
+                        value={localDesc}
+                        onChange={e => setLocalDesc(e.target.value)}
+                        onBlur={commit}
+                        placeholder="Descripción de la etapa: qué evaluar, qué se espera del vendedor, frases clave..."
+                        rows={3}
+                        style={{
+                            width: '100%', fontSize: '0.82rem', padding: '8px 11px',
+                            background: 'rgba(0,0,0,0.30)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 6, color: '#fff', outline: 'none',
+                            resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box',
+                        }}
+                    />
+                </div>
+            )}
+        </div>
+    );
+}
+
+const miniBtn = (disabled) => ({
+    padding: '4px 6px', borderRadius: 4, border: 'none',
+    background: 'transparent',
+    color: disabled ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.50)',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+});
+
 // ─── ConfigForm ─────────────────────────────────────────────────────────────
 
 function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile }) {
@@ -1359,31 +1757,12 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                 </label>
             </div>
 
-            {/* ── Grilla full-page: todo visible sin scroll en desktop ── */}
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: isMobile ? '1fr' : '1.15fr 1fr 1fr',
-                gap: 12, flex: 1, minHeight: 0,
-                alignItems: 'stretch',
+                gap: 12, alignItems: 'stretch',
             }}>
-            {/* ── Procedimientos ── */}
-            <div className="db-card" style={{ gap: 14, minHeight: 0 }}>
-                <div className="db-card-title" style={{ margin: 0 }}>
-                    <i className="fa-solid fa-list-check" style={{ color: '#a78bfa' }} />
-                    {t('auditor.config.proceduresLabel')}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, marginTop: -6 }}>
-                    {t('auditor.config.proceduresHint')}
-                </div>
-                <AutoTextarea
-                    value={cfg.auditProcedures}
-                    onChange={e => update('auditProcedures', e.target.value)}
-                    placeholder={t('auditor.config.proceduresPlaceholder')}
-                    minHeight={130}
-                    maxHeight={isMobile ? 140 : 260}
-                    style={{ ...baseInput, fontFamily: 'inherit', flex: 1 }}
-                />
-            </div>
+            <StagesManager isMobile={isMobile} />
 
             {/* ── Horario de análisis ── */}
             <div className="db-card" style={{ gap: 14 }}>

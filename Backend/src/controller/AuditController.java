@@ -309,6 +309,7 @@ public class AuditController {
         m.put("nombre", r.getNombre());
         m.put("notas", r.getNotas());
         m.put("orden", r.getOrden());
+        m.put("score", r.getScore());
         return m;
     }
 
