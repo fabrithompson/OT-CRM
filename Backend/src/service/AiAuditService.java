@@ -95,8 +95,12 @@ public class AiAuditService {
             }
         }
 
-        if (stages.isEmpty()) {
+        boolean legacyMode = stages.isEmpty();
+        if (legacyMode && (config.getAuditProcedures() == null || config.getAuditProcedures().isBlank())) {
             throw new IllegalStateException("No hay etapas configuradas para auditar");
+        }
+        if (legacyMode) {
+            log.info("[AiAuditService] Usando modo legacy (auditProcedures) para config {}", config.getId());
         }
 
         List<Long> clienteIds = mensajeRepository
@@ -108,7 +112,9 @@ public class AiAuditService {
         }
 
         String conversacionesCtx = buildConversacionesContext(clienteIds, desde, hasta);
-        String systemPrompt = buildAuditSystemPrompt(stages);
+        String systemPrompt = legacyMode
+                ? buildLegacyAuditSystemPrompt(config.getAuditProcedures())
+                : buildAuditSystemPrompt(stages);
         String userPrompt = "Auditá las conversaciones del período "
                 + desde.format(FMT) + " al " + hasta.format(FMT) + ":\n\n" + conversacionesCtx;
 
@@ -320,6 +326,31 @@ public class AiAuditService {
             sb.append("\n");
         }
         return sb.toString();
+    }
+
+    // Prompt legacy para configs que aún usan auditProcedures (texto libre).
+    // Se usa como fallback cuando la migración automática falla (ej: clave de test).
+    private String buildLegacyAuditSystemPrompt(String procedures) {
+        return "Sos un auditor experto y exigente de conversaciones de ventas por WhatsApp. "
+                + "Tu tarea es producir un INFORME DETALLADO de cumplimiento, punto por punto, "
+                + "sobre la lista de procedimientos de atención configurada por la agencia.\n\n"
+                + "NOTA SOBRE EL CONTEXTO: Algunos mensajes incluyen contenido enriquecido entre corchetes:\n"
+                + "- [Transcripción de audio: \"...\"] — texto extraído de un audio.\n"
+                + "- [Contenido del documento (PDF/DOCX/TXT): ...] — texto de un documento adjunto.\n\n"
+                + "PROCEDIMIENTOS A AUDITAR:\n\"\"\"\n" + procedures + "\n\"\"\"\n\n"
+                + "INSTRUCCIONES OBLIGATORIAS:\n"
+                + "1. Por CADA punto, indicá si se cumplió (\"cumplido\"), parcialmente (\"parcial\") o no (\"incumplido\").\n"
+                + "2. Para cada evidencia incluí quién, cuándo y cita textual exacta.\n"
+                + "3. El resumen ejecutivo debe tener 2-3 párrafos con panorama, vendedores y recomendaciones.\n"
+                + "4. Respondé ÚNICAMENTE con JSON, sin markdown ni texto adicional:\n"
+                + "{\n"
+                + "  \"resumen_ejecutivo\": \"...\",\n"
+                + "  \"procedimientos\": [\n"
+                + "    { \"punto\": \"...\", \"estado\": \"cumplido|parcial|incumplido\",\n"
+                + "      \"justificacion\": \"...\", \"evidencias\": [] }\n"
+                + "  ],\n"
+                + "  \"hallazgos\": []\n"
+                + "}";
     }
 
     private String buildAuditSystemPrompt(List<AuditStage> stages) {
