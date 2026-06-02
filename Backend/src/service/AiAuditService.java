@@ -23,10 +23,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import model.AgentConfig;
 import model.AiAuditReport;
 import model.Agencia;
+import model.AuditStage;
 import model.Mensaje;
 import repository.AgenciaRepository;
 import repository.AgentConfigRepository;
 import repository.AiAuditReportRepository;
+import repository.AuditStageRepository;
 import repository.ClienteRepository;
 import repository.MensajeRepository;
 
@@ -41,29 +43,35 @@ public class AiAuditService {
 
     private final ChatClient chatClient;
     private final AgentConfigRepository agentConfigRepository;
+    private final AuditStageRepository auditStageRepository;
     private final AiAuditReportRepository auditReportRepository;
     private final ClienteRepository clienteRepository;
     private final MensajeRepository mensajeRepository;
     private final AgenciaRepository agenciaRepository;
     private final ObjectMapper objectMapper;
     private final MediaAuditEnricher mediaEnricher;
+    private final AuditStageMigrationService auditStageMigrationService;
 
     public AiAuditService(ChatClient chatClient,
                           AgentConfigRepository agentConfigRepository,
+                          AuditStageRepository auditStageRepository,
                           AiAuditReportRepository auditReportRepository,
                           ClienteRepository clienteRepository,
                           MensajeRepository mensajeRepository,
                           AgenciaRepository agenciaRepository,
                           ObjectMapper objectMapper,
-                          MediaAuditEnricher mediaEnricher) {
+                          MediaAuditEnricher mediaEnricher,
+                          AuditStageMigrationService auditStageMigrationService) {
         this.chatClient = chatClient;
         this.agentConfigRepository = agentConfigRepository;
+        this.auditStageRepository = auditStageRepository;
         this.auditReportRepository = auditReportRepository;
         this.clienteRepository = clienteRepository;
         this.mensajeRepository = mensajeRepository;
         this.agenciaRepository = agenciaRepository;
         this.objectMapper = objectMapper;
         this.mediaEnricher = mediaEnricher;
+        this.auditStageMigrationService = auditStageMigrationService;
     }
 
     @SuppressWarnings("null")
@@ -73,12 +81,23 @@ public class AiAuditService {
         if (config == null || !config.isAuditEnabled()) {
             throw new IllegalStateException("Auditoría no habilitada para esta agencia");
         }
-        if (config.getAuditProcedures() == null || config.getAuditProcedures().isBlank()) {
-            throw new IllegalStateException("No hay procedimientos configurados para auditar");
-        }
 
         Agencia agencia = agenciaRepository.findById(agenciaId)
                 .orElseThrow(() -> new IllegalArgumentException("Agencia no encontrada"));
+
+        // Obtener etapas activas; migración lazy si el cliente aún usa texto libre
+        List<AuditStage> stages = auditStageRepository.findActiveByAgentConfigId(config.getId());
+        if (stages.isEmpty() && config.getAuditProcedures() != null
+                && !config.getAuditProcedures().isBlank()) {
+            log.info("[AiAuditService] Migración lazy de etapas para config {}", config.getId());
+            if (auditStageMigrationService.migrarAgentConfig(config)) {
+                stages = auditStageRepository.findActiveByAgentConfigId(config.getId());
+            }
+        }
+
+        if (stages.isEmpty()) {
+            throw new IllegalStateException("No hay etapas configuradas para auditar");
+        }
 
         List<Long> clienteIds = mensajeRepository
                 .findClienteIdsActivosEnPeriodo(agenciaId, desde, hasta, PageRequest.of(0, MAX_CLIENTES));
@@ -89,7 +108,7 @@ public class AiAuditService {
         }
 
         String conversacionesCtx = buildConversacionesContext(clienteIds, desde, hasta);
-        String systemPrompt = buildAuditSystemPrompt(config.getAuditProcedures());
+        String systemPrompt = buildAuditSystemPrompt(stages);
         String userPrompt = "Auditá las conversaciones del período "
                 + desde.format(FMT) + " al " + hasta.format(FMT) + ":\n\n" + conversacionesCtx;
 
@@ -124,12 +143,10 @@ public class AiAuditService {
             }
         }
 
-        // Estructura nueva: { resumen_ejecutivo, procedimientos[], hallazgos[] }
-        // Se guarda el objeto completo en hallazgos_json (JSONB). El frontend parsea
-        // defensivamente para soportar reportes legacy que eran arrays de hallazgos.
         String hallazgosJson = "{\"procedimientos\":[],\"hallazgos\":[]}";
         String resumen = "";
         int incumplimientos = 0;
+        int scoreCalculado = 0;
         try {
             String cleaned = rawResponse.trim();
             if (cleaned.startsWith("```")) {
@@ -137,8 +154,6 @@ public class AiAuditService {
             }
             JsonNode root = objectMapper.readTree(cleaned);
 
-            // Si el modelo respondió directamente con un array (formato viejo),
-            // lo envolvemos en la estructura nueva sin perder data.
             if (root.isArray()) {
                 ObjectNode wrapper = objectMapper.createObjectNode();
                 wrapper.set("hallazgos", root);
@@ -146,7 +161,6 @@ public class AiAuditService {
                 root = wrapper;
             }
 
-            // 1) Hallazgos individuales (descarte de los que no traen cita_textual)
             ObjectNode normalized = objectMapper.createObjectNode();
             ArrayNode hallazgosOut = objectMapper.createArrayNode();
             JsonNode hallazgosNode = root.has("hallazgos") ? root.get("hallazgos") : null;
@@ -158,8 +172,6 @@ public class AiAuditService {
             }
             normalized.set("hallazgos", hallazgosOut);
 
-            // 2) Procedimientos (análisis punto por punto). Aceptamos cualquier
-            // procedimiento aun sin evidencias para mostrar el estado del control.
             ArrayNode procsOut = objectMapper.createArrayNode();
             JsonNode procsNode = root.has("procedimientos") ? root.get("procedimientos") : null;
             int procsIncumplidos = 0;
@@ -172,7 +184,10 @@ public class AiAuditService {
             }
             normalized.set("procedimientos", procsOut);
 
-            // 3) Resumen ejecutivo extendido (2-3 párrafos) + resumen corto
+            // Preservar conversaciones y estadísticas si la IA las devuelve
+            if (root.has("conversaciones")) normalized.set("conversaciones", root.get("conversaciones"));
+            if (root.has("estadisticas")) normalized.set("estadisticas", root.get("estadisticas"));
+
             String resumenEjecutivo = root.has("resumen_ejecutivo")
                     ? root.get("resumen_ejecutivo").asText("")
                     : (root.has("resumen") ? root.get("resumen").asText("") : "");
@@ -182,11 +197,8 @@ public class AiAuditService {
 
             hallazgosJson = objectMapper.writeValueAsString(normalized);
 
-            // El conteo de incumplimientos prioriza el análisis punto por punto;
-            // si no hay procedimientos, cae al conteo legacy de hallazgos.
             incumplimientos = procsIncumplidos > 0 ? procsIncumplidos : hallazgosOut.size();
 
-            // Resumen corto: lo primero del resumen ejecutivo o un default
             if (!resumenEjecutivo.isBlank()) {
                 String firstLine = resumenEjecutivo.split("\\R", 2)[0];
                 resumen = firstLine.length() > 280 ? firstLine.substring(0, 277) + "..." : firstLine;
@@ -195,6 +207,10 @@ public class AiAuditService {
                         ? "No se detectaron incumplimientos en el período analizado."
                         : "Se detectaron " + incumplimientos + " incumplimiento(s).";
             }
+
+            // Score calculado en backend a partir de los pesos configurados
+            scoreCalculado = calcularScorePonderado(stages, hallazgosJson);
+
         } catch (Exception e) {
             log.warn("Could not parse audit JSON for agencia {}: {}", agenciaId, e.getMessage());
             resumen = "Error al procesar la respuesta del auditor.";
@@ -208,6 +224,7 @@ public class AiAuditService {
         report.setHallazgosJson(hallazgosJson);
         report.setIncumplimientos(incumplimientos);
         report.setTokensUsados(tokensUsados);
+        report.setScore(scoreCalculado);
         return auditReportRepository.save(report);
     }
 
@@ -217,11 +234,48 @@ public class AiAuditService {
         r.setPeriodoInicio(desde);
         r.setPeriodoFin(hasta);
         r.setResumen("No se encontraron conversaciones en el período analizado.");
-        // Estructura nueva (wrapper) para que el frontend la parsee igual que un reporte real
         r.setHallazgosJson("{\"resumen_ejecutivo\":\"No se encontraron conversaciones en el período analizado.\",\"procedimientos\":[],\"hallazgos\":[]}");
         r.setIncumplimientos(0);
         r.setTokensUsados(0);
+        r.setScore(0);
         return r;
+    }
+
+    private int calcularScorePonderado(List<AuditStage> stages, String hallazgosJson) {
+        try {
+            JsonNode root = objectMapper.readTree(hallazgosJson);
+            JsonNode procs = root.get("procedimientos");
+            if (procs == null || !procs.isArray()) return 0;
+
+            java.util.Map<Long, Double> multiplicadores = new java.util.HashMap<>();
+            for (JsonNode p : procs) {
+                if (!p.has("stage_id")) continue;
+                long sid = p.get("stage_id").asLong();
+                String estado = p.has("estado") ? p.get("estado").asText("") : "";
+                double mult = switch (estado) {
+                    case "cumplido"   -> 1.0;
+                    case "parcial"    -> 0.5;
+                    case "incumplido" -> 0.0;
+                    case "no_aplica"  -> -1.0; // se excluye del cálculo
+                    default            -> 0.0;
+                };
+                multiplicadores.put(sid, mult);
+            }
+
+            double pesoTotal = 0;
+            double pesoLogrado = 0;
+            for (AuditStage s : stages) {
+                Double mult = multiplicadores.get(s.getId());
+                if (mult == null || mult < 0) continue; // sin data o no_aplica
+                pesoTotal   += s.getPeso();
+                pesoLogrado += s.getPeso() * mult;
+            }
+            if (pesoTotal == 0) return 0;
+            return (int) Math.round((pesoLogrado / pesoTotal) * 100);
+        } catch (Exception e) {
+            log.warn("Error calculando score ponderado: {}", e.getMessage());
+            return 0;
+        }
     }
 
     @SuppressWarnings("null")
@@ -254,7 +308,6 @@ public class AiAuditService {
                 sb.append("[").append(hora).append("] ").append(quien)
                   .append(": ").append(m.getContenido());
 
-                // Enriquecer con contenido real del archivo (audio/documento)
                 if (mediaEnriquecida < MAX_MEDIA_POR_CLIENTE) {
                     String extra = mediaEnricher.enriquecer(m);
                     if (extra != null) {
@@ -269,70 +322,131 @@ public class AiAuditService {
         return sb.toString();
     }
 
-    // Prompt detallado: el auditor debe producir un INFORME PUNTO POR PUNTO
-    // sobre la lista de procedimientos configurada, con quién/cómo/cuándo y
-    // comparación esperado vs. ocurrido cuando haya incumplimiento.
-    private String buildAuditSystemPrompt(String procedures) {
-        return "Sos un auditor experto y exigente de conversaciones de ventas por WhatsApp. "
-                + "Tu tarea es producir un INFORME DETALLADO de cumplimiento, punto por punto, "
-                + "sobre la lista de procedimientos de atención configurada por la agencia.\n\n"
-                + "NOTA SOBRE EL CONTEXTO: Algunos mensajes incluyen contenido enriquecido entre corchetes:\n"
-                + "- [Transcripción de audio: \"...\"] — texto extraído de un audio enviado por el vendedor o cliente.\n"
-                + "- [Contenido del documento (PDF/DOCX/TXT): ...] — texto de un documento adjunto.\n"
-                + "Analizá ese contenido con el mismo criterio que los mensajes de texto. "
-                + "Si el audio o documento contiene información relevante para el cumplimiento de un procedimiento, citá su transcripción como evidencia.\n\n"
-                + "PROCEDIMIENTOS A AUDITAR (cada línea o ítem es un punto de control):\n"
-                + "\"\"\"\n" + procedures + "\n\"\"\"\n\n"
-                + "INSTRUCCIONES OBLIGATORIAS:\n"
-                + "1. Identificá cada punto/regla de la lista anterior como un elemento separado.\n"
-                + "2. Por CADA punto, indicá si se cumplió (\"cumplido\"), se cumplió parcialmente (\"parcial\") o no se cumplió (\"incumplido\"), y justificá con evidencia textual.\n"
-                + "3. Para CADA evidencia incluí, de forma explícita y no genérica:\n"
-                + "   • QUIÉN: el NOMBRE del vendedor que mandó el mensaje (no su ID), tal como aparece entre corchetes en la transcripción (VENDEDOR[nombre]).\n"
-                + "   • CUÁNDO: el horario exacto del mensaje en formato dd/MM HH:mm tal como aparece en la transcripción.\n"
-                + "   • CÓMO: descripción del modo en que actuó — tono usado, si siguió el formato/lenguaje del procedimiento, claridad, oportunidad.\n"
-                + "   • CITA TEXTUAL: el texto EXACTO del mensaje relevante, entre comillas, sin parafrasear.\n"
-                + "   • Si es parcial o incumplido: ESPERADO (qué dictaba el procedimiento) vs OCURRIDO (qué pasó en realidad).\n"
-                + "4. NO des respuestas genéricas, vagas ni del estilo \"se cumplió correctamente\". Siempre citá el mensaje o describí concretamente la acción.\n"
-                + "5. Si no podés citar el mensaje exacto, NO incluyas la evidencia.\n"
-                + "6. Si un mismo punto se manifiesta con varios vendedores o varias conversaciones, listá una evidencia separada por cada caso.\n"
-                + "7. Si para un punto no hay actividad relevante en el período, marcalo como \"parcial\" con justificación \"Sin evidencia suficiente en el período\" y dejá evidencias vacías.\n"
-                + "8. El resumen ejecutivo debe tener entre 2 y 3 párrafos: panorama general, vendedores destacados/críticos por nombre, y recomendaciones accionables.\n"
-                + "9. Además, listá los hallazgos individuales más graves (los \"red flags\") en el array \"hallazgos\" — un objeto por hallazgo grave.\n\n"
-                + "FORMATO DE RESPUESTA — JSON ESTRICTO, sin markdown, sin bloques de código, sin texto antes ni después:\n"
-                + "{\n"
-                + "  \"resumen_ejecutivo\": \"Párrafo 1 ... \\n\\nPárrafo 2 ... \\n\\nPárrafo 3 ...\",\n"
-                + "  \"procedimientos\": [\n"
-                + "    {\n"
-                + "      \"punto\": \"Texto breve del punto del procedimiento\",\n"
-                + "      \"estado\": \"cumplido\" | \"parcial\" | \"incumplido\",\n"
-                + "      \"justificacion\": \"Explicación detallada del estado, mencionando vendedores por nombre cuando corresponda\",\n"
-                + "      \"evidencias\": [\n"
-                + "        {\n"
-                + "          \"vendedor\": \"Nombre del vendedor (NO ID)\",\n"
-                + "          \"cliente_id\": 123,\n"
-                + "          \"cuando\": \"dd/MM HH:mm\",\n"
-                + "          \"como\": \"Cómo lo hizo: tono, formato, claridad\",\n"
-                + "          \"cita_textual\": \"Texto exacto del mensaje\",\n"
-                + "          \"esperado\": \"Qué dictaba el procedimiento (solo si parcial/incumplido)\",\n"
-                + "          \"ocurrido\": \"Qué pasó realmente (solo si parcial/incumplido)\"\n"
-                + "        }\n"
-                + "      ]\n"
-                + "    }\n"
-                + "  ],\n"
-                + "  \"hallazgos\": [\n"
-                + "    {\n"
-                + "      \"tipo\": \"incumplimiento\" | \"advertencia\",\n"
-                + "      \"vendedor\": \"Nombre\",\n"
-                + "      \"cliente_id\": 123,\n"
-                + "      \"regla_violada\": \"Regla breve\",\n"
-                + "      \"cita_textual\": \"Texto exacto\",\n"
-                + "      \"cuando\": \"dd/MM HH:mm\",\n"
-                + "      \"severidad\": \"alta\" | \"media\" | \"baja\",\n"
-                + "      \"confianza\": \"alta\" | \"media\" | \"baja\",\n"
-                + "      \"descripcion\": \"Explicación detallada\"\n"
-                + "    }\n"
-                + "  ]\n"
-                + "}\n\n"
-                + "IMPORTANTE: Respondé ÚNICAMENTE con el JSON, sin texto adicional, sin saludos, sin disculpas, sin markdown.";
+    private String buildAuditSystemPrompt(List<AuditStage> stages) {
+        StringBuilder etapasTexto = new StringBuilder();
+        for (int i = 0; i < stages.size(); i++) {
+            AuditStage s = stages.get(i);
+            etapasTexto.append("\nETAPA ").append(i + 1).append(" | ")
+                       .append(s.getNombre().toUpperCase()).append("\n");
+            if (s.getDescripcion() != null && !s.getDescripcion().isBlank()) {
+                etapasTexto.append(s.getDescripcion()).append("\n");
+            }
+            etapasTexto.append("(ID interno: ").append(s.getId()).append(")\n");
+        }
+
+        return "Sos un auditor experto y exigente de procesos de venta por WhatsApp. "
+            + "Tu tarea es analizar las conversaciones del período y producir un informe "
+            + "detallado de cumplimiento.\n\n"
+
+            + "## ETAPAS A AUDITAR\n"
+            + "Cada agencia define sus propias etapas. Para esta agencia las etapas son:\n"
+            + etapasTexto.toString() + "\n"
+
+            + "## IDENTIFICACIÓN DE VENDEDORES\n"
+            + "Para cada mensaje del vendedor, identificá su nombre usando esta prioridad:\n"
+            + "1. Nombre entre corchetes en el prefijo del mensaje: VENDEDOR[nombre].\n"
+            + "2. Nombre al pie de documentos PDF si aparece campo 'Vendedor:' o similar.\n"
+            + "3. Si no podés identificarlo, usá 'Vendedor desconocido'.\n\n"
+
+            + "## EVALUACIÓN DE CUMPLIMIENTO POR ETAPA\n"
+            + "Por cada etapa, asigná un estado:\n"
+            + "- 'cumplido': el vendedor siguió la etapa correctamente.\n"
+            + "- 'parcial': la etapa se cumplió incompleta o con errores menores.\n"
+            + "- 'incumplido': la etapa no se ejecutó o tuvo errores graves.\n"
+            + "- 'no_aplica': la etapa no corresponde a este contexto (ej: post-venta cuando "
+            + "no hubo venta).\n\n"
+
+            + "## ESTADOS DE CONVERSACIÓN\n"
+            + "Para cada conversación, asigná un estado final:\n"
+            + "- cerrado: hay confirmación explícita de compra.\n"
+            + "- presupuestado: se entregó propuesta/precio pero sin confirmación.\n"
+            + "- sin_responder: el cliente escribió y el vendedor nunca respondió.\n"
+            + "- incompleto: el proceso se cortó antes de llegar a propuesta.\n"
+            + "- seguimiento: necesita seguimiento activo.\n\n"
+
+            + "## TIEMPOS DE RESPUESTA\n"
+            + "Calculá el tiempo en minutos desde el primer mensaje del CLIENTE hasta la "
+            + "primera respuesta del VENDEDOR. Si el cliente escribió fuera del horario "
+            + "laboral configurado, marcá 'tiempo_ok' como true sin penalizar.\n\n"
+
+            + "## CONTEXTO DE MENSAJES\n"
+            + "Algunos mensajes incluyen contenido enriquecido entre corchetes:\n"
+            + "- [Transcripción de audio: \"...\"] — texto de un audio.\n"
+            + "- [Contenido del documento (PDF/DOCX/TXT): ...] — texto de un adjunto.\n"
+            + "Analizá ese contenido con el mismo criterio que el texto plano. Si el "
+            + "contenido es relevante para una etapa, citá el fragmento como evidencia.\n\n"
+
+            + "## INSTRUCCIONES OBLIGATORIAS\n"
+            + "1. Por CADA etapa listada arriba, devolvé un objeto en 'procedimientos' con "
+            + "el ID interno exacto (campo 'stage_id') y el estado.\n"
+            + "2. Por cada evidencia incluí: vendedor (nombre, no ID), cliente_id, "
+            + "cuando (dd/MM HH:mm exacto), como (descripción), cita_textual (texto exacto).\n"
+            + "3. Si la etapa fue parcial o incumplida, incluí 'esperado' (qué dictaba la "
+            + "etapa) vs 'ocurrido' (qué pasó).\n"
+            + "4. NO des respuestas genéricas. Sin cita textual exacta, no incluyas la evidencia.\n"
+            + "5. Si la etapa no tuvo actividad relevante, marcá 'no_aplica' con justificación "
+            + "'Sin evidencia suficiente en el período'.\n"
+            + "6. El resumen_ejecutivo: mínimo 150 palabras, 2-3 párrafos. Mencioná "
+            + "vendedores por nombre y recomendaciones accionables.\n"
+            + "7. En 'conversaciones' analizá cada hilo de cliente por separado.\n"
+            + "8. NO calculés el score final — el backend lo calcula con los pesos configurados.\n"
+            + "9. Respondé ÚNICAMENTE con el JSON. Sin markdown, sin texto antes ni después.\n\n"
+
+            + "## FORMATO JSON ESTRICTO\n"
+            + "{\n"
+            + "  \"resumen_ejecutivo\": \"2-3 párrafos con panorama, vendedores destacados/críticos y recomendaciones.\",\n"
+            + "  \"procedimientos\": [\n"
+            + "    {\n"
+            + "      \"stage_id\": 123,\n"
+            + "      \"punto\": \"Nombre de la etapa\",\n"
+            + "      \"estado\": \"cumplido\" | \"parcial\" | \"incumplido\" | \"no_aplica\",\n"
+            + "      \"justificacion\": \"Explicación detallada con nombres de vendedores.\",\n"
+            + "      \"evidencias\": [\n"
+            + "        {\n"
+            + "          \"vendedor\": \"Nombre\",\n"
+            + "          \"cliente_id\": 123,\n"
+            + "          \"cuando\": \"dd/MM HH:mm\",\n"
+            + "          \"como\": \"Descripción\",\n"
+            + "          \"cita_textual\": \"Texto exacto\",\n"
+            + "          \"esperado\": \"Qué se esperaba\",\n"
+            + "          \"ocurrido\": \"Qué pasó realmente\"\n"
+            + "        }\n"
+            + "      ]\n"
+            + "    }\n"
+            + "  ],\n"
+            + "  \"conversaciones\": [\n"
+            + "    {\n"
+            + "      \"cliente_id\": 123,\n"
+            + "      \"vendedor\": \"Nombre\",\n"
+            + "      \"estado\": \"cerrado|presupuestado|sin_responder|incompleto|seguimiento\",\n"
+            + "      \"tiempo_respuesta_minutos\": null,\n"
+            + "      \"tiempo_ok\": true,\n"
+            + "      \"resumen\": \"Una oración máx 15 palabras.\",\n"
+            + "      \"analisis\": \"2-3 oraciones con errores concretos.\",\n"
+            + "      \"etapas_cumplidas\": [123, 456]\n"
+            + "    }\n"
+            + "  ],\n"
+            + "  \"hallazgos\": [\n"
+            + "    {\n"
+            + "      \"tipo\": \"incumplimiento\" | \"advertencia\",\n"
+            + "      \"vendedor\": \"Nombre\",\n"
+            + "      \"cliente_id\": 123,\n"
+            + "      \"regla_violada\": \"Nombre del incumplimiento\",\n"
+            + "      \"cita_textual\": \"Texto exacto\",\n"
+            + "      \"cuando\": \"dd/MM HH:mm\",\n"
+            + "      \"severidad\": \"alta\" | \"media\" | \"baja\",\n"
+            + "      \"confianza\": \"alta\" | \"media\" | \"baja\",\n"
+            + "      \"descripcion\": \"Explicación e impacto\"\n"
+            + "    }\n"
+            + "  ],\n"
+            + "  \"estadisticas\": {\n"
+            + "    \"total_conversaciones\": 0,\n"
+            + "    \"cerradas\": 0,\n"
+            + "    \"presupuestadas\": 0,\n"
+            + "    \"sin_responder\": 0,\n"
+            + "    \"incompletas\": 0,\n"
+            + "    \"tiempo_respuesta_promedio_minutos\": null\n"
+            + "  }\n"
+            + "}";
     }
 }

@@ -47,6 +47,9 @@ public class AiAuditReport {
     @Column(nullable = false)
     private int incumplimientos = 0;
 
+    @Column(name = "score", nullable = false)
+    private int score = 0;
+
     @Column(name = "tokens_usados", nullable = false)
     private int tokensUsados = 0;
 
@@ -88,6 +91,9 @@ public class AiAuditReport {
 
     public int getIncumplimientos() { return incumplimientos; }
     public void setIncumplimientos(int incumplimientos) { this.incumplimientos = incumplimientos; }
+
+    public int getScore() { return score; }
+    public void setScore(int score) { this.score = score; }
 
     public int getTokensUsados() { return tokensUsados; }
     public void setTokensUsados(int tokensUsados) { this.tokensUsados = tokensUsados; }

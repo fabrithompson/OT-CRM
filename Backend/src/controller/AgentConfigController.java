@@ -16,7 +16,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.MimeTypeUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,10 +30,12 @@ import java.time.LocalTime;
 
 import model.AgentConfig;
 import model.Agencia;
+import model.AuditStage;
 import model.Dispositivo;
 import model.Usuario;
 import repository.AgenciaRepository;
 import repository.AgentConfigRepository;
+import repository.AuditStageRepository;
 import repository.ClienteRepository;
 import repository.DispositivoRepository;
 import repository.EtapaRepository;
@@ -74,6 +79,7 @@ public class AgentConfigController {
 
     private final ChatClient chatClient;
     private final AgentConfigRepository agentConfigRepository;
+    private final AuditStageRepository auditStageRepository;
     private final UsuarioRepository usuarioRepository;
     private final ClienteRepository clienteRepository;
     private final EtapaRepository etapaRepository;
@@ -85,6 +91,7 @@ public class AgentConfigController {
 
     public AgentConfigController(ChatClient chatClient,
                                   AgentConfigRepository agentConfigRepository,
+                                  AuditStageRepository auditStageRepository,
                                   UsuarioRepository usuarioRepository,
                                   ClienteRepository clienteRepository,
                                   EtapaRepository etapaRepository,
@@ -95,6 +102,7 @@ public class AgentConfigController {
                                   AgenciaRepository agenciaRepository) {
         this.chatClient = chatClient;
         this.agentConfigRepository = agentConfigRepository;
+        this.auditStageRepository = auditStageRepository;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.etapaRepository = etapaRepository;
@@ -113,6 +121,8 @@ public class AgentConfigController {
                                String auditEmail, String auditWhatsappPhone,
                                Long auditDispositivoId,
                                String horarioInicio, String horarioFin) {}
+    record StageRequest(String nombre, String descripcion, Integer peso, Integer orden, Boolean activa) {}
+    record StagesReorderRequest(List<Long> orden) {}
 
     @Transactional(readOnly = true)
     @GetMapping
@@ -209,6 +219,122 @@ public class AgentConfigController {
         }
 
         return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    @Transactional(readOnly = true)
+    @GetMapping("/audit/stages")
+    public ResponseEntity<?> listStages(@AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null) return ResponseEntity.ok(List.of());
+        AgentConfig config = agentConfigRepository
+                .findByAgenciaId(usuario.getAgencia().getId()).orElse(null);
+        if (config == null) return ResponseEntity.ok(List.of());
+        return ResponseEntity.ok(
+            auditStageRepository.findAllByAgentConfigId(config.getId())
+                .stream().map(this::stageToMap).toList()
+        );
+    }
+
+    @Transactional
+    @PostMapping("/audit/stages")
+    public ResponseEntity<?> createStage(@AuthenticationPrincipal UserDetails userDetails,
+                                          @RequestBody StageRequest req) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null)
+            return ResponseEntity.badRequest().body(Map.of("error", "Sin agencia"));
+        if (req == null || req.nombre() == null || req.nombre().isBlank())
+            return ResponseEntity.badRequest().body(Map.of("error", "Nombre requerido"));
+
+        AgentConfig config = agentConfigRepository
+                .findByAgenciaId(usuario.getAgencia().getId())
+                .orElseThrow(() -> new RuntimeException("AgentConfig no encontrada"));
+
+        AuditStage stage = new AuditStage();
+        stage.setAgentConfig(config);
+        stage.setNombre(req.nombre().trim());
+        stage.setDescripcion(req.descripcion());
+        stage.setPeso(req.peso() != null ? Math.max(1, Math.min(100, req.peso())) : 10);
+        stage.setOrden(req.orden() != null ? req.orden()
+                : (int) auditStageRepository.countByAgentConfigId(config.getId()));
+        stage.setActiva(req.activa() == null || req.activa());
+        auditStageRepository.save(stage);
+        return ResponseEntity.ok(stageToMap(stage));
+    }
+
+    @Transactional
+    @PatchMapping("/audit/stages/{stageId}")
+    public ResponseEntity<?> updateStage(@AuthenticationPrincipal UserDetails userDetails,
+                                          @PathVariable Long stageId,
+                                          @RequestBody StageRequest req) {
+        Usuario usuario = getUsuario(userDetails);
+        AuditStage stage = auditStageRepository.findById(stageId).orElse(null);
+        if (stage == null || !stageBelongsToUser(stage, usuario))
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Etapa no encontrada"));
+
+        if (req != null) {
+            if (req.nombre() != null && !req.nombre().isBlank()) stage.setNombre(req.nombre().trim());
+            if (req.descripcion() != null) stage.setDescripcion(req.descripcion());
+            if (req.peso() != null) stage.setPeso(Math.max(1, Math.min(100, req.peso())));
+            if (req.orden() != null) stage.setOrden(req.orden());
+            if (req.activa() != null) stage.setActiva(req.activa());
+        }
+        auditStageRepository.save(stage);
+        return ResponseEntity.ok(stageToMap(stage));
+    }
+
+    @Transactional
+    @DeleteMapping("/audit/stages/{stageId}")
+    public ResponseEntity<?> deleteStage(@AuthenticationPrincipal UserDetails userDetails,
+                                          @PathVariable Long stageId) {
+        Usuario usuario = getUsuario(userDetails);
+        AuditStage stage = auditStageRepository.findById(stageId).orElse(null);
+        if (stage == null || !stageBelongsToUser(stage, usuario))
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Etapa no encontrada"));
+        auditStageRepository.delete(stage);
+        return ResponseEntity.ok(Map.of("ok", true, "id", stageId));
+    }
+
+    @Transactional
+    @PostMapping("/audit/stages/reorder")
+    public ResponseEntity<?> reorderStages(@AuthenticationPrincipal UserDetails userDetails,
+                                            @RequestBody StagesReorderRequest req) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null)
+            return ResponseEntity.badRequest().body(Map.of("error", "Sin agencia"));
+        if (req == null || req.orden() == null || req.orden().isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("error", "Lista vacía"));
+
+        AgentConfig config = agentConfigRepository
+                .findByAgenciaId(usuario.getAgencia().getId()).orElse(null);
+        if (config == null) return ResponseEntity.badRequest().body(Map.of("error", "Sin configuración"));
+
+        int i = 0;
+        for (Long id : req.orden()) {
+            if (id == null) continue;
+            AuditStage s = auditStageRepository.findById(id).orElse(null);
+            if (s != null && s.getAgentConfig().getId().equals(config.getId())) {
+                s.setOrden(i++);
+                auditStageRepository.save(s);
+            }
+        }
+        return ResponseEntity.ok(Map.of("ok", true, "actualizados", i));
+    }
+
+    private boolean stageBelongsToUser(AuditStage stage, Usuario usuario) {
+        if (stage.getAgentConfig() == null || usuario.getAgencia() == null) return false;
+        if (stage.getAgentConfig().getAgencia() == null) return false;
+        return stage.getAgentConfig().getAgencia().getId().equals(usuario.getAgencia().getId());
+    }
+
+    private Map<String, Object> stageToMap(AuditStage s) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("id", s.getId());
+        m.put("nombre", s.getNombre());
+        m.put("descripcion", s.getDescripcion());
+        m.put("peso", s.getPeso());
+        m.put("orden", s.getOrden());
+        m.put("activa", s.isActiva());
+        return m;
     }
 
     @SuppressWarnings("null")
