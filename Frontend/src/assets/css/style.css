@@ -99,7 +99,7 @@ body {
 }
 
 /* ════════════════════════════════════════
-   Logo — Image-based brand mark
+   Logo — Animated inline SVG (OT)
    Used in: Sidebar, Landing, Auth
    ════════════════════════════════════════ */
 .logo-orb-wrap {
@@ -108,17 +108,62 @@ body {
     gap: 4px;
     flex-shrink: 0;
     text-decoration: none;
+    transition: transform .4s cubic-bezier(.2,.7,.2,1);
 }
+.logo-orb-wrap:hover { transform: translateY(-6px); }
 
-/* The PNG logo — inverted so the dark mark appears white.
-   mix-blend-mode: screen makes the inverted black background
-   invisible on dark pages, leaving only the white marks visible. */
-.logo-img {
+/* Inline OT SVG */
+.ot-svg {
     display: block;
     flex-shrink: 0;
+    overflow: visible;
     user-select: none;
-    filter: invert(1) brightness(1.1);
-    mix-blend-mode: screen;
+}
+.ot-svg .ot-mark { transition: filter .4s ease; }
+.logo-orb-wrap:hover .ot-svg .ot-mark {
+    filter: drop-shadow(0 12px 16px rgba(20,32,38,.20));
+}
+
+.ot-svg .ot-lb { transform-box: fill-box; transform-origin: 0% 100%; }
+.ot-svg .ot-rb { transform-box: fill-box; transform-origin: 28% 0%; }
+.ot-svg .ot-o,
+.ot-svg .ot-t  { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* Gloss sweep — loops in rest */
+.ot-svg .ot-sheen {
+    opacity: 0;
+    animation: ot-sheen 6.5s 1.6s ease-in-out infinite;
+}
+@keyframes ot-sheen {
+    0%   { transform: translateX(186px) skewX(-20deg); opacity: 0; }
+    10%  { opacity: .5; }
+    34%  { opacity: .5; }
+    46%  { transform: translateX(392px) skewX(-20deg); opacity: 0; }
+    100% { transform: translateX(392px) skewX(-20deg); opacity: 0; }
+}
+
+/* Entrance — only while .ot-anim is present; base state is visible */
+.ot-svg.ot-anim .ot-lb { animation: ot-blade .6s cubic-bezier(.2,.7,.2,1) both; }
+.ot-svg.ot-anim .ot-rb { animation: ot-blade .55s .42s cubic-bezier(.2,.7,.2,1) both; }
+.ot-svg.ot-anim .ot-o  { animation: ot-pop .5s .82s cubic-bezier(.2,.8,.2,1.3) both; }
+.ot-svg.ot-anim .ot-t  { animation: ot-pop .5s .96s cubic-bezier(.2,.8,.2,1.3) both; }
+@keyframes ot-blade {
+    0%   { opacity: 0; transform: scale(.04); }
+    100% { opacity: 1; transform: none; }
+}
+@keyframes ot-pop {
+    0%   { opacity: 0; transform: scale(.25) translateY(6px); }
+    100% { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .logo-orb-wrap { transition: none; }
+    .logo-orb-wrap:hover { transform: none; }
+    .ot-svg .ot-sheen,
+    .ot-svg.ot-anim .ot-lb,
+    .ot-svg.ot-anim .ot-rb,
+    .ot-svg.ot-anim .ot-o,
+    .ot-svg.ot-anim .ot-t { animation: none !important; }
 }
 
 .logo-sa {
