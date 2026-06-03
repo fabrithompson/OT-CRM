@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="OT">
+  <rect width="512" height="512" rx="112" fill="#313E46"/>
+  <g transform="translate(256 256) scale(2.2) translate(-300.5 -210)">
+    <path d="M323 156 L229 264 L276 228 Z" fill="#F4F3EF"/>
+    <path d="M323 156 L372 241 L302 210 Z" fill="#F4F3EF"/>
+  </g>
+</svg>
