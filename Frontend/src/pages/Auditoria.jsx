@@ -336,7 +336,7 @@ export default function Auditoria() {
     }
     if (!isEnterprise) return <Navigate to="/planes" replace />;
 
-    const { resumen_ejecutivo, procedimientos, hallazgos, conversaciones } = payload;
+    const { resumen_ejecutivo, procedimientos, hallazgos, conversaciones, estadisticas } = payload;
     const visibles = hideFP ? hallazgos.filter(h => !h.false_positive) : hallazgos;
     const fpCount  = hallazgos.filter(h => h.false_positive).length;
 
@@ -515,6 +515,12 @@ export default function Auditoria() {
                                                 )}
                                                 <IncumplimientosBadge n={selected.incumplimientos} t={t} />
                                                 <ScoreBar score={selected.score || 0} />
+                                                {estadisticas?.respuesta_tiempo_score != null && (
+                                                    <TiempoRespuestaBar
+                                                        score={estadisticas.respuesta_tiempo_score}
+                                                        avgMin={estadisticas.tiempo_respuesta_promedio_minutos}
+                                                    />
+                                                )}
                                             </div>
                                         </div>
                                         <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)' }}>
@@ -1375,6 +1381,50 @@ function ScoreBar({ score, size = 'md' }) {
     );
 }
 
+// ─── helpers de color para tiempo de respuesta ───────────────────────────────
+
+function tiempoScoreStyle(score) {
+    if (score >= 80) return { color: '#10b981', bg: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.25)' };
+    if (score >= 50) return { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.25)' };
+    return             { color: '#ef4444', bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.25)' };
+}
+
+// ─── TiempoRespuestaBar ──────────────────────────────────────────────────────
+
+function TiempoRespuestaBar({ score, avgMin }) {
+    const pct   = Math.max(0, Math.min(100, score || 0));
+    const { color } = tiempoScoreStyle(pct);
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                <span style={{
+                    fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)',
+                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                    <i className="fa-solid fa-stopwatch" style={{ color: '#a78bfa' }} />
+                    Tiempo resp.
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {avgMin != null && (
+                        <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)' }}>
+                            ~{avgMin}min
+                        </span>
+                    )}
+                    <span style={{ fontSize: '0.80rem', fontWeight: 800, color }}>{pct}%</span>
+                </div>
+            </div>
+            <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                <div style={{
+                    height: '100%', width: `${pct}%`, borderRadius: 3,
+                    background: color, transition: 'width 0.4s ease',
+                }} />
+            </div>
+        </div>
+    );
+}
+
 // ─── ConversacionesSection ────────────────────────────────────────────────────
 
 const ESTADO_CONV = {
@@ -1386,7 +1436,7 @@ const ESTADO_CONV = {
 };
 
 function ConversacionesSection({ conversaciones }) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true);
     if (!conversaciones || conversaciones.length === 0) return null;
 
     return (
@@ -1412,11 +1462,13 @@ function ConversacionesSection({ conversaciones }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, animation: 'fadeIn 0.18s ease-out' }}>
                     {conversaciones.map((conv, i) => {
                         const estadoMeta = ESTADO_CONV[conv.estado] || { icon: 'fa-circle', color: '#94a3b8', label: conv.estado };
+                        const tsStyle    = conv.tiempo_score != null ? tiempoScoreStyle(conv.tiempo_score) : null;
                         return (
                             <div key={i} className="db-card" style={{
                                 gap: 8, padding: '12px 14px',
                                 borderLeft: `3px solid ${estadoMeta.color}`,
                             }}>
+                                {/* Fila cabecera: vendedor + badges */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.83rem', fontWeight: 700, color: 'rgba(255,255,255,0.88)' }}>
                                         <i className="fa-solid fa-user" style={{ color: '#a78bfa', fontSize: '0.75rem' }} />
@@ -1428,17 +1480,6 @@ function ConversacionesSection({ conversaciones }) {
                                         )}
                                     </div>
                                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                                        {conv.tiempo_respuesta_minutos != null && (
-                                            <span style={{
-                                                fontSize: '0.68rem', padding: '2px 7px', borderRadius: 6,
-                                                background: conv.tiempo_ok ? 'rgba(16,185,129,0.10)' : 'rgba(239,68,68,0.10)',
-                                                color: conv.tiempo_ok ? '#10b981' : '#ef4444',
-                                                border: `1px solid ${conv.tiempo_ok ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                                            }}>
-                                                <i className="fa-regular fa-clock" style={{ marginRight: 3 }} />
-                                                {conv.tiempo_respuesta_minutos}min
-                                            </span>
-                                        )}
                                         <span style={{
                                             fontSize: '0.70rem', fontWeight: 700, padding: '2px 8px', borderRadius: 6,
                                             background: `${estadoMeta.color}18`, color: estadoMeta.color,
@@ -1450,6 +1491,57 @@ function ConversacionesSection({ conversaciones }) {
                                         </span>
                                     </div>
                                 </div>
+
+                                {/* Fila de tiempo de respuesta */}
+                                {(conv.tiempo_respuesta_minutos != null || conv.tiempo_score != null) && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: 10,
+                                        padding: '7px 10px', borderRadius: 8,
+                                        background: 'rgba(0,0,0,0.18)',
+                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        flexWrap: 'wrap',
+                                    }}>
+                                        <i className="fa-solid fa-stopwatch" style={{ color: '#a78bfa', fontSize: '0.78rem', flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.50)', flexShrink: 0 }}>
+                                            Tiempo de respuesta:
+                                        </span>
+                                        {conv.tiempo_respuesta_minutos != null ? (
+                                            <span style={{
+                                                fontSize: '0.80rem', fontWeight: 700,
+                                                color: conv.tiempo_ok ? '#10b981' : '#ef4444',
+                                            }}>
+                                                <i className="fa-regular fa-clock" style={{ marginRight: 4 }} />
+                                                {conv.tiempo_respuesta_minutos} min
+                                                {conv.tiempo_ok
+                                                    ? <i className="fa-solid fa-check" style={{ marginLeft: 5, fontSize: '0.70rem', color: '#10b981' }} />
+                                                    : <i className="fa-solid fa-triangle-exclamation" style={{ marginLeft: 5, fontSize: '0.70rem', color: '#ef4444' }} />
+                                                }
+                                            </span>
+                                        ) : (
+                                            <span style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.30)', fontStyle: 'italic' }}>
+                                                {conv.estado === 'sin_responder' ? 'Sin respuesta' : 'No medido'}
+                                            </span>
+                                        )}
+                                        {tsStyle && (
+                                            <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 90 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                                        Puntaje
+                                                    </span>
+                                                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: tsStyle.color }}>
+                                                        {conv.tiempo_score}%
+                                                    </span>
+                                                </div>
+                                                <div style={{ height: 4, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                                                    <div style={{
+                                                        height: '100%', width: `${conv.tiempo_score}%`,
+                                                        borderRadius: 3, background: tsStyle.color, transition: 'width 0.4s ease',
+                                                    }} />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {conv.resumen && (
                                     <div style={{ fontSize: '0.81rem', color: 'rgba(255,255,255,0.70)', lineHeight: 1.5 }}>
