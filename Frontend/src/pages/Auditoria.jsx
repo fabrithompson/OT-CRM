@@ -156,6 +156,8 @@ export default function Auditoria() {
         auditEnabled: false, auditEmail: '',
         auditWhatsappPhone: '', auditDispositivoId: '',
         horarioInicio: '09:00', horarioFin: '18:00',
+        respuestaMaxMinutos: 30, respuestaPicoMaxMinutos: 15,
+        horasPico: [{ inicio: '11:00', fin: '12:30' }, { inicio: '17:00', fin: '18:15' }],
     });
     const [dispositivos, setDispositivos] = useState([]);
     const [cfgSaving, setCfgSaving]       = useState(false);
@@ -188,6 +190,14 @@ export default function Auditoria() {
                 auditDispositivoId: d.auditDispositivoId ? String(d.auditDispositivoId) : '',
                 horarioInicio: d.horarioInicio || '09:00',
                 horarioFin: d.horarioFin || '18:00',
+                respuestaMaxMinutos: d.respuestaMaxMinutos ?? 30,
+                respuestaPicoMaxMinutos: d.respuestaPicoMaxMinutos ?? 15,
+                horasPico: (() => {
+                    try {
+                        const p = JSON.parse(d.horasPicoConfig || '[]');
+                        return Array.isArray(p) ? p : [];
+                    } catch { return []; }
+                })(),
             });
         }).catch(() => { /* silencioso */ });
         api.get('/whatsapp').then(res => {
@@ -284,10 +294,11 @@ export default function Auditoria() {
     const saveConfig = async () => {
         setCfgSaving(true);
         try {
-            const { auditDispositivoId, ...rest } = cfg;
+            const { auditDispositivoId, horasPico, ...rest } = cfg;
             await api.put('/agent-config/audit', {
                 ...rest,
                 auditDispositivoId: auditDispositivoId ? Number(auditDispositivoId) : null,
+                horasPicoConfig: JSON.stringify(horasPico || []),
             });
             setCfgSaved(true);
             setTimeout(() => setCfgSaved(false), 2200);
@@ -1718,8 +1729,8 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
     return (
         <div style={{
             flex: 1, width: '100%',
-            overflowY: isMobile ? 'auto' : 'hidden', minHeight: 0,
-            padding: isMobile ? '6px 0 32px' : '8px 2px 2px',
+            overflowY: 'auto', minHeight: 0,
+            padding: isMobile ? '6px 0 32px' : '8px 2px 24px',
             display: 'flex', flexDirection: 'column', gap: 12,
         }}>
             {/* ── Habilitación del auditor (db-metric-card horizontal, igual que AgenteIA) ── */}
@@ -1839,6 +1850,9 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
             </div>
             </div>
 
+            {/* ── Tiempo de respuesta ── */}
+            <ResponseTimeCard cfg={cfg} setCfg={setCfg} />
+
             <button
                 onClick={onSave}
                 disabled={saving || !horarioOk}
@@ -1856,6 +1870,164 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                    style={{ marginRight: 6 }} />
                 {saving ? t('auditor.config.savingBtn') : saved ? t('auditor.config.savedBtn') : t('auditor.config.saveBtn')}
             </button>
+        </div>
+    );
+}
+
+// ─── ResponseTimeCard ────────────────────────────────────────────────────────
+
+function ResponseTimeCard({ cfg, setCfg }) {
+    const update = (k, v) => setCfg(prev => ({ ...prev, [k]: v }));
+    const horasPico  = cfg.horasPico || [];
+    const hayPico    = horasPico.length > 0;
+
+    const updateRango = (i, campo, valor) => {
+        const nuevos = horasPico.map((r, idx) => idx === i ? { ...r, [campo]: valor } : r);
+        update('horasPico', nuevos);
+    };
+
+    const removeRango = (i) => update('horasPico', horasPico.filter((_, idx) => idx !== i));
+
+    const addRango = () => {
+        if (horasPico.length >= 4) return;
+        update('horasPico', [...horasPico, { inicio: '08:00', fin: '09:00' }]);
+    };
+
+    return (
+        <div className="db-card" style={{ gap: 14 }}>
+            <div className="db-card-title" style={{ margin: 0 }}>
+                <i className="fa-solid fa-stopwatch" style={{ color: '#a78bfa' }} />
+                Tiempo de respuesta del vendedor
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, marginTop: -6 }}>
+                El auditor mide el tiempo desde el primer mensaje del cliente hasta la
+                primera respuesta del vendedor y evalúa si fue adecuado.
+            </div>
+
+            {/* Umbral normal */}
+            <Field
+                label="Respuesta lenta a partir de"
+                hint="Si el vendedor tarda más de este tiempo en responder al primer mensaje del cliente, se considera respuesta lenta."
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                        type="number" min="1" max="240"
+                        value={cfg.respuestaMaxMinutos}
+                        onChange={e => update('respuestaMaxMinutos', Math.max(1, Math.min(240, Number(e.target.value) || 30)))}
+                        style={{ ...inputStyle, width: 76, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>minutos</span>
+                </div>
+            </Field>
+
+            {/* Toggle horarios pico */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                    <div className="db-metric-label">Horarios pico (mayor exigencia)</div>
+                    <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)', marginTop: 3, lineHeight: 1.5 }}>
+                        En estos períodos el umbral es más estricto.
+                    </div>
+                </div>
+                <label style={{
+                    position: 'relative', display: 'inline-block',
+                    width: 46, height: 26, cursor: 'pointer', flexShrink: 0, marginTop: 2,
+                }}>
+                    <input
+                        type="checkbox"
+                        checked={hayPico}
+                        onChange={e => update('horasPico', e.target.checked
+                            ? [{ inicio: '11:00', fin: '12:30' }, { inicio: '17:00', fin: '18:15' }]
+                            : []
+                        )}
+                        style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
+                    />
+                    <span style={{
+                        position: 'absolute', inset: 0, borderRadius: 13,
+                        background: hayPico ? '#a78bfa' : 'rgba(255,255,255,0.15)', transition: '0.2s',
+                    }}>
+                        <span style={{
+                            position: 'absolute', top: 3, left: hayPico ? 23 : 3,
+                            width: 20, height: 20, borderRadius: '50%',
+                            background: '#fff', transition: '0.2s',
+                        }} />
+                    </span>
+                </label>
+            </div>
+
+            {hayPico && (
+                <>
+                    <Field
+                        label="Tolerancia en horario pico"
+                        hint="El vendedor debe responder dentro de este tiempo durante los horarios pico configurados abajo."
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input
+                                type="number" min="1" max="120"
+                                value={cfg.respuestaPicoMaxMinutos}
+                                onChange={e => update('respuestaPicoMaxMinutos', Math.max(1, Math.min(120, Number(e.target.value) || 15)))}
+                                style={{ ...inputStyle, width: 76, textAlign: 'center' }}
+                            />
+                            <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>minutos</span>
+                        </div>
+                    </Field>
+
+                    <div>
+                        <div className="db-metric-label" style={{ marginBottom: 8 }}>Rangos de horario pico</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {horasPico.map((r, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <input
+                                        type="time" value={r.inicio}
+                                        onChange={e => updateRango(i, 'inicio', e.target.value)}
+                                        style={{ ...inputStyle, flex: 1, padding: '6px 10px' }}
+                                    />
+                                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>→</span>
+                                    <input
+                                        type="time" value={r.fin}
+                                        onChange={e => updateRango(i, 'fin', e.target.value)}
+                                        style={{ ...inputStyle, flex: 1, padding: '6px 10px' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => removeRango(i)}
+                                        style={{ ...miniBtn(false), color: '#fca5a5', padding: '6px 9px' }}
+                                        title="Eliminar rango"
+                                    >
+                                        <i className="fa-solid fa-xmark" style={{ fontSize: '0.75rem' }} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        {horasPico.length < 4 && (
+                            <button
+                                type="button"
+                                onClick={addRango}
+                                style={{
+                                    marginTop: 8, width: '100%', padding: '7px 14px', borderRadius: 8,
+                                    background: 'rgba(167,139,250,0.08)',
+                                    border: '1px dashed rgba(167,139,250,0.28)',
+                                    color: '#c4b5fd', cursor: 'pointer',
+                                    fontSize: '0.78rem', fontWeight: 600,
+                                }}
+                            >
+                                <i className="fa-solid fa-plus" style={{ marginRight: 6 }} />
+                                Agregar horario pico
+                            </button>
+                        )}
+                    </div>
+
+                    <div style={{
+                        padding: '9px 12px', borderRadius: 8,
+                        background: 'rgba(167,139,250,0.06)',
+                        border: '1px solid rgba(167,139,250,0.16)',
+                        fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
+                    }}>
+                        <i className="fa-solid fa-circle-info" style={{ color: '#a78bfa', marginRight: 5 }} />
+                        Si el cliente escribe <strong style={{ color: 'rgba(255,255,255,0.65)' }}>fuera del horario laboral</strong> configurado,
+                        el tiempo de respuesta no se penaliza.
+                    </div>
+                </>
+            )}
         </div>
     );
 }
