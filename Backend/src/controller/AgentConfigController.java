@@ -120,7 +120,9 @@ public class AgentConfigController {
     record AuditConfigRequest(boolean auditEnabled, String auditProcedures,
                                String auditEmail, String auditWhatsappPhone,
                                Long auditDispositivoId,
-                               String horarioInicio, String horarioFin) {}
+                               String horarioInicio, String horarioFin,
+                               int respuestaMaxMinutos, int respuestaPicoMaxMinutos,
+                               String horasPicoConfig) {}
     record StageRequest(String nombre, String descripcion, Integer peso, Integer orden, Boolean activa) {}
     record StagesReorderRequest(List<Long> orden) {}
 
@@ -196,6 +198,9 @@ public class AgentConfigController {
         config.setAuditProcedures(req.auditProcedures());
         config.setAuditEmail(req.auditEmail());
         config.setAuditWhatsappPhone(req.auditWhatsappPhone());
+        config.setRespuestaMaxMinutos(Math.max(1, req.respuestaMaxMinutos() > 0 ? req.respuestaMaxMinutos() : 30));
+        config.setRespuestaPicoMaxMinutos(Math.max(1, req.respuestaPicoMaxMinutos() > 0 ? req.respuestaPicoMaxMinutos() : 15));
+        config.setHorasPicoConfig(req.horasPicoConfig());
 
         if (req.auditDispositivoId() != null) {
             Dispositivo disp = dispositivoRepository.findById(req.auditDispositivoId()).orElse(null);
@@ -412,9 +417,12 @@ public class AgentConfigController {
         m.put("auditProcedures",    c != null && c.getAuditProcedures() != null ? c.getAuditProcedures() : "");
         m.put("auditEmail",         c != null && c.getAuditEmail() != null ? c.getAuditEmail() : "");
         m.put("auditWhatsappPhone", c != null && c.getAuditWhatsappPhone() != null ? c.getAuditWhatsappPhone() : "");
-        m.put("auditDispositivoId", c != null && c.getAuditDispositivo() != null ? c.getAuditDispositivo().getId() : null);
-        m.put("horarioInicio",      agencia.getHorarioLaboralInicio() != null ? agencia.getHorarioLaboralInicio().toString() : "");
-        m.put("horarioFin",         agencia.getHorarioLaboralFin() != null ? agencia.getHorarioLaboralFin().toString() : "");
+        m.put("auditDispositivoId",        c != null && c.getAuditDispositivo() != null ? c.getAuditDispositivo().getId() : null);
+        m.put("horarioInicio",             agencia.getHorarioLaboralInicio() != null ? agencia.getHorarioLaboralInicio().toString() : "");
+        m.put("horarioFin",                agencia.getHorarioLaboralFin() != null ? agencia.getHorarioLaboralFin().toString() : "");
+        m.put("respuestaMaxMinutos",       c != null ? c.getRespuestaMaxMinutos() : 30);
+        m.put("respuestaPicoMaxMinutos",   c != null ? c.getRespuestaPicoMaxMinutos() : 15);
+        m.put("horasPicoConfig",           c != null && c.getHorasPicoConfig() != null ? c.getHorasPicoConfig() : "[]");
         return m;
     }
 
@@ -427,6 +435,9 @@ public class AgentConfigController {
         m.put("auditDispositivoId", null);
         m.put("horarioInicio", "");
         m.put("horarioFin", "");
+        m.put("respuestaMaxMinutos", 30);
+        m.put("respuestaPicoMaxMinutos", 15);
+        m.put("horasPicoConfig", "[]");
         return m;
     }
 

@@ -114,7 +114,7 @@ public class AiAuditService {
         String conversacionesCtx = buildConversacionesContext(clienteIds, desde, hasta);
         String systemPrompt = legacyMode
                 ? buildLegacyAuditSystemPrompt(config.getAuditProcedures())
-                : buildAuditSystemPrompt(stages);
+                : buildAuditSystemPrompt(stages, config, agencia);
         String userPrompt = "Auditá las conversaciones del período "
                 + desde.format(FMT) + " al " + hasta.format(FMT) + ":\n\n" + conversacionesCtx;
 
@@ -353,7 +353,57 @@ public class AiAuditService {
                 + "}";
     }
 
-    private String buildAuditSystemPrompt(List<AuditStage> stages) {
+    private String buildResponseTimeSection(AgentConfig config, Agencia agencia) {
+        int maxMin  = config != null ? config.getRespuestaMaxMinutos()      : 30;
+        int picoMax = config != null ? config.getRespuestaPicoMaxMinutos()  : 15;
+        String horasPicoJson = config != null ? config.getHorasPicoConfig() : null;
+
+        String horIni = agencia.getHorarioLaboralInicio() != null
+                ? agencia.getHorarioLaboralInicio().toString() : "00:00";
+        String horFin = agencia.getHorarioLaboralFin() != null
+                ? agencia.getHorarioLaboralFin().toString() : "23:59";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("## TIEMPOS DE RESPUESTA\n");
+        sb.append("Calculá el tiempo en minutos desde el primer mensaje del CLIENTE hasta la ")
+          .append("primera respuesta del VENDEDOR en cada conversación.\n");
+        sb.append("- Umbral normal: si el tiempo supera ").append(maxMin)
+          .append(" minutos, marcá 'tiempo_ok' como false.\n");
+        sb.append("- Si el tiempo es ≤ ").append(maxMin)
+          .append(" minutos, marcá 'tiempo_ok' como true.\n");
+
+        boolean hayPico = horasPicoJson != null && !horasPicoJson.isBlank()
+                && !horasPicoJson.equals("[]");
+        if (hayPico) {
+            sb.append("Horarios pico (mayor exigencia — tolerancia reducida a ")
+              .append(picoMax).append(" minutos):\n");
+            try {
+                com.fasterxml.jackson.databind.JsonNode arr = objectMapper.readTree(horasPicoJson);
+                if (arr.isArray()) {
+                    for (com.fasterxml.jackson.databind.JsonNode item : arr) {
+                        String ini = item.has("inicio") ? item.get("inicio").asText() : "?";
+                        String fin = item.has("fin")    ? item.get("fin").asText()    : "?";
+                        sb.append("  - De ").append(ini).append(" a ").append(fin)
+                          .append(": el tiempo máximo aceptable es ").append(picoMax)
+                          .append(" minutos.\n");
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("[buildResponseTimeSection] No se pudo parsear horas_pico_config: {}", e.getMessage());
+            }
+            sb.append("  Si el primer mensaje del CLIENTE cae en un horario pico y el vendedor ")
+              .append("tarda más de ").append(picoMax)
+              .append(" minutos, marcá 'tiempo_ok' como false.\n");
+        }
+
+        sb.append("- Si el cliente escribe fuera del horario laboral (").append(horIni)
+          .append(" – ").append(horFin).append("), no penalizar el tiempo de respuesta: ")
+          .append("marcá 'tiempo_ok' como true independientemente del tiempo transcurrido.\n\n");
+
+        return sb.toString();
+    }
+
+    private String buildAuditSystemPrompt(List<AuditStage> stages, AgentConfig config, Agencia agencia) {
         StringBuilder etapasTexto = new StringBuilder();
         for (int i = 0; i < stages.size(); i++) {
             AuditStage s = stages.get(i);
@@ -395,10 +445,7 @@ public class AiAuditService {
             + "- incompleto: el proceso se cortó antes de llegar a propuesta.\n"
             + "- seguimiento: necesita seguimiento activo.\n\n"
 
-            + "## TIEMPOS DE RESPUESTA\n"
-            + "Calculá el tiempo en minutos desde el primer mensaje del CLIENTE hasta la "
-            + "primera respuesta del VENDEDOR. Si el cliente escribió fuera del horario "
-            + "laboral configurado, marcá 'tiempo_ok' como true sin penalizar.\n\n"
+            + buildResponseTimeSection(config, agencia)
 
             + "## CONTEXTO DE MENSAJES\n"
             + "Algunos mensajes incluyen contenido enriquecido entre corchetes:\n"

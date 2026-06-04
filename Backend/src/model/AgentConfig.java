@@ -61,6 +61,15 @@ public class AgentConfig {
     @JoinColumn(name = "audit_dispositivo_id")
     private Dispositivo auditDispositivo;
 
+    @Column(name = "respuesta_max_minutos", nullable = false)
+    private int respuestaMaxMinutos = 30;
+
+    @Column(name = "respuesta_pico_max_minutos", nullable = false)
+    private int respuestaPicoMaxMinutos = 15;
+
+    @Column(name = "horas_pico_config", columnDefinition = "TEXT")
+    private String horasPicoConfig;
+
     @OneToMany(mappedBy = "agentConfig", cascade = CascadeType.ALL,
                orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("orden ASC, id ASC")
@@ -117,6 +126,15 @@ public class AgentConfig {
 
     public Dispositivo getAuditDispositivo() { return auditDispositivo; }
     public void setAuditDispositivo(Dispositivo auditDispositivo) { this.auditDispositivo = auditDispositivo; }
+
+    public int getRespuestaMaxMinutos() { return respuestaMaxMinutos; }
+    public void setRespuestaMaxMinutos(int respuestaMaxMinutos) { this.respuestaMaxMinutos = respuestaMaxMinutos; }
+
+    public int getRespuestaPicoMaxMinutos() { return respuestaPicoMaxMinutos; }
+    public void setRespuestaPicoMaxMinutos(int respuestaPicoMaxMinutos) { this.respuestaPicoMaxMinutos = respuestaPicoMaxMinutos; }
+
+    public String getHorasPicoConfig() { return horasPicoConfig; }
+    public void setHorasPicoConfig(String horasPicoConfig) { this.horasPicoConfig = horasPicoConfig; }
 
     public List<AuditStage> getStages() { return stages; }
     public void setStages(List<AuditStage> stages) { this.stages = stages; }
