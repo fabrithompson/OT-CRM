@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +35,9 @@ import repository.MensajeRepository;
 public class AiAuditService {
 
     private static final Logger log = LoggerFactory.getLogger(AiAuditService.class);
-    private static final int MAX_CLIENTES = 30;
+    // Tope de seguridad para evitar desbordamiento del contexto del LLM.
+    // GPT-4o soporta ~128k tokens; 25 mensajes × ~50 tokens × 200 clientes ≈ 250k (ajustar si necesario).
+    private static final int MAX_CLIENTES = 200;
     private static final int MAX_MENSAJES_POR_CLIENTE = 25;
     private static final int MAX_MEDIA_POR_CLIENTE = 3;
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM HH:mm");
@@ -103,8 +104,13 @@ public class AiAuditService {
             log.info("[AiAuditService] Usando modo legacy (auditProcedures) para config {}", config.getId());
         }
 
-        List<Long> clienteIds = mensajeRepository
-                .findClienteIdsActivosEnPeriodo(agenciaId, desde, hasta, PageRequest.of(0, MAX_CLIENTES));
+        List<Long> clienteIds = new java.util.ArrayList<>(
+                mensajeRepository.findAllClienteIdsActivosEnPeriodo(agenciaId, desde, hasta));
+        if (clienteIds.size() > MAX_CLIENTES) {
+            log.warn("[AiAuditService] Agencia {} tiene {} clientes activos; se procesan los primeros {}.",
+                    agenciaId, clienteIds.size(), MAX_CLIENTES);
+            clienteIds = clienteIds.subList(0, MAX_CLIENTES);
+        }
 
         if (clienteIds.isEmpty()) {
             AiAuditReport report = buildEmptyReport(agencia, desde, hasta);
@@ -190,9 +196,46 @@ public class AiAuditService {
             }
             normalized.set("procedimientos", procsOut);
 
-            // Preservar conversaciones y estadísticas si la IA las devuelve
-            if (root.has("conversaciones")) normalized.set("conversaciones", root.get("conversaciones"));
-            if (root.has("estadisticas")) normalized.set("estadisticas", root.get("estadisticas"));
+            // Enriquecer conversaciones con tiempo_score calculado en el backend
+            ArrayNode conversacionesNode = root.has("conversaciones") && root.get("conversaciones").isArray()
+                    ? (ArrayNode) root.get("conversaciones").deepCopy()
+                    : objectMapper.createArrayNode();
+
+            int sumaTiempoScore = 0;
+            int convConMedicion  = 0;
+            long sumaTiempoMin   = 0;
+            int  convConTiempo   = 0;
+            for (int ci = 0; ci < conversacionesNode.size(); ci++) {
+                JsonNode cn = conversacionesNode.get(ci);
+                if (!cn.isObject()) continue;
+                ObjectNode conv = (ObjectNode) cn;
+                int tScore = calcularTiempoScoreConv(conv, config);
+                conv.put("tiempo_score", tScore);
+                boolean sinResponder = "sin_responder".equals(conv.path("estado").asText(""));
+                boolean tieneTiempo  = !conv.path("tiempo_respuesta_minutos").isMissingNode()
+                                    && !conv.path("tiempo_respuesta_minutos").isNull();
+                if (tieneTiempo || sinResponder) {
+                    sumaTiempoScore += tScore;
+                    convConMedicion++;
+                }
+                if (tieneTiempo) {
+                    sumaTiempoMin += conv.path("tiempo_respuesta_minutos").asLong();
+                    convConTiempo++;
+                }
+            }
+            normalized.set("conversaciones", conversacionesNode);
+
+            // Enriquecer estadísticas con métricas de tiempo de respuesta
+            ObjectNode statsOut = root.has("estadisticas") && root.get("estadisticas").isObject()
+                    ? (ObjectNode) root.get("estadisticas").deepCopy()
+                    : objectMapper.createObjectNode();
+            if (convConMedicion > 0) {
+                statsOut.put("respuesta_tiempo_score", sumaTiempoScore / convConMedicion);
+            }
+            if (convConTiempo > 0) {
+                statsOut.put("tiempo_respuesta_promedio_minutos", sumaTiempoMin / convConTiempo);
+            }
+            normalized.set("estadisticas", statsOut);
 
             String resumenEjecutivo = root.has("resumen_ejecutivo")
                     ? root.get("resumen_ejecutivo").asText("")
@@ -351,6 +394,27 @@ public class AiAuditService {
                 + "  ],\n"
                 + "  \"hallazgos\": []\n"
                 + "}";
+    }
+
+    private int calcularTiempoScoreConv(JsonNode conv, AgentConfig config) {
+        boolean tiempoOk = !conv.path("tiempo_ok").isMissingNode()
+                        && !conv.path("tiempo_ok").isNull()
+                        && conv.path("tiempo_ok").asBoolean();
+        if (tiempoOk) return 100;
+
+        String estado = conv.path("estado").asText("");
+        if ("sin_responder".equals(estado)) return 0;
+
+        if (conv.path("tiempo_respuesta_minutos").isMissingNode()
+                || conv.path("tiempo_respuesta_minutos").isNull()) return 0;
+
+        int tiempoMin = conv.path("tiempo_respuesta_minutos").asInt();
+        int umbral    = config != null ? config.getRespuestaMaxMinutos() : 30;
+        if (tiempoMin <= 0 || tiempoMin <= umbral) return 100;
+
+        // Por cada "umbral" adicional de tiempo, el puntaje baja 50 puntos
+        double sobreUmbral = (double)(tiempoMin - umbral) / umbral;
+        return (int) Math.max(0, Math.round(100 - sobreUmbral * 50));
     }
 
     private String buildResponseTimeSection(AgentConfig config, Agencia agencia) {
