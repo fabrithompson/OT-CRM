@@ -88,18 +88,6 @@ public class AiAuditScheduler {
     }
 
     private String buildWhatsAppSummary(AiAuditReport report) {
-        String periodo = report.getPeriodoInicio().format(FMT) + " al " + report.getPeriodoFin().format(FMT);
-        int total = report.getIncumplimientos();
-        StringBuilder sb = new StringBuilder();
-        sb.append("*Reporte de Auditoría IA — OT CRM*\n");
-        sb.append("Período: ").append(periodo).append("\n\n");
-        if (total == 0) {
-            sb.append("Sin incumplimientos detectados en el período analizado.");
-        } else {
-            sb.append("Se detectaron *").append(total).append(" incumplimiento(s)*.\n\n");
-            sb.append(report.getResumen() != null ? report.getResumen() : "");
-        }
-        sb.append("\n\n_Reporte completo disponible en el panel._");
-        return sb.toString();
+        return emailService.buildWhatsAppTexto(report);
     }
 }

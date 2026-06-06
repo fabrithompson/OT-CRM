@@ -38,7 +38,7 @@ public class MediaAuditEnricher {
 
     private static final Logger log = LoggerFactory.getLogger(MediaAuditEnricher.class);
 
-    private static final int MAX_DOC_CHARS = 2000;
+    private static final int MAX_DOC_CHARS = 5000;
     private static final int MAX_AUDIO_BYTES = 24 * 1024 * 1024; // 24 MB (límite Whisper 25 MB)
     private static final String WHISPER_URL = "https://api.openai.com/v1/audio/transcriptions";
 
@@ -69,6 +69,10 @@ public class MediaAuditEnricher {
 
     // ─── Audio ────────────────────────────────────────────────────────────────
 
+    // Extensiones de audio que Whisper acepta
+    private static final java.util.Set<String> AUDIO_EXTS = java.util.Set.of(
+            "mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm", "ogg", "oga", "flac");
+
     @Nullable
     private String enriquecerAudio(Mensaje m) {
         try {
@@ -76,8 +80,17 @@ public class MediaAuditEnricher {
             if (bytes == null || bytes.length == 0) return null;
             if (bytes.length > MAX_AUDIO_BYTES) return "[Audio: demasiado grande para transcribir]";
 
-            String filename = extractFilename(m.getUrlArchivo(), "audio.ogg");
-            String transcript = transcribirWhisper(bytes, filename);
+            // Normalizar OGA → OGG (mismo codec, Whisper lo acepta como OGG)
+            String rawName = extractFilename(m.getUrlArchivo(), "audio.ogg");
+            String ext     = extension(rawName);
+            if ("oga".equals(ext)) rawName = rawName.replaceAll("\\.oga$", ".ogg");
+
+            // Si la extensión no es reconocida por Whisper, forzar a .ogg
+            if (!AUDIO_EXTS.contains(ext) && !ext.isEmpty()) {
+                rawName = "audio.ogg";
+            }
+
+            String transcript = transcribirWhisper(bytes, rawName);
             if (transcript == null || transcript.isBlank()) return null;
             return "[Transcripción de audio: \"" + transcript.trim() + "\"]";
         } catch (Exception e) {
@@ -90,7 +103,9 @@ public class MediaAuditEnricher {
     @Nullable
     private String transcribirWhisper(byte[] bytes, String filename) {
         if (openAiApiKey == null || openAiApiKey.isBlank()) {
-            log.warn("OPENAI_API_KEY no configurada, omitiendo transcripción de audio");
+            log.error("OPENAI_API_KEY (spring.ai.openai.api-key) no está configurada — "
+                    + "la transcripción de audios en auditoría no funcionará. "
+                    + "Configurá la variable de entorno SPRING_AI_OPENAI_API_KEY.");
             return null;
         }
 
@@ -134,7 +149,8 @@ public class MediaAuditEnricher {
             String texto = switch (ext) {
                 case "pdf"  -> extraerPdf(bytes);
                 case "docx" -> extraerDocx(bytes);
-                case "txt"  -> new String(bytes, StandardCharsets.UTF_8);
+                case "xlsx" -> extraerXlsx(bytes);
+                case "txt", "csv" -> new String(bytes, StandardCharsets.UTF_8);
                 default     -> null;
             };
             if (texto == null || texto.isBlank()) return null;
@@ -142,7 +158,8 @@ public class MediaAuditEnricher {
             String truncado = texto.length() > MAX_DOC_CHARS
                     ? texto.substring(0, MAX_DOC_CHARS) + "... [truncado]"
                     : texto;
-            return "[Contenido del documento (" + ext.toUpperCase() + "): " + truncado.trim() + "]";
+            String extDisplay = ext.toUpperCase();
+            return "[Contenido del documento (" + extDisplay + "): " + truncado.trim() + "]";
         } catch (Exception e) {
             log.warn("No se pudo extraer texto del documento del mensaje {}: {}", m.getId(), e.getMessage());
             return "[Documento: no se pudo leer el contenido]";
@@ -159,6 +176,35 @@ public class MediaAuditEnricher {
         try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(bytes));
              XWPFWordExtractor extractor = new XWPFWordExtractor(doc)) {
             return extractor.getText();
+        }
+    }
+
+    private String extraerXlsx(byte[] bytes) throws Exception {
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook wb =
+                     new org.apache.poi.xssf.usermodel.XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            StringBuilder sb = new StringBuilder();
+            for (int si = 0; si < wb.getNumberOfSheets(); si++) {
+                org.apache.poi.ss.usermodel.Sheet sheet = wb.getSheetAt(si);
+                if (wb.getNumberOfSheets() > 1) sb.append("[Hoja: ").append(sheet.getSheetName()).append("]\n");
+                for (org.apache.poi.ss.usermodel.Row row : sheet) {
+                    StringBuilder rowSb = new StringBuilder();
+                    for (org.apache.poi.ss.usermodel.Cell cell : row) {
+                        if (rowSb.length() > 0) rowSb.append("\t");
+                        switch (cell.getCellType()) {
+                            case STRING  -> rowSb.append(cell.getStringCellValue());
+                            case NUMERIC -> {
+                                double v = cell.getNumericCellValue();
+                                rowSb.append(v == Math.floor(v) ? (long) v : v);
+                            }
+                            case BOOLEAN -> rowSb.append(cell.getBooleanCellValue());
+                            default -> {}
+                        }
+                    }
+                    String line = rowSb.toString().trim();
+                    if (!line.isEmpty()) sb.append(line).append("\n");
+                }
+            }
+            return sb.toString();
         }
     }
 
@@ -179,11 +225,18 @@ public class MediaAuditEnricher {
 
     private static String extractFilename(String url, String fallback) {
         try {
+            // Cloudinary URLs: .../upload/v1234567890/folder/name.ext
+            // Ignorar segmentos de transformación (ej. /q_auto/f_auto/)
             String path = URI.create(url).getPath();
-            String name = path.substring(path.lastIndexOf('/') + 1);
-            int q = name.indexOf('?');
-            name = q >= 0 ? name.substring(0, q) : name;
-            return name.isBlank() ? fallback : name;
+            // El último segmento con punto es el nombre real del archivo
+            String[] parts = path.split("/");
+            for (int i = parts.length - 1; i >= 0; i--) {
+                String segment = parts[i];
+                if (segment.contains(".")) {
+                    return segment.isEmpty() ? fallback : segment;
+                }
+            }
+            return fallback;
         } catch (Exception e) {
             return fallback;
         }
@@ -191,6 +244,10 @@ public class MediaAuditEnricher {
 
     private static String extension(String filename) {
         int dot = filename.lastIndexOf('.');
-        return dot >= 0 ? filename.substring(dot + 1).toLowerCase() : "";
+        if (dot < 0) return "";
+        // Eliminar posibles query-params pegados a la extensión (ej: "pdf?v=1")
+        String ext = filename.substring(dot + 1);
+        int q = ext.indexOf('?');
+        return (q >= 0 ? ext.substring(0, q) : ext).toLowerCase();
     }
 }
