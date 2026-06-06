@@ -130,23 +130,8 @@ public class AuditController {
         }
     }
 
-    // Mismo formato que el del scheduler, para que el resumen por WhatsApp luzca consistente
-    // venga del envío programado o del botón "Auditar ahora".
     private String buildWhatsAppSummary(AiAuditReport report) {
-        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm");
-        String periodo = report.getPeriodoInicio().format(fmt) + " al " + report.getPeriodoFin().format(fmt);
-        int total = report.getIncumplimientos();
-        StringBuilder sb = new StringBuilder();
-        sb.append("*Reporte de Auditoría IA — OT CRM*\n");
-        sb.append("Período: ").append(periodo).append("\n\n");
-        if (total == 0) {
-            sb.append("Sin incumplimientos detectados en el período analizado.");
-        } else {
-            sb.append("Se detectaron *").append(total).append(" incumplimiento(s)*.\n\n");
-            sb.append(report.getResumen() != null ? report.getResumen() : "");
-        }
-        sb.append("\n\n_Reporte completo disponible en el panel._");
-        return sb.toString();
+        return emailService.buildWhatsAppTexto(report);
     }
 
     @GetMapping("/reports")

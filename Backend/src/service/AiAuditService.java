@@ -39,7 +39,8 @@ public class AiAuditService {
     // GPT-4o soporta ~128k tokens; 25 mensajes × ~50 tokens × 200 clientes ≈ 250k (ajustar si necesario).
     private static final int MAX_CLIENTES = 200;
     private static final int MAX_MENSAJES_POR_CLIENTE = 25;
-    private static final int MAX_MEDIA_POR_CLIENTE = 3;
+    // Sin límite por cliente; todos los audios y documentos del período se transcriben/extraen.
+    // El tope real lo pone MAX_MENSAJES_POR_CLIENTE (25 mensajes = como máximo 25 archivos).
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM HH:mm");
 
     private final ChatClient chatClient;
@@ -348,22 +349,28 @@ public class AiAuditService {
                     ? cliente.getNombre() : cliente.getTelefono();
             sb.append("=== CLIENTE: ").append(nombre).append(" (ID:").append(clienteId).append(") ===\n");
 
-            int mediaEnriquecida = 0;
             for (Mensaje m : mensajes) {
                 String hora = m.getFechaHora() != null ? m.getFechaHora().format(FMT) : "?";
                 String quien = m.isEsSalida()
                         ? "VENDEDOR[" + (m.getAutor() != null ? m.getAutor() : "?") + "]"
                         : "CLIENTE";
-                sb.append("[").append(hora).append("] ").append(quien)
-                  .append(": ").append(m.getContenido());
 
-                if (mediaEnriquecida < MAX_MEDIA_POR_CLIENTE) {
-                    String extra = mediaEnricher.enriquecer(m);
-                    if (extra != null) {
-                        sb.append(" ").append(extra);
-                        mediaEnriquecida++;
-                    }
+                // Contenido base — puede ser vacío en mensajes de solo media
+                String contenido = m.getContenido() != null ? m.getContenido().trim() : "";
+
+                sb.append("[").append(hora).append("] ").append(quien).append(": ");
+
+                // Placeholder de tipo cuando no hay texto (ej. audio puro, doc sin caption)
+                if (contenido.isEmpty() && m.getTipo() != null && m.getTipo() != Mensaje.TipoMensaje.TEXTO) {
+                    sb.append("[").append(m.getTipo().name().toLowerCase()).append("]");
+                } else {
+                    sb.append(contenido);
                 }
+
+                // Enriquecer todos los audios y documentos sin límite artificial por cliente
+                String extra = mediaEnricher.enriquecer(m);
+                if (extra != null) sb.append(" ").append(extra);
+
                 sb.append("\n");
             }
             sb.append("\n");
@@ -511,26 +518,42 @@ public class AiAuditService {
 
             + buildResponseTimeSection(config, agencia)
 
-            + "## CONTEXTO DE MENSAJES\n"
-            + "Algunos mensajes incluyen contenido enriquecido entre corchetes:\n"
-            + "- [Transcripción de audio: \"...\"] — texto de un audio.\n"
-            + "- [Contenido del documento (PDF/DOCX/TXT): ...] — texto de un adjunto.\n"
-            + "Analizá ese contenido con el mismo criterio que el texto plano. Si el "
-            + "contenido es relevante para una etapa, citá el fragmento como evidencia.\n\n"
+            + "## AUDIOS Y DOCUMENTOS — REGLAS DE CITA OBLIGATORIA\n"
+            + "Las conversaciones incluyen contenido enriquecido entre corchetes que fue "
+            + "transcripto o extraído automáticamente. SIEMPRE analizá este contenido con el "
+            + "mismo rigor que el texto escrito.\n\n"
+            + "Formato de aparición en el chat:\n"
+            + "- [Transcripción de audio: \"texto de lo que se dijo\"] — audio del vendedor o del cliente.\n"
+            + "- [Contenido del documento (PDF/DOCX/XLSX/TXT): texto del archivo] — documento enviado.\n"
+            + "- [audio] o [documento] — media presente pero sin contenido disponible.\n\n"
+            + "REGLAS ESTRICTAS para audios y documentos:\n"
+            + "1. SIEMPRE copiá la cita_textual directamente de la transcripción o del "
+            + "documento, entre comillas dobles, tal como aparece. No parafrasees ni resumas.\n"
+            + "2. En el campo 'como' de la evidencia, explicá qué rol cumplió el "
+            + "audio/documento en la conversación y por qué es relevante para la etapa.\n"
+            + "3. Si en el audio/documento hay un error concreto (precio incorrecto, falta "
+            + "de saludo, argumento débil, etc.), describílo explícitamente.\n"
+            + "4. Si un audio fue inaudible o no transcripto, indicálo como 'Audio sin "
+            + "transcripción' en la justificación, sin inventar contenido.\n"
+            + "5. En el campo 'analisis' de cada conversación, mencioná si hubo audios o "
+            + "documentos y qué dijeron concretamente.\n\n"
 
             + "## INSTRUCCIONES OBLIGATORIAS\n"
             + "1. Por CADA etapa listada arriba, devolvé un objeto en 'procedimientos' con "
             + "el ID interno exacto (campo 'stage_id') y el estado.\n"
             + "2. Por cada evidencia incluí: vendedor (nombre, no ID), cliente_id, "
-            + "cuando (dd/MM HH:mm exacto), como (descripción), cita_textual (texto exacto).\n"
+            + "cuando (dd/MM HH:mm exacto), como (descripción con contexto de qué pasó), "
+            + "cita_textual (texto exacto copiado del mensaje, audio o documento).\n"
             + "3. Si la etapa fue parcial o incumplida, incluí 'esperado' (qué dictaba la "
-            + "etapa) vs 'ocurrido' (qué pasó).\n"
+            + "etapa) vs 'ocurrido' (qué pasó realmente, con detalle).\n"
             + "4. NO des respuestas genéricas. Sin cita textual exacta, no incluyas la evidencia.\n"
             + "5. Si la etapa no tuvo actividad relevante, marcá 'no_aplica' con justificación "
             + "'Sin evidencia suficiente en el período'.\n"
-            + "6. El resumen_ejecutivo: mínimo 150 palabras, 2-3 párrafos. Mencioná "
-            + "vendedores por nombre y recomendaciones accionables.\n"
-            + "7. En 'conversaciones' analizá cada hilo de cliente por separado.\n"
+            + "6. El resumen_ejecutivo: mínimo 200 palabras, 2-3 párrafos. Mencioná "
+            + "vendedores por nombre, qué dijeron en audios o documentos clave, y "
+            + "recomendaciones accionables concretas.\n"
+            + "7. En 'conversaciones' analizá cada hilo de cliente por separado, incluyendo "
+            + "qué contenido se compartió por audio o documento.\n"
             + "8. NO calculés el score final — el backend lo calcula con los pesos configurados.\n"
             + "9. Respondé ÚNICAMENTE con el JSON. Sin markdown, sin texto antes ni después.\n\n"
 
@@ -564,7 +587,7 @@ public class AiAuditService {
             + "      \"tiempo_respuesta_minutos\": null,\n"
             + "      \"tiempo_ok\": true,\n"
             + "      \"resumen\": \"Una oración máx 15 palabras.\",\n"
-            + "      \"analisis\": \"2-3 oraciones con errores concretos.\",\n"
+            + "      \"analisis\": \"2-3 oraciones con errores concretos. Si hay audios o documentos, indicá qué dijeron/contenían y cómo impactaron la venta.\",\n"
             + "      \"etapas_cumplidas\": [123, 456]\n"
             + "    }\n"
             + "  ],\n"
