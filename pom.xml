@@ -275,6 +275,22 @@
             </resource>
         </resources>
         <plugins>
+            <!-- Declaramos el annotation processor de Lombok explícitamente.
+                 Con JDK 21+ el auto-descubrimiento no siempre funciona y se rompen
+                 todos los getters/setters generados. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.46</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
