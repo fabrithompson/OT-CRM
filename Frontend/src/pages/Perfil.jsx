@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LangContext';
@@ -6,6 +7,7 @@ import { useLanguage } from '../context/LangContext';
 export default function Perfil() {
     const { t } = useLanguage();
     const { refresh: refreshGlobal } = useUser();
+    const location = useLocation();
     const [usuario, setUsuario]         = useState({ nombreCompleto: '', email: '', fotoUrl: '', username: '' });
     const [newPassword, setNewPassword] = useState('');
     const [fotoFile, setFotoFile]       = useState(null);
@@ -19,6 +21,67 @@ export default function Perfil() {
     const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
     const [solicitudes, setSolicitudes]   = useState([]);
     const [gestionando, setGestionando]   = useState(null);
+
+    // Google Contacts
+    const [googleConectado, setGoogleConectado] = useState(false);
+    const [googleMsg, setGoogleMsg]             = useState({ tipo: '', texto: '' });
+    const [googleLoading, setGoogleLoading]     = useState(false);
+
+    const fetchGoogleStatus = useCallback(async () => {
+        try {
+            const res = await api.get('/google/status');
+            setGoogleConectado(res.data.conectado);
+        } catch {
+            setGoogleConectado(false);
+        }
+    }, []);
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    useEffect(() => { fetchGoogleStatus(); }, [fetchGoogleStatus]);
+
+    // Detectar resultado del OAuth redirect (?google=ok|error|denied)
+    /* eslint-disable react-hooks/set-state-in-effect */
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const googleParam = params.get('google');
+        if (!googleParam) return;
+        if (googleParam === 'ok') {
+            setGoogleMsg({ tipo: 'exito', texto: 'Google Contacts conectado correctamente.' });
+            setGoogleConectado(true);
+        } else if (googleParam === 'denied') {
+            setGoogleMsg({ tipo: 'error', texto: 'Acceso denegado. No se conectó Google Contacts.' });
+        } else {
+            setGoogleMsg({ tipo: 'error', texto: 'Error al conectar Google Contacts. Intentalo de nuevo.' });
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+    }, [location.search]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+
+    const handleGoogleConectar = async () => {
+        setGoogleLoading(true);
+        setGoogleMsg({ tipo: '', texto: '' });
+        try {
+            const res = await api.get('/google/auth-url');
+            window.location.href = res.data.url;
+        } catch {
+            setGoogleMsg({ tipo: 'error', texto: 'No se pudo obtener el link de autorización.' });
+            setGoogleLoading(false);
+        }
+    };
+
+    const handleGoogleDesconectar = async () => {
+        setGoogleLoading(true);
+        setGoogleMsg({ tipo: '', texto: '' });
+        try {
+            await api.delete('/google/disconnect');
+            setGoogleConectado(false);
+            setGoogleMsg({ tipo: 'exito', texto: 'Cuenta Google desconectada.' });
+        } catch {
+            setGoogleMsg({ tipo: 'error', texto: 'Error al desconectar.' });
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
 
     const isAdmin = ['OWNER', 'ADMIN'].includes(usuario.rol);
 
@@ -374,6 +437,69 @@ export default function Perfil() {
                         )}
                     </div>
                 )}
+                {/* Google Contacts */}
+                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '22px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--border-glass)' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(234,67,53,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <i className="fab fa-google" style={{ color: '#ea4335', fontSize: '1.1rem' }}></i>
+                        </div>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Google Contacts</h3>
+                            <p style={{ margin: 0, fontSize: '0.82rem', color: '#6b7280' }}>
+                                Sincroniza nombres de clientes con la agenda de tu celular
+                            </p>
+                        </div>
+                        <div style={{ marginLeft: 'auto' }}>
+                            <span style={{
+                                padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700,
+                                background: googleConectado ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.15)',
+                                color: googleConectado ? '#10b981' : '#6b7280',
+                                border: `1px solid ${googleConectado ? 'rgba(16,185,129,0.3)' : 'rgba(107,114,128,0.3)'}`,
+                            }}>
+                                {googleConectado ? 'Conectado' : 'No conectado'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {googleMsg.texto && (
+                        <div style={{
+                            background: googleMsg.tipo === 'exito' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                            color:      googleMsg.tipo === 'exito' ? '#86efac' : '#fca5a5',
+                            border:     `1px solid ${googleMsg.tipo === 'exito' ? '#10b981' : '#ef4444'}`,
+                            padding: '12px 16px', borderRadius: '10px', marginBottom: '16px',
+                            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem',
+                        }}>
+                            <i className={`fas ${googleMsg.tipo === 'exito' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <span>{googleMsg.texto}</span>
+                        </div>
+                    )}
+
+                    <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                        Al renombrar un cliente desde el chat, el cambio se refleja automáticamente en los contactos de tu celular.
+                        Funciona en Android y en iPhone con Google Contacts activado en Ajustes.
+                    </p>
+
+                    {googleConectado ? (
+                        <button
+                            onClick={handleGoogleDesconectar}
+                            disabled={googleLoading}
+                            style={{ padding: '10px 22px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', fontWeight: 600, cursor: googleLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem' }}
+                        >
+                            {googleLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-unlink"></i>}
+                            Desconectar Google
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleGoogleConectar}
+                            disabled={googleLoading}
+                            style={{ padding: '10px 22px', background: 'rgba(234,67,53,0.12)', border: '1px solid rgba(234,67,53,0.35)', color: '#ea4335', borderRadius: '8px', fontWeight: 600, cursor: googleLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem' }}
+                        >
+                            {googleLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fab fa-google"></i>}
+                            Conectar con Google Contacts
+                        </button>
+                    )}
+                </div>
+
                 </div>
                 </div>
             </div>
