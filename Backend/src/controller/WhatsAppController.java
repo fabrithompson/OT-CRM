@@ -35,10 +35,13 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import model.Cliente;
 import model.Dispositivo;
 import model.Usuario;
+import repository.ClienteRepository;
 import repository.DispositivoRepository;
 import repository.UsuarioRepository;
+import service.BotHttpClient;
 import service.PlanService;
 import service.WhatsAppService;
 import util.DispositivoMapper;
@@ -59,6 +62,8 @@ public class WhatsAppController {
     private final SimpMessagingTemplate messagingTemplate;
     private final RestTemplate restTemplate;
     private final PlanService planService;
+    private final ClienteRepository clienteRepository;
+    private final BotHttpClient botClient;
 
     @SuppressWarnings("unused")
     private final ExecutorService msgExecutor = Executors.newFixedThreadPool(4);
@@ -68,18 +73,53 @@ public class WhatsAppController {
 
     public WhatsAppController(UsuarioRepository usuarioRepository, DispositivoRepository dispositivoRepository,
                               WhatsAppService whatsAppService, SimpMessagingTemplate messagingTemplate,
-                              RestTemplateBuilder restTemplateBuilder, PlanService planService) {
+                              RestTemplateBuilder restTemplateBuilder, PlanService planService,
+                              ClienteRepository clienteRepository, BotHttpClient botClient) {
         this.usuarioRepository = usuarioRepository;
         this.dispositivoRepository = dispositivoRepository;
         this.whatsAppService = whatsAppService;
         this.messagingTemplate = messagingTemplate;
         this.planService = planService;
+        this.clienteRepository = clienteRepository;
+        this.botClient = botClient;
         this.restTemplate = restTemplateBuilder.requestFactory(() -> {
             SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
             factory.setConnectTimeout(5000);
             factory.setReadTimeout(90000);
             return factory;
         }).build();
+    }
+
+    /**
+     * Repara la sesion Signal con un contacto puntual cuando el cliente no
+     * recibe nuestros mensajes ("Esperando este mensaje" del lado del receptor).
+     * Borra la sesion Signal local con ese numero; la proxima interaccion
+     * renegocia con keys frescas.
+     */
+    @PostMapping("/clientes/{clienteId}/repair-session")
+    public ResponseEntity<Map<String, Object>> repararSesionConCliente(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable @NonNull Long clienteId) {
+        Usuario usuario = getUsuarioOrThrow(userDetails);
+        if (usuario.getAgencia() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Sin agencia"));
+        }
+        Cliente cliente = clienteRepository.findById(clienteId)
+                .filter(c -> c.getAgencia() != null
+                        && Objects.equals(c.getAgencia().getId(), usuario.getAgencia().getId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado"));
+        if (cliente.getDispositivo() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Cliente sin dispositivo asociado"));
+        }
+        String sessionId = cliente.getDispositivo().getSessionId();
+        String telefono = cliente.getTelefono();
+        if (sessionId == null || telefono == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Datos incompletos"));
+        }
+        boolean ok = botClient.repairContact(sessionId, telefono);
+        return ResponseEntity.ok(Map.of(
+                "status", ok ? "REPAIRED" : "NO_OP",
+                "telefono", telefono));
     }
 
     @PostConstruct

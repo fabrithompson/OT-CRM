@@ -102,6 +102,55 @@ const msgRetryCounterCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
 const processedMsgIds = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const messageQueues = new Map();
 
+// ── Auto-reparación de sesiones Signal con Bad MAC ─────────────────────────
+// Cuando un contacto manda mensajes que no podemos descifrar (Bad MAC) o
+// nosotros enviamos y el receptor ve "Esperando este mensaje", es porque la
+// sesión Signal con ese contacto quedó desincronizada. Tras detectar N fallos
+// consecutivos, borramos la sesión Signal local con ese contacto: la próxima
+// interacción fuerza a Baileys a pedir un prekey bundle fresco y renegociar
+// desde cero, restaurando la entrega.
+//
+// TTL 10 min: si el contacto deja de fallar (porque ya quedó sincronizado),
+// reseteamos el contador para no reaccionar a fallos esporádicos viejos.
+const failedDecryptCounter = new NodeCache({ stdTTL: 600, checkperiod: 120 });
+const FAILED_DECRYPT_THRESHOLD = 2;
+// Marcamos jids que ya intentamos reparar recientemente para no entrar en
+// un bucle si el problema persiste (ej: el otro lado nos bloqueó).
+const recentlyRepaired = new NodeCache({ stdTTL: 300, checkperiod: 60 });
+
+const tryRepairSignalSession = async (sock, jid, sessionId) => {
+    if (!sock || !jid) return false;
+    if (recentlyRepaired.get(jid)) return false; // ya reparado hace poco
+    try {
+        const signalRepo = sock.signalRepository;
+        if (!signalRepo || typeof signalRepo.jidToSignalProtocolAddress !== 'function') {
+            return false;
+        }
+        const addr = signalRepo.jidToSignalProtocolAddress(jid).toString();
+        // Borrar la session local fuerza renegociacion en la proxima interaccion.
+        await sock.authState.keys.set({ session: { [addr]: null } });
+        recentlyRepaired.set(jid, true);
+        failedDecryptCounter.del(jid);
+        logger.info({ sessionId, jid, signalAddr: addr },
+            'Sesion Signal reseteada por Bad MAC repetido — proxima interaccion renegocia');
+        return true;
+    } catch (err) {
+        logger.warn({ sessionId, jid, err: err.message },
+            'No se pudo resetear sesion Signal localmente');
+        return false;
+    }
+};
+
+const trackFailedDecrypt = (sock, jid, sessionId) => {
+    if (!jid) return;
+    const prev = failedDecryptCounter.get(jid) || 0;
+    const next = prev + 1;
+    failedDecryptCounter.set(jid, next);
+    if (next >= FAILED_DECRYPT_THRESHOLD) {
+        tryRepairSignalSession(sock, jid, sessionId).catch(() => {});
+    }
+};
+
 // Mapeo LID → teléfono real. WhatsApp asigna a algunos contactos un JID
 // "Linked Identity" (xxx@lid) que NO es el teléfono. Lo aprendemos de
 // mensajes entrantes (que traen senderPn / participantPn) y lo reutilizamos
@@ -918,7 +967,21 @@ const startSession = async (sessionId, phoneNumber = null) => {
 
         handlers.messagesUpsert = (m) => {
             for (const msg of m.messages) {
-                if (!msg.message) continue;
+                // Mensaje sin contenido = Baileys no pudo descifrarlo (Bad MAC).
+                // Trackeamos para auto-resetear la sesion Signal con ese
+                // contacto si pasa varias veces seguidas. Si no lo haciamos,
+                // los Bad MAC se acumulaban indefinidamente y los mensajes
+                // del cliente nunca llegaban al CRM.
+                if (!msg.message) {
+                    const failedJid = msg.key?.remoteJid;
+                    if (failedJid && !msg.key?.fromMe
+                            && !failedJid.includes('@g.us')
+                            && !failedJid.includes('@newsletter')
+                            && failedJid !== 'status@broadcast') {
+                        trackFailedDecrypt(sock, failedJid, sessionId);
+                    }
+                    continue;
+                }
 
                 const remoteJid = msg.key.remoteJid;
                 if (!remoteJid || remoteJid.includes('@g.us') || remoteJid.includes('@newsletter') || remoteJid === 'status@broadcast') continue;
@@ -1152,6 +1215,32 @@ const waitForRateLimit = async (numero) => {
 };
 
 const verifiedJids = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
+
+// ── Reparacion manual de sesion Signal con un contacto ────────────────────
+// Borra la sesion Signal local con el contacto indicado. La proxima vez que
+// le enviemos o nos escriba, Baileys renegocia desde cero y los "Esperando
+// este mensaje" del lado del receptor desaparecen.
+app.post('/session/repair-contact', requireAuth, async (req, res) => {
+    const { sessionId, number } = req.body;
+    if (!sessionId || !number) return res.status(400).json({ error: 'Faltan datos' });
+    const sock = sessions.get(sessionId);
+    if (!sock) return res.status(404).json({ error: 'Sesion no activa' });
+    try {
+        let jid = verifiedJids.get(number);
+        if (!jid) {
+            const rawJid = formatToJid(number);
+            const [result] = await sock.onWhatsApp(rawJid);
+            if (!result?.exists) return res.status(400).json({ error: 'Numero no esta en WhatsApp' });
+            jid = result.jid;
+            verifiedJids.set(number, jid);
+        }
+        const ok = await tryRepairSignalSession(sock, jid, sessionId);
+        return res.json({ status: ok ? 'REPAIRED' : 'NO_OP', jid });
+    } catch (e) {
+        logger.error({ sessionId, number, err: e.message }, 'Error reparando sesion Signal');
+        return res.status(500).json({ error: e.message });
+    }
+});
 
 // ── Envio de mensajes de texto ─────────────────────────────────────────────
 // Respuesta sincronica: devuelve el waId para que Java trackee delivery/read
