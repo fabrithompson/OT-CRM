@@ -424,6 +424,48 @@ El label `EXTERNO_WSP` se reemplaza por `Vendedor (celular)` para que sea legibl
 
 ---
 
+### Fase 9 — Disparo automático al cierre del horario laboral
+
+**Commit:** `feat(auditor-ia): fase 9`
+
+**Problema:** el scheduler original se disparaba a las 07:00 AR fijas para todas las agencias, incluso aquellas que ya tenían un `horarioLaboralFin` configurado. La intención del horario laboral en la UI ("solo se auditan mensajes dentro de este rango") sugería que la auditoría debía cerrar al terminar la jornada, no a la mañana siguiente.
+
+**Cambios:**
+
+**Migración V9** (`V9__ai_auditor_auto_run.sql`):
+- `agent_config.last_auto_audit_at TIMESTAMP NULL` — marca la última corrida automática para deduplicar contra reinicios del backend y múltiples instancias.
+
+**`AgentConfig`** — campo `lastAutoAuditAt` con getter/setter.
+
+**`AiAuditScheduler`** rediseñado:
+- Reemplaza el cron `0 0 7 * * *` por un tick **cada minuto** (`0 * * * * *`, zona AR).
+- En cada tick, lee las configs con `audit_enabled = true` y para cada agencia:
+  - Si `horarioLaboralFin` está seteado → dispara cuando `HH:mm` AR coincide exactamente con ese valor.
+  - Si no lo está → mantiene el fallback a las 07:00 (sin sorpresas para clientes legacy).
+- Dedupe por día: si `lastAutoAuditAt.toLocalDate() == hoy`, se saltea (incluso si el server reinicia y el cron vuelve a tickear en el mismo minuto).
+- Período auditado:
+  - Con horario configurado → `[hoy@horarioLaboralInicio, hoy@horarioLaboralFin]`.
+  - Sin horario → últimas 24 hs (mismo comportamiento anterior).
+- Cada agencia se procesa en su **propia transacción** (vía auto-inyección con `@Lazy AiAuditScheduler self`), así una falla en una agencia no arrastra al resto del tick ni invalida la dedupe del resto.
+
+**Flujo end-to-end cuando dispara:**
+1. `AiAuditService.auditarAgencia()` — corre la auditoría sobre el período de la jornada y **persiste el `AiAuditReport` en la BD** (queda visible inmediatamente en `/auditoria`).
+2. `EmailService.enviarReporteAuditoria()` — envía el reporte HTML al `auditEmail` configurado (async, no bloquea).
+3. `WhatsAppService.enviarTextoANumero()` — envía el resumen ejecutivo al `auditWhatsappPhone` configurado vía el dispositivo elegido.
+4. Se setea `lastAutoAuditAt = now()` y se persiste el `AgentConfig`.
+
+**Cómo probar localmente:**
+1. Activar auditoría diaria y configurar horario laboral (ej: `00:00 → 23:59`).
+2. Cambiar temporalmente el horario al minuto siguiente al actual (ej: si son las 14:32, poner fin `14:33`).
+3. Guardar y esperar el tick. A los ≤ 60 seg debería aparecer el reporte en `/auditoria` y dispararse email + WhatsApp.
+
+**Archivos modificados:**
+- `Backend/src/db/migration/V9__ai_auditor_auto_run.sql` (nuevo)
+- `Backend/src/model/AgentConfig.java` (campo `lastAutoAuditAt`)
+- `Backend/src/service/AiAuditScheduler.java` (rediseño completo: tick por minuto + dedupe + período por horario + TX por agencia)
+
+---
+
 ## Configuración necesaria
 
 No se requieren variables de entorno nuevas — el módulo usa las ya existentes:
