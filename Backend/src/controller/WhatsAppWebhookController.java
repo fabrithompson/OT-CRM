@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.annotation.PreDestroy;
-import repository.DispositivoRepository;
 import service.WhatsAppService;
 import util.SecurityUtil;
 
@@ -37,7 +36,6 @@ public class WhatsAppWebhookController {
     private static final String HEADER_API_KEY = "X-Bot-Token";
 
     private final WhatsAppService whatsAppService;
-    private final DispositivoRepository dispositivoRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     private final ExecutorService msgExecutor = Executors.newFixedThreadPool(4);
@@ -46,10 +44,8 @@ public class WhatsAppWebhookController {
     private String secretKey;
 
     public WhatsAppWebhookController(WhatsAppService whatsAppService,
-                                     DispositivoRepository dispositivoRepository,
                                      SimpMessagingTemplate messagingTemplate) {
         this.whatsAppService = whatsAppService;
-        this.dispositivoRepository = dispositivoRepository;
         this.messagingTemplate = messagingTemplate;
     }
 
@@ -94,25 +90,19 @@ public class WhatsAppWebhookController {
         if (!SecurityUtil.constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         if (payload == null || payload.sessionId() == null) return ResponseEntity.badRequest().body("Payload invalido");
 
-        dispositivoRepository.findBySessionId(payload.sessionId()).ifPresent(d -> {
-            d.setEstado(payload.status());
-            if ("CONNECTED".equals(payload.status())) {
-                d.setActivo(true);
-                if (payload.phone() != null) {
-                    d.setNumeroTelefono(payload.phone());
-                }
-            } else if ("DISCONNECTED".equals(payload.status())) {
-                d.setActivo(false);
-            }
-            dispositivoRepository.save(d);
+        // Delegamos al service que aplica lock pesimista + retry. Sin esto,
+        // el bot puede mandar varios webhooks de status en menos de 1s durante
+        // una negociacion Signal, y los UPDATEs encimados disparaban
+        // StaleObjectStateException [Dispositivo#N] en uno de los hilos.
+        Long agenciaIdAfectada = whatsAppService.aplicarEstadoDesdeWebhook(
+                payload.sessionId(), payload.status(), payload.phone());
 
-            if (d.getAgencia() != null) {
-                messagingTemplate.convertAndSend("/topic/bot/" + d.getAgencia().getId(),
-                        Map.of("tipo", payload.status(),
-                                "status", payload.status(),
-                                "sessionId", payload.sessionId()));
-            }
-        });
+        if (agenciaIdAfectada != null) {
+            messagingTemplate.convertAndSend("/topic/bot/" + agenciaIdAfectada,
+                    Map.of("tipo", payload.status(),
+                            "status", payload.status(),
+                            "sessionId", payload.sessionId()));
+        }
         return ResponseEntity.ok("OK");
     }
 
