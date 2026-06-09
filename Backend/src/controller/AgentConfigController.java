@@ -272,6 +272,7 @@ public class AgentConfigController {
                                           @PathVariable Long stageId,
                                           @RequestBody StageRequest req) {
         Usuario usuario = getUsuario(userDetails);
+        @SuppressWarnings("null")
         AuditStage stage = auditStageRepository.findById(stageId).orElse(null);
         if (stage == null || !stageBelongsToUser(stage, usuario))
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Etapa no encontrada"));
@@ -292,6 +293,7 @@ public class AgentConfigController {
     public ResponseEntity<?> deleteStage(@AuthenticationPrincipal UserDetails userDetails,
                                           @PathVariable Long stageId) {
         Usuario usuario = getUsuario(userDetails);
+        @SuppressWarnings("null")
         AuditStage stage = auditStageRepository.findById(stageId).orElse(null);
         if (stage == null || !stageBelongsToUser(stage, usuario))
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Etapa no encontrada"));
