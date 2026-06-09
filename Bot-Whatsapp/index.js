@@ -89,6 +89,13 @@ const LID_MAP_FILE = process.env.RAILWAY_VOLUME_MOUNT_PATH
     ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'lid_map.json')
     : path.join(__dirname, 'lid_map.json');
 
+// Archivo donde persistimos los mensajes salientes (retry store) para que los
+// retry-receipts de WhatsApp funcionen incluso después de un reinicio del bot.
+// Sin esto, los destinatarios ven "Esperando el mensaje. Esto puede demorar un poco."
+const SENT_MESSAGES_FILE = process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'sent_messages.json')
+    : path.join(__dirname, 'sent_messages.json');
+
 if (!fs.existsSync(UPLOADS_FOLDER)) fs.mkdirSync(UPLOADS_FOLDER, { recursive: true });
 if (!fs.existsSync(SESSION_FOLDER_NAME)) fs.mkdirSync(SESSION_FOLDER_NAME, { recursive: true });
 if (!fs.existsSync(FAILED_QUEUE_FOLDER)) fs.mkdirSync(FAILED_QUEUE_FOLDER, { recursive: true });
@@ -202,24 +209,84 @@ const lidToPhone = {
     }
 };
 
-// Store de mensajes salientes (LRU simple). Cuando WhatsApp del destinatario
-// no puede descifrar un mensaje nuestro, manda un "retry receipt" y Baileys
-// llama a getMessage(key) para reenviarlo encriptado con sesión fresca. Sin
-// este store el mensaje se pierde para el destinatario — es una de las causas
-// de los Bad MAC / failed to decrypt que se ven en logs cuando combinados con
-// fallos de sincronización Signal del otro lado.
+// Store de mensajes salientes (LRU simple + persistencia en disco). Cuando
+// WhatsApp del destinatario no puede descifrar un mensaje nuestro, manda un
+// "retry receipt" y Baileys llama a getMessage(key) para reenviarlo encriptado
+// con sesión fresca. Sin este store el mensaje se pierde — es la causa directa
+// del "Esperando el mensaje. Esto puede demorar un poco." en el dispositivo
+// receptor. Persistimos en disco para que los retry-receipts funcionen incluso
+// después de reinicios del bot.
 const SENT_STORE_MAX = 1000;
-const sentMessages = new Map();
+const SENT_STORE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
+
+// Serialización que preserva Uint8Array/Buffer (campos de mediaKey, etc.)
+const msgToJson = (obj) => JSON.stringify(obj, (_k, v) => {
+    if (v instanceof Uint8Array || Buffer.isBuffer(v))
+        return { __buf: Buffer.from(v).toString('base64') };
+    return v;
+});
+const msgFromJson = (str) => JSON.parse(str, (_k, v) =>
+    (v && typeof v === 'object' && v.__buf !== undefined)
+        ? Uint8Array.from(Buffer.from(v.__buf, 'base64'))
+        : v
+);
+
+const sentMessagesTs = new Map(); // id → timestamp de inserción
+
+const sentMessages = (() => {
+    const map = new Map();
+    try {
+        if (fs.existsSync(SENT_MESSAGES_FILE)) {
+            const raw = fs.readFileSync(SENT_MESSAGES_FILE, 'utf8');
+            const obj = msgFromJson(raw);
+            const cutoff = Date.now() - SENT_STORE_TTL_MS;
+            for (const [id, entry] of Object.entries(obj)) {
+                if (entry && entry.ts >= cutoff) {
+                    map.set(id, entry.message);
+                    sentMessagesTs.set(id, entry.ts);
+                }
+            }
+        }
+    } catch (err) {
+        logger?.warn?.({ err: err.message }, 'No se pudo cargar sent_messages.json, empezando vacío');
+    }
+    return map;
+})();
+
+let sentMessagesDirty = false;
+const persistSentMessages = () => {
+    if (!sentMessagesDirty) return;
+    sentMessagesDirty = false;
+    try {
+        const obj = {};
+        for (const [id, message] of sentMessages) {
+            obj[id] = { message, ts: sentMessagesTs.get(id) || Date.now() };
+        }
+        fs.writeFileSync(SENT_MESSAGES_FILE, msgToJson(obj), 'utf8');
+    } catch (err) {
+        logger.warn({ err: err.message }, 'No se pudo persistir sent_messages.json');
+        sentMessagesDirty = true;
+    }
+};
+setInterval(persistSentMessages, 5000);
+process.on('SIGTERM', persistSentMessages);
+process.on('SIGINT', persistSentMessages);
+
 const recordSentMessage = (key, message) => {
     if (!key?.id || !message) return;
     if (sentMessages.has(key.id)) {
         sentMessages.delete(key.id);
+        sentMessagesTs.delete(key.id);
     } else if (sentMessages.size >= SENT_STORE_MAX) {
-        // Evict el más viejo (Map preserva orden de inserción)
         const oldest = sentMessages.keys().next().value;
-        if (oldest !== undefined) sentMessages.delete(oldest);
+        if (oldest !== undefined) {
+            sentMessages.delete(oldest);
+            sentMessagesTs.delete(oldest);
+        }
     }
     sentMessages.set(key.id, message);
+    sentMessagesTs.set(key.id, Date.now());
+    sentMessagesDirty = true;
 };
 
 // ── Autenticacion de endpoints ────────────────────────────────────────────
@@ -930,8 +997,6 @@ const startSession = async (sessionId, phoneNumber = null) => {
                 qrStore.delete(sessionId);
                 resetReconnectState(sessionId);
                 startHealthCheck(sessionId);
-                // Limpiar JIDs cacheados para forzar re-verificacion con claves frescas
-                verifiedJids.flushAll();
                 const userPhone = sock.user ? sock.user.id.split(':')[0] : undefined;
                 await updateJavaStatus(sessionId, 'CONNECTED', userPhone);
                 io.emit('bot_status', { sessionId, status: 'CONNECTED' });
