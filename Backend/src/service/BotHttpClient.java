@@ -137,6 +137,24 @@ public class BotHttpClient {
         }
     }
 
+    /**
+     * Borra la sesion Signal local con un contacto puntual. Util cuando un
+     * cliente especifico no recibe nuestros mensajes ("Esperando este mensaje"
+     * en su lado): la proxima interaccion renegocia con keys frescas.
+     * Devuelve true si el bot confirmó la reparacion.
+     */
+    public boolean repairContact(String sessionId, String number) {
+        try {
+            var resp = http.postForEntity(getBaseUrl() + "/session/repair-contact",
+                    entity(Map.of("sessionId", sessionId, "number", number)),
+                    java.util.Map.class);
+            return resp.getStatusCode().is2xxSuccessful();
+        } catch (RestClientException e) {
+            log.warn("Bot /session/repair-contact falló: {}", e.getMessage());
+            return false;
+        }
+    }
+
     public Map<String, Object> getSessionStatus(String sessionId) {
         ResponseEntity<Map<String, Object>> resp = http.exchange(
                 getBaseUrl() + "/session/status/" + sessionId,
