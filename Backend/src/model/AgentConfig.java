@@ -70,6 +70,9 @@ public class AgentConfig {
     @Column(name = "horas_pico_config", columnDefinition = "TEXT")
     private String horasPicoConfig;
 
+    @Column(name = "last_auto_audit_at")
+    private LocalDateTime lastAutoAuditAt;
+
     @OneToMany(mappedBy = "agentConfig", cascade = CascadeType.ALL,
                orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("orden ASC, id ASC")
@@ -135,6 +138,9 @@ public class AgentConfig {
 
     public String getHorasPicoConfig() { return horasPicoConfig; }
     public void setHorasPicoConfig(String horasPicoConfig) { this.horasPicoConfig = horasPicoConfig; }
+
+    public LocalDateTime getLastAutoAuditAt() { return lastAutoAuditAt; }
+    public void setLastAutoAuditAt(LocalDateTime lastAutoAuditAt) { this.lastAutoAuditAt = lastAutoAuditAt; }
 
     public List<AuditStage> getStages() { return stages; }
     public void setStages(List<AuditStage> stages) { this.stages = stages; }
