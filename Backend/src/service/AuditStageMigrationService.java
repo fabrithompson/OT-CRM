@@ -71,6 +71,7 @@ public class AuditStageMigrationService {
                 migradas, saltadas, fallidas);
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public boolean migrarAgentConfig(AgentConfig config) {
         String texto = config.getAuditProcedures();
