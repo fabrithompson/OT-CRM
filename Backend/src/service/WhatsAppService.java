@@ -477,12 +477,14 @@ public class WhatsAppService {
     public void desvincularSesion(@NonNull Long dispositivoId) {
         Dispositivo d = dispositivoRepository.findById(dispositivoId)
                 .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
+        // MANTENEMOS el sessionId: regenerarlo en cada desvinculo dejaba las
+        // pre-keys Signal de los contactos del otro lado apuntando a un
+        // sessionId fantasma → Bad MAC masivo cuando intentaban escribirnos.
+        // resetSession() en el bot ya borra auth_info_v2/<sessionId>/ por lo
+        // que la próxima vinculación arranca limpia con el mismo nombre.
         botClient.resetSession(d.getSessionId());
         d.setEstado(ESTADO_DISCONNECTED);
         d.setNumeroTelefono(null);
-        String nuevoSessionId = "agencia_" + d.getAgencia().getId() + "_" + UUID.randomUUID().toString().substring(0, 8);
-        d.setSessionId(nuevoSessionId);
-
         dispositivoRepository.save(d);
     }
 
