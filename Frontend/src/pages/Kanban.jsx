@@ -420,7 +420,7 @@ export default function Kanban() {
 
             {/* stompClient se setea desde el WS handshake, no es state derivable en render. */}
             {/* eslint-disable-next-line react-hooks/refs */}
-            {openChatId && <ChatModal clienteId={openChatId} etapas={etapas} stompClient={stompRef.current} usuario={usuario} onClose={() => setOpenChatId(null)} onMoveCard={handleDropCard} onUpdateCard={handleUpdateCard} />}
+            {openChatId && <ChatModal clienteId={openChatId} etapas={etapas} stompClient={stompRef.current} wsStatus={connectionStatus} usuario={usuario} onClose={() => setOpenChatId(null)} onMoveCard={handleDropCard} onUpdateCard={handleUpdateCard} />}
             <CreateStageModal show={createOpen} onClose={() => setCreateOpen(false)} agenciaId={agenciaId} />
             <EditStageModal key={editStage?.id} show={!!editStage} stage={editStage} onClose={() => setEditStage(null)} />
             <DeleteStageModal show={!!deleteStage} stage={deleteStage} onClose={() => setDeleteStage(null)} />
