@@ -109,7 +109,14 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
             },
 
             onStompError: (frame) => {
-                console.error('STOMP error:', frame.headers?.message || frame.body);
+                // "Session closed" / "Whoever connects to the server but doesn't
+                // send CONNECT" son ruido esperado durante deploys y reconexiones.
+                // El cliente reconecta solo con backoff. Solo logueamos al nivel
+                // info, y reservamos error para frames con mensaje custom.
+                const msg = frame.headers?.message || frame.body || '';
+                if (msg && !msg.toLowerCase().includes('session closed')) {
+                    console.warn('STOMP frame de error:', msg);
+                }
                 if (!intentionalClose.current) {
                     setConnectionStatus('reconnecting');
                 }

@@ -14,7 +14,7 @@ const FORMAT_BYTES = (bytes) => {
 
 const COLORS_TAG = ['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#a855f7'];
 
-export default function ChatModal({ clienteId, etapas, stompClient, usuario, onClose, onMoveCard, onUpdateCard }) {
+export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, usuario, onClose, onMoveCard, onUpdateCard }) {
     const { t, lang } = useLanguage();
     const toast = useToast();
     const [cliente, setCliente]           = useState(null);
@@ -36,6 +36,8 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
     const [pendingFiles, setPendingFiles]   = useState([]);
     const [activeFileIdx, setActiveFileIdx] = useState(0);
     const [captionInput, setCaptionInput]   = useState('');
+    const [showChatMenu, setShowChatMenu]   = useState(false);
+    const [repairing, setRepairing]         = useState(false);
 
     const messagesEndRef    = useRef(null);
     const dragCounterRef    = useRef(0);
@@ -98,11 +100,8 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         setMessages(prev => prev.map(m => m.whatsappId === ev.whatsappId ? { ...m, estado: ev.nuevoEstado } : m));
     };
 
-    const subscribeWS = (id, attempt = 0) => {
-        if (!stompClient?.connected) {
-            if (attempt < 10) setTimeout(() => subscribeWS(id, attempt + 1), 500 + attempt * 300);
-            return;
-        }
+    const subscribeWS = (id) => {
+        if (!stompClient?.connected) return;
         subscriptionsRef.current.forEach(s => { try { s.unsubscribe(); } catch { /* ya desuscripto */ } });
         const s1 = stompClient.subscribe(`/topic/chat/${id}`, (msg) => {
             try { handleInboundMessage(JSON.parse(msg.body)); }
@@ -114,6 +113,18 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         });
         subscriptionsRef.current = [s1, s2];
     };
+
+    // Re-suscribir cada vez que el WS pasa a 'connected'. Cubre el caso del
+    // reconnect tras un deploy del backend: antes, si el chat se abria con el
+    // STOMP en 'reconnecting', el subscribeWS hacia 10 reintentos en 3s y si
+    // no conectaba el chat quedaba mudo hasta que el usuario lo cerrara y
+    // reabriera. Ahora la suscripcion se restablece automaticamente.
+    useEffect(() => {
+        if (!clienteId) return;
+        if (wsStatus !== 'connected') return;
+        subscribeWS(clienteId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [wsStatus, clienteId]);
 
     const loadChat = async (id, attempt = 0) => {
         setLoading(true);
@@ -324,6 +335,30 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
         catch { toast('Error', 'No se guardó el movimiento', '#ef4444'); }
     };
 
+    /**
+     * Borra la sesion Signal del bot con este contacto. La proxima interaccion
+     * renegocia con keys frescas, lo que arregla los casos en que el cliente
+     * recibe "Esperando este mensaje" del lado del receptor.
+     */
+    const repararConexion = async () => {
+        if (repairing) return;
+        setShowChatMenu(false);
+        setRepairing(true);
+        try {
+            const res = await api.post(`/whatsapp/clientes/${clienteId}/repair-session`);
+            if (res.data?.status === 'REPAIRED') {
+                toast('Conexión reparada', 'El próximo mensaje renegocia con claves frescas.', '#10b981');
+            } else {
+                toast('Sin cambios', 'Reparación reciente — esperá unos minutos antes de reintentar.', '#f59e0b');
+            }
+        } catch (err) {
+            const msg = err?.response?.data?.error || 'No se pudo reparar la conexión.';
+            toast('Error', msg, '#ef4444');
+        } finally {
+            setRepairing(false);
+        }
+    };
+
     const addTag = async () => {
         if (!newTagName.trim() || !clienteId) return;
         try {
@@ -505,9 +540,39 @@ export default function ChatModal({ clienteId, etapas, stompClient, usuario, onC
                                 </div>
                             </div>
                         </div>
-                        <button className="btn-icon btn-close-chat" onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <i className="fas fa-times" style={{ fontSize: '1rem' }}></i>
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isWhatsApp && (
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        className="btn-icon"
+                                        onClick={e => { e.stopPropagation(); setShowChatMenu(p => !p); }}
+                                        title="Más opciones"
+                                        style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <i className="fas fa-ellipsis-vertical" style={{ fontSize: '1rem' }}></i>
+                                    </button>
+                                    {showChatMenu && (
+                                        <>
+                                            <div onClick={() => setShowChatMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 100 }} />
+                                            <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, minWidth: 240, zIndex: 101, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
+                                                <button
+                                                    onClick={repararConexion}
+                                                    disabled={repairing}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 14px', background: 'transparent', color: '#e2e8f0', border: 'none', cursor: repairing ? 'wait' : 'pointer', textAlign: 'left', fontSize: '0.9rem' }}>
+                                                    <i className={`fas ${repairing ? 'fa-spinner fa-spin' : 'fa-bolt'}`} style={{ color: '#fbbf24', width: 16 }}></i>
+                                                    <span>
+                                                        <div style={{ fontWeight: 600 }}>{repairing ? 'Reparando…' : 'Reparar conexión'}</div>
+                                                        <div style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: 2 }}>Si el cliente no recibe tus mensajes</div>
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            <button className="btn-icon btn-close-chat" onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <i className="fas fa-times" style={{ fontSize: '1rem' }}></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div ref={messagesAreaRef} className="chat-messages-area" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', position: 'relative' }}>
@@ -834,7 +899,16 @@ function AudioPlayer({ src, sent }) {
 
     const onEnded = () => { setPlaying(false); setProgress(0); };
     const onError = () => {
-        console.error('Audio error al cargar:', src);
+        // Audios historicos subidos a Cloudinary /raw/upload/ no se reproducen
+        // (Content-Type: application/octet-stream). El fix de resource_type=video
+        // ya aplica a los nuevos. Para esos viejos no contaminamos la consola
+        // con un error rojo: solo informamos via warn una vez.
+        const isLegacy = typeof src === 'string' && src.includes('/raw/upload/');
+        if (isLegacy) {
+            console.warn('Audio legacy no reproducible (subido pre-fix de resource_type):', src);
+        } else {
+            console.error('Audio error al cargar:', src);
+        }
         setErrored(true);
         setPlaying(false);
     };
