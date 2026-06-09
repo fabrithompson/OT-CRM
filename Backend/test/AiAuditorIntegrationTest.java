@@ -13,6 +13,7 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import model.Agencia;
 import model.AgentConfig;
 import model.AiAuditReport;
+import model.AuditStage;
 import model.Cliente;
 import model.Dispositivo;
 import model.Etapa;
@@ -40,6 +42,7 @@ import model.Usuario;
 import repository.AgenciaRepository;
 import repository.AgentConfigRepository;
 import repository.AiAuditReportRepository;
+import repository.AuditStageRepository;
 import repository.ClienteRepository;
 import repository.DispositivoRepository;
 import repository.EtapaRepository;
@@ -84,6 +87,7 @@ class AiAuditorIntegrationTest extends BaseIntegrationTest {
     @Autowired DispositivoRepository dispositivoRepo;
     @Autowired EtapaRepository etapaRepo;
     @Autowired PlanRepository planRepo;
+    @Autowired AuditStageRepository auditStageRepo;
     @Autowired ObjectMapper objectMapper;
     @Autowired JwtUtil jwtUtil;
     @Autowired CustomUserDetailsService userDetailsService;
@@ -489,6 +493,90 @@ class AiAuditorIntegrationTest extends BaseIntegrationTest {
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    // EVAL — Mock-based prompt evaluation (LLM real, datos sintéticos)
+    //
+    // Estos 3 tests llaman a OpenAI con chats generados por ChatHistoryMockBuilder
+    // para verificar que el System Prompt de AiAuditService:
+    //   - Marca cumplidas las etapas cuando hay evidencia.
+    //   - No penaliza al vendedor cuando el cliente ya dio la info.
+    //   - Marca incumplidas las etapas saltadas sin contexto.
+    //
+    // Se saltean en CI por defecto — sólo corren si RUN_LLM_EVAL=true.
+    // Uso local: RUN_LLM_EVAL=true ./mvnw -Dtest=AiAuditorIntegrationTest test
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "RUN_LLM_EVAL", matches = "true")
+    @DisplayName("EVAL Caso A — Flujo perfecto: las 3 etapas deben quedar cumplidas")
+    void evalCasoA_flujoPerfecto() throws Exception {
+        prepararEtapasCanonicas();
+        persistirEscenario(ChatHistoryMockBuilder.casoA_flujoPerfecto());
+
+        AiAuditReport report = ejecutarAuditoria();
+
+        assertThat(report.getIncumplimientos())
+                .as("Caso A no debe registrar incumplimientos")
+                .isZero();
+        assertThat(estadosPorEtapa(report))
+                .containsEntry(ChatHistoryMockBuilder.STAGE_PRESENTACION, "cumplido")
+                .containsEntry(ChatHistoryMockBuilder.STAGE_CALIFICACION, "cumplido")
+                .containsEntry(ChatHistoryMockBuilder.STAGE_PROPUESTA,    "cumplido");
+        assertThat(report.getScore())
+                .as("Score del flujo perfecto debe ser >= 90")
+                .isGreaterThanOrEqualTo(90);
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "RUN_LLM_EVAL", matches = "true")
+    @DisplayName("EVAL Caso B — Cliente acelerado: la IA NO debe penalizar al vendedor")
+    void evalCasoB_clienteAcelerado() throws Exception {
+        prepararEtapasCanonicas();
+        persistirEscenario(ChatHistoryMockBuilder.casoB_clienteAcelerado());
+
+        AiAuditReport report = ejecutarAuditoria();
+
+        Map<String, String> estados = estadosPorEtapa(report);
+        assertThat(estados.get(ChatHistoryMockBuilder.STAGE_PRESENTACION))
+                .as("Presentación: el vendedor se presentó → cumplido")
+                .isEqualTo("cumplido");
+        // Calificación: el cliente ya dio toda la info. cumplido o no_aplica son aceptables;
+        // incumplido/parcial sería una alucinación del prompt.
+        assertThat(estados.get(ChatHistoryMockBuilder.STAGE_CALIFICACION))
+                .as("Calificación: info dada por el cliente — no penalizar")
+                .isIn("cumplido", "no_aplica");
+        assertThat(estados.get(ChatHistoryMockBuilder.STAGE_PROPUESTA))
+                .as("Propuesta: el vendedor envió cotización → cumplido")
+                .isEqualTo("cumplido");
+        assertThat(report.getIncumplimientos())
+                .as("Caso B no debe registrar incumplimientos")
+                .isZero();
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "RUN_LLM_EVAL", matches = "true")
+    @DisplayName("EVAL Caso C — Fallo real: Presentación y Calificación deben quedar incumplidas")
+    void evalCasoC_falloReal() throws Exception {
+        prepararEtapasCanonicas();
+        persistirEscenario(ChatHistoryMockBuilder.casoC_falloReal());
+
+        AiAuditReport report = ejecutarAuditoria();
+
+        Map<String, String> estados = estadosPorEtapa(report);
+        assertThat(estados.get(ChatHistoryMockBuilder.STAGE_PRESENTACION))
+                .as("Presentación: el vendedor no se presentó")
+                .isIn("incumplido", "parcial");
+        assertThat(estados.get(ChatHistoryMockBuilder.STAGE_CALIFICACION))
+                .as("Calificación: no se preguntó nada al cliente")
+                .isIn("incumplido", "parcial");
+        assertThat(report.getIncumplimientos())
+                .as("Caso C debe registrar al menos 1 etapa incumplida")
+                .isGreaterThanOrEqualTo(1);
+        assertThat(report.getScore())
+                .as("Score del fallo real debe ser bajo")
+                .isLessThanOrEqualTo(50);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     // HELPERS
     // ════════════════════════════════════════════════════════════════════════
 
@@ -529,5 +617,72 @@ class AiAuditorIntegrationTest extends BaseIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);
         return new HttpEntity<>(body, headers);
+    }
+
+    // ── Helpers de los tests EVAL ───────────────────────────────────────────
+
+    /** Crea las 3 etapas canónicas (Presentación, Calificación, Propuesta) en la config actual. */
+    private void prepararEtapasCanonicas() {
+        crearStage(ChatHistoryMockBuilder.STAGE_PRESENTACION,
+                "El vendedor debe saludar, presentarse con su nombre e identificar la agencia.",
+                0, 30);
+        crearStage(ChatHistoryMockBuilder.STAGE_CALIFICACION,
+                "El vendedor debe relevar necesidad: destino, fechas, cantidad de pasajeros, "
+              + "presupuesto. NO es necesario re-preguntar lo que el cliente ya dio.",
+                1, 30);
+        crearStage(ChatHistoryMockBuilder.STAGE_PROPUESTA,
+                "El vendedor debe entregar una cotización concreta con precio y condiciones.",
+                2, 40);
+    }
+
+    private AuditStage crearStage(String nombre, String descripcion, int orden, int peso) {
+        AuditStage s = new AuditStage();
+        s.setAgentConfig(config);
+        s.setNombre(nombre);
+        s.setDescripcion(descripcion);
+        s.setOrden(orden);
+        s.setPeso(peso);
+        s.setActiva(true);
+        return auditStageRepo.save(s);
+    }
+
+    /**
+     * Persiste el cliente y todos los mensajes del escenario en la BD,
+     * para que AiAuditService#auditarAgencia los encuentre por repositorio.
+     */
+    private void persistirEscenario(ChatHistoryMockBuilder.Scenario sc) {
+        Cliente c = sc.cliente;
+        c.setEtapa(etapaInicial);
+        c.setDispositivo(dispositivo);
+        c.setAgencia(agencia);
+        Cliente saved = clienteRepo.save(c);
+        for (Mensaje m : sc.mensajes) {
+            m.setCliente(saved);
+            mensajeRepo.save(m);
+        }
+    }
+
+    /** Llama al servicio con la ventana que cubre BASE_TS (anclada en 2026-06-08). */
+    private AiAuditReport ejecutarAuditoria() {
+        LocalDateTime desde = LocalDateTime.of(2026, 6, 8, 0, 0);
+        LocalDateTime hasta = LocalDateTime.of(2026, 6, 8, 23, 59);
+        return auditService.auditarAgencia(agencia.getId(), desde, hasta);
+    }
+
+    /**
+     * Extrae del JSON del reporte un mapa {nombreEtapa → estado} para asertar
+     * sin acoplarse al orden ni a los stage_id generados por la BD.
+     */
+    private Map<String, String> estadosPorEtapa(AiAuditReport report) throws Exception {
+        JsonNode root = objectMapper.readTree(report.getHallazgosJson());
+        JsonNode procs = root.get("procedimientos");
+        java.util.Map<String, String> out = new java.util.HashMap<>();
+        if (procs == null || !procs.isArray()) return out;
+        for (JsonNode p : procs) {
+            String punto = p.has("punto") ? p.get("punto").asText("") : "";
+            String estado = p.has("estado") ? p.get("estado").asText("") : "";
+            if (!punto.isBlank()) out.put(punto, estado.toLowerCase());
+        }
+        return out;
     }
 }
