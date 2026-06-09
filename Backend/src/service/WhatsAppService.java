@@ -24,7 +24,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import dto.SystemNotification;
-import exception.RegistroException;
 import model.Agencia;
 import model.Cliente;
 import model.Dispositivo;
@@ -449,8 +448,19 @@ public class WhatsAppService {
     public void eliminarDispositivoCompleto(Long dispositivoId) {
         if (dispositivoId == null)
             return;
-        Dispositivo disp = dispositivoRepository.findById(dispositivoId)
-                .orElseThrow(() -> new RegistroException("Dispositivo no encontrado"));
+        // Lock pesimista: serializa con desvincularSesion y con los webhooks
+        // de estado. Sin esto, eliminar mientras el bot manda un update de
+        // estado en paralelo tiraba "Row was updated or deleted by another
+        // transaction" porque el webhook intentaba save() de una fila ya
+        // borrada por esta misma transaccion (visible en el stack de
+        // Hibernate como StaleObjectStateException [Dispositivo#53]).
+        Dispositivo disp = dispositivoRepository.findByIdForUpdate(dispositivoId)
+                .orElse(null);
+        if (disp == null) {
+            // Ya fue eliminado por otro click concurrente: idempotente.
+            log.info("eliminarDispositivoCompleto: dispositivo {} ya no existe, no-op", dispositivoId);
+            return;
+        }
 
         // 1. Desconectar del bot (WhatsApp o Telegram)
         try {
@@ -475,8 +485,26 @@ public class WhatsAppService {
 
     @Transactional
     public void desvincularSesion(@NonNull Long dispositivoId) {
-        Dispositivo d = dispositivoRepository.findById(dispositivoId)
-                .orElseThrow(() -> new RuntimeException("Dispositivo no encontrado"));
+        // Lock pesimista: serializa con otras desvinculaciones simultaneas y
+        // con los webhooks de estado del bot. Sin esto, dos clicks rapidos al
+        // boton "Desvincular" gatillaban UPDATEs encimados y disparaban
+        // StaleObjectStateException en uno de los hilos.
+        Dispositivo d = dispositivoRepository.findByIdForUpdate(dispositivoId)
+                .orElse(null);
+        if (d == null) {
+            // Otra transaccion (eliminar) lo borro entre el click y este lock.
+            // Operacion idempotente: el dispositivo ya no existe = ya esta
+            // "desvinculado" en sentido amplio. No tiramos error.
+            log.info("desvincularSesion: dispositivo {} ya no existe, no-op", dispositivoId);
+            return;
+        }
+        // Idempotencia: si ya esta desconectado, no volvemos a llamar al bot.
+        // Esto evita que el usuario apretando varias veces seguidas genere
+        // una avalancha de /session/reset al bot.
+        if (ESTADO_DISCONNECTED.equals(d.getEstado()) && d.getNumeroTelefono() == null) {
+            log.debug("desvincularSesion: dispositivo {} ya estaba desconectado, no-op", dispositivoId);
+            return;
+        }
         // MANTENEMOS el sessionId: regenerarlo en cada desvinculo dejaba las
         // pre-keys Signal de los contactos del otro lado apuntando a un
         // sessionId fantasma → Bad MAC masivo cuando intentaban escribirnos.
@@ -806,17 +834,65 @@ public class WhatsAppService {
         messaging.convertAndSend("/topic/global-notifications", notif);
     }
 
+    @Transactional
     public void actualizarEstadoConexion(String sessionId, String estado) {
-        Dispositivo d = dispositivoRepository.findBySessionId(sessionId).orElse(null);
-        if (d != null) {
-            d.setEstado(estado);
-            dispositivoRepository.save(d);
+        // Lock pesimista para no chocar con otros updaters del Dispositivo.
+        Dispositivo d = dispositivoRepository.findBySessionIdForUpdate(sessionId).orElse(null);
+        if (d == null) return;
+        if (estado != null && estado.equals(d.getEstado())) return; // idempotencia
+        d.setEstado(estado);
+        dispositivoRepository.save(d);
 
-            String tipo = "CONNECTED".equalsIgnoreCase(estado) ? "SUCCESS" : "ERROR";
-            String titulo = "WhatsApp " + (d.getAlias() != null ? d.getAlias() : "");
-            String msg = "CONNECTED".equalsIgnoreCase(estado) ? "Conexión restablecida ✅" : "Se perdió la conexión ❌";
+        String tipo = "CONNECTED".equalsIgnoreCase(estado) ? "SUCCESS" : "ERROR";
+        String titulo = "WhatsApp " + (d.getAlias() != null ? d.getAlias() : "");
+        String msg = "CONNECTED".equalsIgnoreCase(estado) ? "Conexión restablecida ✅" : "Se perdió la conexión ❌";
+        notificarAlertaGlobal(titulo, msg, tipo);
+    }
 
-            notificarAlertaGlobal(titulo, msg, tipo);
+    /**
+     * Aplica un cambio de estado recibido desde el webhook del bot.
+     * Usa lock pesimista y reintenta una vez si otro hilo tiene la fila
+     * lockeada (CannotAcquireLockException). Devuelve el agenciaId si
+     * hubo cambio para que el controller broadcastee, o null si no aplica.
+     *
+     * Sin esto, varios webhooks consecutivos del bot durante una negociacion
+     * Signal disparaban StaleObjectStateException en el thread perdedor.
+     */
+    @Transactional
+    public Long aplicarEstadoDesdeWebhook(String sessionId, String status, String phone) {
+        if (sessionId == null) return null;
+        for (int intento = 0; intento < 2; intento++) {
+            try {
+                Dispositivo d = dispositivoRepository.findBySessionIdForUpdate(sessionId).orElse(null);
+                if (d == null) {
+                    log.debug("aplicarEstadoDesdeWebhook: sessionId {} sin dispositivo, no-op", sessionId);
+                    return null;
+                }
+                // Idempotencia: si el estado ya esta seteado y el telefono no
+                // aporta novedad, no escribimos. Reduce N webhooks/seg a 1 UPDATE.
+                boolean cambioEstado = status != null && !status.equals(d.getEstado());
+                boolean cambioPhone  = "CONNECTED".equals(status) && phone != null && !phone.equals(d.getNumeroTelefono());
+                if (!cambioEstado && !cambioPhone) {
+                    return d.getAgencia() != null ? d.getAgencia().getId() : null;
+                }
+                if (status != null) d.setEstado(status);
+                if ("CONNECTED".equals(status)) {
+                    d.setActivo(true);
+                    if (phone != null) d.setNumeroTelefono(phone);
+                } else if ("DISCONNECTED".equals(status)) {
+                    d.setActivo(false);
+                }
+                dispositivoRepository.save(d);
+                return d.getAgencia() != null ? d.getAgencia().getId() : null;
+            } catch (org.springframework.dao.PessimisticLockingFailureException e) {
+                if (intento == 1) {
+                    log.warn("aplicarEstadoDesdeWebhook: lock no adquirido tras retry para sessionId={}", sessionId);
+                    return null;
+                }
+                // Pequeño backoff antes de reintentar.
+                try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); return null; }
+            }
         }
+        return null;
     }
 }
