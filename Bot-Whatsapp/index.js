@@ -109,6 +109,39 @@ const msgRetryCounterCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
 const processedMsgIds = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const messageQueues = new Map();
 
+const JID_MAP_FILE = process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'jid_map.json')
+    : path.join(__dirname, 'jid_map.json');
+
+const verifiedJids = (() => {
+    // TTL de 24 horas para mantener la sesión fresca
+    const cache = new NodeCache({ stdTTL: 86400, checkperiod: 3600 }); 
+    try {
+        if (fs.existsSync(JID_MAP_FILE)) {
+            const data = JSON.parse(fs.readFileSync(JID_MAP_FILE, 'utf8'));
+            for (const [num, jid] of Object.entries(data)) {
+                cache.set(num, jid);
+            }
+        }
+    } catch (err) {}
+
+    // Sobreescribir el método set para que guarde en disco automáticamente
+    const originalSet = cache.set.bind(cache);
+    cache.set = (key, val) => {
+        const result = originalSet(key, val);
+        try {
+            const obj = {};
+            cache.keys().forEach(k => obj[k] = cache.get(k));
+            fs.writeFileSync(JID_MAP_FILE, JSON.stringify(obj));
+        } catch(e) {}
+        return result;
+    };
+    return cache;
+
+})();
+
+
+
 // ── Auto-reparación de sesiones Signal con Bad MAC ─────────────────────────
 // Cuando un contacto manda mensajes que no podemos descifrar (Bad MAC) o
 // nosotros enviamos y el receptor ve "Esperando este mensaje", es porque la
@@ -826,8 +859,10 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
             logger.info({ sessionId, lid: remoteJid, phone: numeroReal }, 'LID resuelto a telefono');
         }
 
-        logger.info(`Mensaje entrante - From: ${remoteJid} | Numero: ${numeroReal}`);
+        verifiedJids.set(numeroReal, remoteJid);
 
+        logger.info(`Mensaje entrante - From: ${remoteJid} | Numero: ${numeroReal}`);
+        
         const content = await extractMessageContent(msg, sessionId, sock);
         if (!content) return;
         const { texto, mediaUrl, mimeType } = content;
@@ -870,6 +905,8 @@ const processOutgoingExternalMessage = async (msg, sessionId, sock) => {
                 'fromMe a LID sin PN conocido, ignorando para no duplicar contacto');
             return;
         }
+
+        verifiedJids.set(to, remoteJid);
 
         const content = await extractMessageContent(msg, sessionId, sock);
         if (!content) return;
@@ -1278,8 +1315,6 @@ const waitForRateLimit = async (numero) => {
     }
     sendTimestamps.set(numero, Date.now());
 };
-
-const verifiedJids = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
 
 // ── Reparacion manual de sesion Signal con un contacto ────────────────────
 // Borra la sesion Signal local con el contacto indicado. La proxima vez que
