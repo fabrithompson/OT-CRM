@@ -183,7 +183,13 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
         }
     };
 
-    const scrollToBottom = () => { setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50); };
+    const scrollToBottom = () => {
+        setTimeout(() => {
+            if (messagesAreaRef.current) {
+                messagesAreaRef.current.scrollTop = messagesAreaRef.current.scrollHeight;
+            }
+        }, 100);
+    };
     useEffect(() => { if (!loading) scrollToBottom(); }, [messages.length, loading]);
 
     const sendMessage = async () => {

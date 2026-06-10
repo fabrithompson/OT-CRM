@@ -50,6 +50,7 @@ import repository.EtiquetaRepository;
 import repository.MensajeRepository;
 import model.Plan;
 import service.ExcelService;
+import service.GoogleContactsService;
 import service.SubscriptionValidationService;
 import service.UsuarioService;
 import util.PhoneUtil;
@@ -70,6 +71,7 @@ public class ClienteController {
     private final MensajeRepository mensajeRepository;
     private final EtiquetaRepository etiquetaRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final GoogleContactsService googleContactsService;
 
     public ClienteController(ClienteRepository clienteRepository,
                              EtapaRepository etapaRepository,
@@ -78,7 +80,8 @@ public class ClienteController {
                              SubscriptionValidationService subscriptionValidationService,
                              MensajeRepository mensajeRepository,
                              EtiquetaRepository etiquetaRepository,
-                             SimpMessagingTemplate messagingTemplate) {
+                             SimpMessagingTemplate messagingTemplate,
+                             GoogleContactsService googleContactsService) {
         this.clienteRepository = clienteRepository;
         this.etapaRepository = etapaRepository;
         this.usuarioService = usuarioService;
@@ -87,6 +90,7 @@ public class ClienteController {
         this.mensajeRepository = mensajeRepository;
         this.etiquetaRepository = etiquetaRepository;
         this.messagingTemplate = messagingTemplate;
+        this.googleContactsService = googleContactsService;
     }
 
     @GetMapping("/embudo/etapas")
@@ -621,9 +625,16 @@ public class ClienteController {
         return clienteRepository.findById(id)
                 .filter(c -> c.getAgencia() != null && c.getAgencia().getId().equals(usuario.getAgencia().getId()))
                 .map(c -> {
+                    String nombreAnterior = c.getNombre();
                     c.setNombre(data.getNombre());
                     c.setNotas(data.getNotas());
                     clienteRepository.save(c);
+
+                    // Sincronizar nombre en Google Contacts del vendedor (async, no bloquea)
+                    if (data.getNombre() != null && !data.getNombre().equals(nombreAnterior)) {
+                        googleContactsService.sincronizarNombreAsync(
+                                usuario.getId(), c.getTelefono(), c.getNombre());
+                    }
 
                     Map<String, Object> evento = new HashMap<>();
                     evento.put("tipo", "CLIENTE_ACTUALIZADO");

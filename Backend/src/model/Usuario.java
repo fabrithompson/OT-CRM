@@ -71,6 +71,15 @@ public class Usuario {
     @Column(name = "plan_vencimiento")
     private LocalDate planVencimiento;
 
+    @Column(name = "google_access_token", columnDefinition = "TEXT")
+    private String googleAccessToken;
+
+    @Column(name = "google_refresh_token", columnDefinition = "TEXT")
+    private String googleRefreshToken;
+
+    @Column(name = "google_token_expiry")
+    private Long googleTokenExpiry;
+
     public Usuario() {}
 
     public Usuario(String username, String password, String rol) {
