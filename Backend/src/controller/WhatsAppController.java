@@ -204,11 +204,9 @@ public class WhatsAppController {
         @SuppressWarnings("deprecation")
 		String baseUrl = whatsAppService.getNodeBotUrl();
         try {
-            @SuppressWarnings("null")
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                    baseUrl + "/session/status/" + d.getSessionId(), HttpMethod.GET, null, new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-            Map<String, Object> body = response.getBody() != null ? new HashMap<>(response.getBody()) : new HashMap<>();
+            // Vía BotHttpClient: es el único camino que adjunta el X-Bot-Token que
+            // /session/status y /qr exigen. Con restTemplate directo iban sin header.
+            Map<String, Object> body = new HashMap<>(botClient.getSessionStatus(d.getSessionId()));
             String estadoBot = (String) body.getOrDefault("status", "UNKNOWN");
 
             if ("DISCONNECTED".equals(estadoBot)) {
@@ -216,7 +214,9 @@ public class WhatsAppController {
                 body.put("status", "STARTING");
                 return ResponseEntity.ok(body);
             }
-            if ("SCAN_QR".equals(estadoBot)) agregarQrAlBody(baseUrl, d.getSessionId(), body);
+            if ("SCAN_QR".equals(estadoBot)) {
+                botClient.getQrCode(d.getSessionId()).ifPresent(qr -> body.put("qr", qr));
+            }
 
             return ResponseEntity.ok(body);
         } catch (RestClientException e) {
@@ -267,23 +267,6 @@ public class WhatsAppController {
             restTemplate.postForLocation(baseUrl + "/session/start", new HttpEntity<>(Map.of("sessionId", sessionId), headers));
         } catch (RestClientException e) {
             log.error("Error iniciando sesion: {}", e.getMessage());
-        }
-    }
-
-    private void agregarQrAlBody(String baseUrl, String sessionId, Map<String, Object> body) {
-        try {
-            @SuppressWarnings("null")
-            ResponseEntity<Map<String, String>> qrResponse = restTemplate.exchange(
-                    baseUrl + "/qr/" + sessionId, HttpMethod.GET, null, new ParameterizedTypeReference<Map<String, String>>() {}
-            );
-
-            Map<String, String> qrBody = qrResponse.getBody();
-            if (qrBody != null && qrBody.containsKey("qr")) {
-                body.put("qr", qrBody.get("qr"));
-            }
-
-        } catch (RestClientException e) {
-            log.warn("No se pudo obtener QR", e);
         }
     }
 

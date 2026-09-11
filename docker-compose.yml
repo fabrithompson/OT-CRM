@@ -89,12 +89,16 @@ services:
     build: ./Bot-Whatsapp
     container_name: crm_bot
     restart: unless-stopped
+    # Solo loopback: el backend le habla al bot por la red interna de Docker
+    # (NODE_BOT_URL=http://bot-whatsapp:3000), asi que no hace falta publicarlo
+    # a todas las interfaces. Se deja en 127.0.0.1 para poder debuggear local.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - PORT=3000
       - JAVA_BACKEND_URL=http://backend:8080/api/webhook/whatsapp
       - BOT_SECRET_KEY=${BOT_SECRET_KEY}
+      - BOT_CORS_ORIGINS=${BOT_CORS_ORIGINS:-}
     volumes:
       - whatsapp_sessions:/app/auth_info_v2
     deploy:
