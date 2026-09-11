@@ -67,6 +67,17 @@ if (!process.env.BOT_SECRET_KEY) {
 const JAVA_BACKEND_URL = process.env.JAVA_BACKEND_URL;
 const SECRET_KEY = process.env.BOT_SECRET_KEY;
 
+// El API del bot es server-to-server: solo lo consume el backend Java via
+// BotHttpClient. Ningun navegador lo llama directo (el frontend habla STOMP
+// contra el backend, no con el bot), asi que por defecto no habilitamos ningun
+// origen cross-origin. BOT_CORS_ORIGINS acepta una lista separada por comas si
+// en algun entorno hiciera falta abrirlo.
+const CORS_ORIGINS = (process.env.BOT_CORS_ORIGINS || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+const CORS_ORIGIN = CORS_ORIGINS.length > 0 ? CORS_ORIGINS : false;
+
 const PUBLIC_URL = process.env.RAILWAY_STATIC_URL
     ? `https://${process.env.RAILWAY_STATIC_URL}`
     : `http://localhost:${PORT}`;
@@ -373,7 +384,7 @@ function enqueueMessage(remoteJid, handler) {
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: { origin: CORS_ORIGIN, methods: ["GET", "POST"] }
 });
 
 app.use((req, res, next) => {
@@ -386,7 +397,11 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(cors());
+app.use(cors({
+    origin: CORS_ORIGIN,
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'X-Bot-Token']
+}));
 app.use('/uploads', express.static(UPLOADS_FOLDER));
 
 let connectedUsers = [];
@@ -1184,7 +1199,8 @@ app.get('/health', (req, res) => {
     });
 });
 
-app.get('/sessions', (req, res) => {
+// requireAuth: expone el sessionId y el telefono vinculado de TODAS las agencias.
+app.get('/sessions', requireAuth, (req, res) => {
     const list = Array.from(sessions.entries()).map(([id, sock]) => ({
         sessionId: id,
         connected: !!sock?.user,
@@ -1218,7 +1234,7 @@ app.post('/session/reset', requireAuth, async (req, res) => {
     res.json({ status: "RESET_COMPLETE" });
 });
 
-app.get('/session/status/:sessionId', (req, res) => {
+app.get('/session/status/:sessionId', requireAuth, (req, res) => {
     const { sessionId } = req.params;
     const sock = sessions.get(sessionId);
     if (sock?.user) return res.json({ status: 'CONNECTED', phone: sock.user.id.split(':')[0] });
@@ -1240,7 +1256,8 @@ app.post('/session/start', requireAuth, (req, res) => {
     res.json({ status: 'STARTING' });
 });
 
-app.get('/qr/:sessionId', (req, res) => {
+// requireAuth: el QR en vivo permite vincular un dispositivo propio a ese WhatsApp.
+app.get('/qr/:sessionId', requireAuth, (req, res) => {
     const { sessionId } = req.params;
     const qr = qrStore.get(sessionId);
     if (sessions.get(sessionId)?.user) return res.json({ status: 'CONNECTED' });
