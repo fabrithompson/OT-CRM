@@ -122,6 +122,11 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     Optional<Cliente> findByIdAndAgenciaId(Long id, Long agenciaId);
 
+    // Chequeo liviano (sin hidratar la entidad ni la coleccion EAGER de
+    // etiquetas) para WebSocketConfig: autorizar suscripcion a /topic/chat/{id}
+    // solo si el cliente pertenece a la agencia del usuario conectado.
+    boolean existsByIdAndAgenciaId(Long id, Long agenciaId);
+
     @EntityGraph(attributePaths = {"etapa", "dispositivo", "etiquetas"})
     @Query("SELECT c FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.id < :afterId ORDER BY c.id DESC")
     List<Cliente> findByAgenciaIdAndIdLessThan(
