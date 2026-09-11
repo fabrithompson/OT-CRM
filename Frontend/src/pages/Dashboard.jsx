@@ -12,6 +12,11 @@ import { useLanguage } from '../context/LangContext';
 import { useToast } from '../context/ToastContext';
 import { getDisplayName } from '../utils/userUtils';
 
+// Intervalo mínimo entre refreshes completos disparados por eventos de alta
+// frecuencia (mensajes entrantes). Un refresh son 6 requests con agregados
+// pesados sobre toda la agencia, así que se topea a uno por minuto.
+const MIN_INTERVALO_REFRESH_MS = 60_000;
+
 /* ─────────────────────────────────────────────
    Data derivation helpers (datos reales del backend)
 ───────────────────────────────────────────── */
@@ -234,12 +239,20 @@ export default function Dashboard() {
     const pickerRef                           = useRef(null);
     const { playNotification }                = useAudio();
     const refreshTimer                        = useRef(null);
+    // Timer propio del throttle, independiente del de debouncedRefresh: si
+    // compartieran ref, el timeout del debounce (que no lo limpia al disparar)
+    // dejaría al throttle creyendo que ya hay uno agendado y no refrescaría más.
+    const throttleTimer                       = useRef(null);
+    const ultimoRefresh                       = useRef(0);
 
     // Carga inicial. fetchData se declara abajo a propósito (captura state ya inicializado).
     /* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps */
     useEffect(() => { fetchData(); }, []);
     /* eslint-enable react-hooks/immutability, react-hooks/exhaustive-deps */
-    useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
+    useEffect(() => () => {
+        if (refreshTimer.current)  clearTimeout(refreshTimer.current);
+        if (throttleTimer.current) clearTimeout(throttleTimer.current);
+    }, []);
     // Sincronizar el state local con el store global de presencia + event listener.
     // Caso de uso "external store" descrito por la regla: aceptable.
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -356,9 +369,30 @@ export default function Dashboard() {
         fetchRef.current(true, dateRange, customFrom, customTo);
     }, [dateRange, customFrom, customTo]);
 
+    // Refresh puntual, para eventos poco frecuentes (alta de miembro, cambio de
+    // perfil, conexión/desconexión de un dispositivo).
     const debouncedRefresh = useCallback(() => {
         if (refreshTimer.current) clearTimeout(refreshTimer.current);
         refreshTimer.current = setTimeout(() => fetchRef.current(true), 1500);
+    }, []);
+
+    // Refresh para eventos de ALTA frecuencia (cada mensaje entrante publica en
+    // /topic/embudo). Un refresh completo son 6 requests con agregados pesados
+    // — COUNT sobre todos los mensajes de la agencia —, así que con un debounce
+    // de 1,5s una agencia con tráfico real dejaba el dashboard refrescando sin
+    // parar. Acá el intervalo mínimo entre refreshes es fijo: por más eventos
+    // que lleguen, no se refresca más de una vez por minuto. El primer evento
+    // tras una pausa larga refresca enseguida; el resto se agenda al momento en
+    // que se cumple el intervalo, así el dato nunca queda más viejo que eso.
+    const throttledRefresh = useCallback(() => {
+        if (throttleTimer.current) return;
+        const transcurrido = Date.now() - ultimoRefresh.current;
+        const esperar = Math.max(0, MIN_INTERVALO_REFRESH_MS - transcurrido);
+        throttleTimer.current = setTimeout(() => {
+            throttleTimer.current = null;
+            ultimoRefresh.current = Date.now();
+            fetchRef.current(true);
+        }, esperar);
     }, []);
 
     useWebSocket(agenciaId, useCallback(() => {}, []), (client) => {
@@ -392,7 +426,9 @@ export default function Dashboard() {
                 console.warn('Dashboard bot payload inválido:', err);
             }
         });
-        client.subscribe(`/topic/embudo/${agenciaId}`, () => { debouncedRefresh(); });
+        // Alta frecuencia: publica en cada mensaje entrante. Va con throttle,
+        // no con debounce — ver MIN_INTERVALO_REFRESH_MS.
+        client.subscribe(`/topic/embudo/${agenciaId}`, () => { throttledRefresh(); });
     });
 
     const abandonarEquipo = async () => {

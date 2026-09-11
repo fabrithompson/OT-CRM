@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LangContext';
 import api from '../utils/api';
@@ -11,6 +11,9 @@ import NotificationBell from '../components/kanban/NotificationBell';
 import { useUser } from '../context/UserContext';
 import { getDisplayName } from '../utils/userUtils';
 const PAGE_SIZE = 40;
+// Referencia estable para las etapas sin clientes: devolver un [] nuevo en cada
+// render haría que KanbanColumn vea una prop distinta y re-renderice de gusto.
+const LISTA_VACIA = [];
 
 export default function Kanban() {
     const { t } = useLanguage();
@@ -262,24 +265,49 @@ export default function Kanban() {
 
 
 
-    const clientesForEtapa = (etapaId) => clientes
-        .filter(c => {
-            if (c.etapa?.id !== etapaId) return false;
-            if (debouncedSearch) {
-                const q = debouncedSearch.toLowerCase();
+    // Agrupación por etapa, memoizada.
+    //
+    // Antes esto era una función llamada desde el render, una vez POR COLUMNA:
+    // con N columnas recorría y ordenaba la lista completa de clientes N veces,
+    // y se rehacía entera en cada render — y hay un render por cada evento de
+    // WebSocket (cada mensaje entrante mueve `clientes`). Encima el comparador
+    // construía dos `new Date()` por comparación, o sea O(n log n) objetos Date
+    // tirados por columna.
+    //
+    // Ahora: una sola pasada que arma el índice etapaId → clientes ya ordenados,
+    // recalculada solo si cambian los clientes o la búsqueda. Las fechas se
+    // parsean una vez por cliente en vez de una vez por comparación.
+    const clientesPorEtapa = useMemo(() => {
+        const q = debouncedSearch ? debouncedSearch.toLowerCase() : null;
+        const porEtapa = new Map();
+
+        for (const c of clientes) {
+            const etapaId = c.etapa?.id;
+            if (etapaId === undefined || etapaId === null) continue;
+            if (q) {
                 const text = `${c.nombre || ''} ${c.telefono || ''} ${c.ultimoMensajeResumen || ''}`.toLowerCase();
-                return text.includes(q);
+                if (!text.includes(q)) continue;
             }
-            return true;
-        })
-        .sort((a, b) => {
-            const unreadA = a.mensajesSinLeer || 0;
-            const unreadB = b.mensajesSinLeer || 0;
-            if (unreadA !== unreadB) return unreadB - unreadA;
-            const dateA = a.ultimoMensajeFecha ? new Date(a.ultimoMensajeFecha).getTime() : 0;
-            const dateB = b.ultimoMensajeFecha ? new Date(b.ultimoMensajeFecha).getTime() : 0;
-            return dateB - dateA;
-        });
+            let lista = porEtapa.get(etapaId);
+            if (!lista) { lista = []; porEtapa.set(etapaId, lista); }
+            lista.push({
+                cliente: c,
+                sinLeer: c.mensajesSinLeer || 0,
+                fecha: c.ultimoMensajeFecha ? new Date(c.ultimoMensajeFecha).getTime() : 0,
+            });
+        }
+
+        const resultado = new Map();
+        for (const [etapaId, lista] of porEtapa) {
+            lista.sort((a, b) => (a.sinLeer !== b.sinLeer)
+                ? b.sinLeer - a.sinLeer
+                : b.fecha - a.fecha);
+            resultado.set(etapaId, lista.map(x => x.cliente));
+        }
+        return resultado;
+    }, [clientes, debouncedSearch]);
+
+    const clientesForEtapa = (etapaId) => clientesPorEtapa.get(etapaId) || LISTA_VACIA;
 
     const renderBoard = () => {
         if (loading) return (
