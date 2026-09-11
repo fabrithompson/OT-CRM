@@ -248,7 +248,10 @@ public class UsuarioService {
     }
 
     public Usuario buscarPorUsername(String username) {
-        return usuarioRepository.findByUsername(username)
+        // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+        // principal del request: ver RequestUsuarioCache.
+        return RequestUsuarioCache.obtener(username)
+                .or(() -> usuarioRepository.findByUsername(username))
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
     }
 

@@ -63,9 +63,11 @@ public class DashboardService {
 
             Long agenciaId = usuario.getAgencia().getId();
 
+            // nuevosLeads y totalLeads son la misma cuenta (leads registrados en el
+            // rango pedido) expuesta bajo dos claves del payload: se pide una sola vez.
             long nuevosLeads       = clienteRepository.countByAgenciaIdAndFechaRegistroBetween(agenciaId, desde, hasta);
+            long totalLeads        = nuevosLeads;
             long leadsSinLeer      = clienteRepository.countByAgenciaIdAndMensajesSinLeerGreaterThan(agenciaId, 0);
-            long totalLeads        = clienteRepository.countByAgenciaIdAndFechaRegistroBetween(agenciaId, desde, hasta);
             long clientesConCarga  = transaccionRepository.countClientesConCargaByAgenciaAndFecha(agenciaId, desde, hasta);
 
             long waLeads = 0, tgLeads = 0;
@@ -84,8 +86,10 @@ public class DashboardService {
             data.put("tgLeads", tgLeads);
 
             // ── Mensajes analytics ──
+            // Mismo caso: mensajesHoy y totalMensajes son la misma cuenta en el
+            // rango pedido, expuesta bajo dos claves del payload.
             long mensajesHoy   = mensajeRepository.countByClienteAgenciaIdAndFechaHoraBetween(agenciaId, desde, hasta);
-            long totalMensajes = mensajeRepository.countByClienteAgenciaIdAndFechaHoraBetween(agenciaId, desde, hasta);
+            long totalMensajes = mensajesHoy;
             data.put("mensajesHoy",   mensajesHoy);
             data.put("totalMensajes", totalMensajes);
 

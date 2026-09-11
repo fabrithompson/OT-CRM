@@ -20,6 +20,7 @@ import repository.PlanRepository;
 import repository.UsuarioRepository;
 import service.CurrencyService;
 import service.PayPalService;
+import service.RequestUsuarioCache;
 
 @RestController
 public class PayPalController {
@@ -45,7 +46,10 @@ public class PayPalController {
     public ResponseEntity<?> crearSuscripcion(@RequestParam Long planId,
                                               @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            Usuario usuario = usuarioRepository.findByUsername(userDetails.getUsername())
+            // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+            // principal del request: ver RequestUsuarioCache.
+            Usuario usuario = RequestUsuarioCache.obtener(userDetails.getUsername())
+                    .or(() -> usuarioRepository.findByUsername(userDetails.getUsername()))
                     .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
             @SuppressWarnings("null")
             Plan plan = planRepository.findById(planId)

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import service.CustomUserDetailsService;
+import service.RequestUsuarioCache;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,33 +33,40 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response, 
             @NonNull FilterChain chain) throws ServletException, IOException { // <-- Añadimos @NonNull a los 3 parámetros
 
-        final String authorizationHeader = request.getHeader("Authorization");
+        try {
+            final String authorizationHeader = request.getHeader("Authorization");
 
-        String username = null;
-        String jwt = null;
+            String username = null;
+            String jwt = null;
 
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            jwt = authorizationHeader.substring(7);
-            try {
-                username = jwtUtil.extractUsername(jwt);
-            } catch (Exception e) {
-                logger.error("Error extrayendo el username del token", e);
+            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+                jwt = authorizationHeader.substring(7);
+                try {
+                    username = jwtUtil.extractUsername(jwt);
+                } catch (Exception e) {
+                    logger.error("Error extrayendo el username del token", e);
+                }
             }
-        }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
-            if (Boolean.TRUE.equals(jwtUtil.validateToken(jwt, userDetails))) {
-                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                usernamePasswordAuthenticationToken
-                        .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                
-                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+                if (Boolean.TRUE.equals(jwtUtil.validateToken(jwt, userDetails))) {
+                    UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+                    usernamePasswordAuthenticationToken
+                            .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+                }
             }
+            chain.doFilter(request, response);
+        } finally {
+            // El Usuario que loadUserByUsername() haya cacheado (ver
+            // RequestUsuarioCache) no debe sobrevivir mas alla de este
+            // request: el pool de hilos de Tomcat reutiliza el hilo.
+            RequestUsuarioCache.limpiar();
         }
-        chain.doFilter(request, response);
     }
 }

@@ -23,6 +23,7 @@ import repository.DispositivoRepository;
 import repository.PlanRepository;
 import repository.UsuarioRepository;
 import service.PlanService;
+import service.RequestUsuarioCache;
 import service.SubscriptionValidationService;
 
 @RestController
@@ -232,7 +233,10 @@ public class PlanController {
     }
 
     private Usuario getUsuarioOrThrow(UserDetails userDetails) {
-        return usuarioRepository.findByUsername(userDetails.getUsername())
+        // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+        // principal del request: ver RequestUsuarioCache.
+        return RequestUsuarioCache.obtener(userDetails.getUsername())
+                .or(() -> usuarioRepository.findByUsername(userDetails.getUsername()))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 }

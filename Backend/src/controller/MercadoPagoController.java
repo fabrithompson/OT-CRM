@@ -38,6 +38,7 @@ import repository.PlanRepository;
 import repository.ProcessedWebhookRepository;
 import repository.UsuarioRepository;
 import service.PlanService;
+import service.RequestUsuarioCache;
 
 @RestController
 public class MercadoPagoController {
@@ -83,7 +84,10 @@ public class MercadoPagoController {
             @SuppressWarnings("null")
             Plan plan = planRepository.findById(planId)
                     .orElseThrow(() -> new IllegalArgumentException("Plan no encontrado"));
-            Usuario usuario = usuarioRepository.findByUsername(userDetails.getUsername())
+            // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+            // principal del request: ver RequestUsuarioCache.
+            Usuario usuario = RequestUsuarioCache.obtener(userDetails.getUsername())
+                    .or(() -> usuarioRepository.findByUsername(userDetails.getUsername()))
                     .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
             // Usar el email provisto por el usuario en el checkout, o el del CRM como fallback

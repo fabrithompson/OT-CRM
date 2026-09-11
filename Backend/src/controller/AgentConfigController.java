@@ -43,6 +43,7 @@ import repository.EtiquetaRepository;
 import repository.RespuestaRapidaRepository;
 import repository.UsuarioRepository;
 import service.CrmAgentTools;
+import service.RequestUsuarioCache;
 import service.SubscriptionValidationService;
 
 @RestController
@@ -460,7 +461,10 @@ public class AgentConfigController {
     }
 
     private Usuario getUsuario(UserDetails userDetails) {
-        return usuarioRepository.findByUsername(userDetails.getUsername())
+        // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+        // principal del request: ver RequestUsuarioCache.
+        return RequestUsuarioCache.obtener(userDetails.getUsername())
+                .or(() -> usuarioRepository.findByUsername(userDetails.getUsername()))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 }

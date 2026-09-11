@@ -36,6 +36,7 @@ import repository.SolicitudUnionEquipoRepository;
 import repository.TransaccionRepository;
 import repository.UsuarioRepository;
 import service.DashboardService;
+import service.RequestUsuarioCache;
 import service.UsuarioService;
 
 @RestController
@@ -247,7 +248,8 @@ public class DashboardRestController {
     @Transactional
     public ResponseEntity<?> abandonarEquipo(Authentication authentication) {
         try {
-            Usuario usuario = usuarioRepository.findByUsername(authentication.getName())
+            Usuario usuario = RequestUsuarioCache.obtener(authentication.getName())
+                    .or(() -> usuarioRepository.findByUsername(authentication.getName()))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
             usuarioService.abandonarEquipo(usuario);
@@ -262,7 +264,10 @@ public class DashboardRestController {
         if (username == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
-        return usuarioRepository.findByUsername(username)
+        // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+        // principal del request: ver RequestUsuarioCache.
+        return RequestUsuarioCache.obtener(username)
+                .or(() -> usuarioRepository.findByUsername(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
