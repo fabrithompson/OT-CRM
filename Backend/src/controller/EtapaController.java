@@ -35,6 +35,7 @@ import repository.EtapaRepository;
 import repository.MensajeRepository;
 import repository.UsuarioRepository;
 import service.EtapaService;
+import service.RequestUsuarioCache;
 
 @RestController
 @RequestMapping("/api/v1/etapas")
@@ -212,7 +213,10 @@ public class EtapaController {
 
 
     private Usuario getUsuarioOrThrow(UserDetails userDetails) {
-        return usuarioRepository.findByUsername(userDetails.getUsername())
+        // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+        // principal del request: ver RequestUsuarioCache.
+        return RequestUsuarioCache.obtener(userDetails.getUsername())
+                .or(() -> usuarioRepository.findByUsername(userDetails.getUsername()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
 

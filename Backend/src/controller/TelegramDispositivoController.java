@@ -24,6 +24,7 @@ import model.Usuario;
 import repository.DispositivoRepository;
 import repository.UsuarioRepository;
 import service.PlanService;
+import service.RequestUsuarioCache;
 import service.TelegramBridgeService;
 import util.DispositivoMapper;
 
@@ -152,6 +153,10 @@ public class TelegramDispositivoController {
     }
 
     private Usuario getUsuarioOrThrow(UserDetails userDetails) {
-        return usuarioRepository.findByUsername(userDetails.getUsername()).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado en sesión"));
+        // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+        // principal del request: ver RequestUsuarioCache.
+        return RequestUsuarioCache.obtener(userDetails.getUsername())
+                .or(() -> usuarioRepository.findByUsername(userDetails.getUsername()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado en sesión"));
     }
 }

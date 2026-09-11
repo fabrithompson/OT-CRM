@@ -33,6 +33,7 @@ import repository.UsuarioRepository;
 import service.AiAgentService;
 import service.ChatService;
 import service.CloudStorageService;
+import service.RequestUsuarioCache;
 import service.TelegramBridgeService;
 import service.WhatsAppService;
 
@@ -212,7 +213,10 @@ public class ChatController {
     }
 
     private Usuario getUsuario(UserDetails userDetails) {
-        return usuarioRepository.findByUsername(userDetails.getUsername())
+        // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+        // principal del request: ver RequestUsuarioCache.
+        return RequestUsuarioCache.obtener(userDetails.getUsername())
+                .or(() -> usuarioRepository.findByUsername(userDetails.getUsername()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no autenticado"));
     }
 

@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import model.Usuario;
 import repository.UsuarioRepository;
+import service.RequestUsuarioCache;
 
 @RestController
 @RequestMapping("/api/v1/agencia")
@@ -26,7 +27,10 @@ public class AgenciaController {
 
     @GetMapping
     public ResponseEntity<?> obtenerAgencia(@AuthenticationPrincipal UserDetails userDetails) {
-        Usuario usuario = usuarioRepository.findByUsername(userDetails.getUsername())
+        // JwtRequestFilter ya resolvió este mismo Usuario para armar el
+        // principal del request: ver RequestUsuarioCache.
+        Usuario usuario = RequestUsuarioCache.obtener(userDetails.getUsername())
+                .or(() -> usuarioRepository.findByUsername(userDetails.getUsername()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
         
         if (usuario.getAgencia() == null) {

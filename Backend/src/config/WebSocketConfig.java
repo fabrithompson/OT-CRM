@@ -28,6 +28,7 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 
 import security.JwtUtil;
 import service.CustomUserDetailsService;
+import service.RequestUsuarioCache;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -97,14 +98,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registration.interceptors(new ChannelInterceptor() {
             
             @Override
-            @Nullable 
+            @Nullable
             public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
-                StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-                
-                if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    authenticateConnection(accessor); 
+                try {
+                    StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+
+                    if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+                        authenticateConnection(accessor);
+                    }
+                    return message;
+                } finally {
+                    // Este hilo (pool del broker STOMP) no pasa por JwtRequestFilter,
+                    // que es quien normalmente limpia el cache. Se limpia aca para
+                    // que un Usuario cacheado en un CONNECT no quede pisando el hilo
+                    // si el pool lo reutiliza para otro mensaje.
+                    RequestUsuarioCache.limpiar();
                 }
-                return message;
             }
         });
     }
