@@ -66,36 +66,46 @@ body {
     overflow: hidden; background: var(--bg-app); pointer-events: none;
 }
 
+/* Fondo ambiental: ESTATICO y sin filter, a proposito.
+ *
+ * Antes estos dos elementos median 80vw/70vw, llevaban filter: blur(120px) y
+ * se animaban en loop infinito. Dos problemas encadenados:
+ *
+ *  - Un blur de 120px sobre una capa de ~1500x1500px es carisimo de por si, y
+ *    la animacion incluye scale(), asi que la capa se re-rasterizaba entera en
+ *    cada frame en vez de componerse barato.
+ *  - Peor: la app tiene ~46 reglas backdrop-filter, y un backdrop-filter tiene
+ *    que volver a muestrear y desenfocar su fondo cada vez que ese fondo
+ *    cambia. Con estos orbes moviendose para siempre detras de todo, CADA
+ *    panel de vidrio se re-desenfocaba en cada frame, de forma permanente.
+ *    Eso dejaba la GPU saturada y cualquier repintado por hover del mouse
+ *    congelaba la interfaz.
+ *
+ * El filter era ademas casi redundante: un radial-gradient ya tiene un
+ * degrade suave. Se compensa corriendo los stops para conservar el aspecto.
+ */
 .ambient-bg::before, .ambient-bg::after, .ambient-bg .orb {
     content: ""; position: absolute; border-radius: 50%;
-    will-change: transform;
-    animation: moveAmbient 20s infinite alternate ease-in-out;
 }
 
 .ambient-bg::before {
     width: 80vw; height: 80vw;
-    background: radial-gradient(circle, var(--brand-green) 0%, transparent 50%);
+    background: radial-gradient(circle, var(--brand-green) 0%, transparent 65%);
     top: -30%; left: -20%;
     opacity: 0.18;
-    filter: blur(120px);
 }
 
 .ambient-bg::after {
     width: 70vw; height: 70vw;
-    background: radial-gradient(circle, var(--brand-green) 0%, transparent 60%);
+    background: radial-gradient(circle, var(--brand-green) 0%, transparent 70%);
     bottom: -30%; right: -10%;
-    animation-duration: 25s; opacity: 0.14; filter: blur(120px);
+    opacity: 0.14;
 }
 
 .glass-overlay {
     position: fixed; inset: 0; z-index: 1; pointer-events: none;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
     opacity: 0.02;
-}
-
-@keyframes moveAmbient {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(5%, 2%) scale(1.05); }
 }
 
 /* ════════════════════════════════════════
