@@ -109,28 +109,17 @@ export default function Planes() {
         setProcesando('paypal');
         setErrorPago('');
         try {
-            // PayPal endpoint is /api/paypal/ — not under /api/v1/
-            const baseRoot = (import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '');
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${baseRoot}/api/paypal/crear-suscripcion?planId=${modalPlan.id}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                setErrorPago(data.error || 'Error al conectar con PayPal.');
-                return;
-            }
-            if (data.paypalUrl) {
-                window.location.href = data.paypalUrl;
+            // El endpoint pasó a vivir bajo /api/v1/paypal/ (antes era /api/paypal/,
+            // fuera de la autenticación por defecto), así que ahora entra por el
+            // cliente `api` compartido como cualquier otra llamada autenticada.
+            const res = await api.post(`/paypal/crear-suscripcion?planId=${modalPlan.id}`);
+            if (res.data.paypalUrl) {
+                window.location.href = res.data.paypalUrl;
             } else {
                 setErrorPago('No se pudo generar el link de PayPal.');
             }
-        } catch {
-            setErrorPago('Error de conexión con PayPal. Intentá de nuevo.');
+        } catch (err) {
+            setErrorPago(err.response?.data?.error || 'Error de conexión con PayPal. Intentá de nuevo.');
         } finally {
             setProcesando(null);
         }

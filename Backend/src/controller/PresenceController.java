@@ -49,7 +49,7 @@ public class PresenceController {
         }
     }
 
-    @GetMapping("/api/presence/active")
+    @GetMapping("/api/v1/presence/active")
     public Set<String> getConnectedUsers(Principal principal) {
         if (principal == null) {
             return Collections.emptySet();

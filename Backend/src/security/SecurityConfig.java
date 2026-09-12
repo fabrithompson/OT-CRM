@@ -5,8 +5,10 @@ import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -20,6 +22,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Value("${app.cors.origins}")
@@ -83,11 +86,37 @@ public class SecurityConfig {
                         .requestMatchers("/css/**", "/js/**", "/assets/**", "/images/**", "/favicon.ico", "/webjars/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/**").denyAll()
+                        // Shell de la SPA y sus assets sueltos: tienen que cargar SIN sesión
+                        // (la pantalla de login vive ahí). Reflejan exactamente lo que sirve
+                        // MvcConfig.addResourceHandlers() + el catch-all de SpaController.
+                        .requestMatchers("/", "/*.js", "/*.css", "/*.ico", "/*.png", "/*.svg", "/*.webp", "/*.txt").permitAll()
+                        .requestMatchers("/{path:^(?!api|assets|uploads|ws-crm|actuator)[^\\.]*}",
+                                "/{path:^(?!api|assets|uploads|ws-crm|actuator)[^\\.]*}/**").permitAll()
+                        // Media subida por los clientes (fotos/audios de WhatsApp-Telegram) que
+                        // se referencia por URL directa desde el chat: pública a propósito.
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/api/v1/**").authenticated()
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                // Sin esto, Spring Security no tiene ningun mecanismo de auth
+                // "desafiable" configurado (no hay login form, no hay HTTP Basic),
+                // y su fallback para un request sin autenticar es 403 en vez de
+                // 401 — el mismo status que @PreAuthorize usa para "autenticado
+                // pero sin el rol". El frontend necesita distinguir los dos: 401
+                // dispara el refresh de sesion (JwtRequestFilter.doFilterInternal
+                // deja el SecurityContext vacio si el access token falta/expiro/es
+                // invalido, y esto es lo que responde en ese caso); 403
+                // (GlobalExceptionHandler.handleAccessDenied) es "estas logueado
+                // pero esta accion no es para vos", y no debe desloguear a nadie.
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"No autenticado\"}");
+                        })
                 );
 
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);

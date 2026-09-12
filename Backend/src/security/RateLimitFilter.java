@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -26,8 +28,17 @@ import jakarta.servlet.http.HttpServletResponse;
  * Rate limiting por IP para proteger endpoints críticos contra brute force y abuso.
  * Usa Bucket4j en memoria con Caffeine (TTL 10 min, max 10k IPs) para evitar memory leak.
  * Si escalás a múltiples instancias, migrar a Redis.
+ *
+ * @Profile("!test"): es una preocupación de borde HTTP, no de negocio, y el
+ * bucket es un singleton en memoria compartido por TODA la suite (todos los
+ * tests de integración reusan el mismo Spring context). Con varias clases de
+ * test pegándole a /api/v1/auth/ (login, refresh, forgot-password...), la
+ * suite completa termina agotando el bucket de 10/min y algunos tests ven un
+ * 429 en vez del status que en realidad quieren verificar. Producción nunca
+ * corre con spring.profiles.active=test, así que esto no le resta protección.
  */
 @Component
+@Profile("!test")
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class RateLimitFilter implements Filter {
 
@@ -91,13 +102,27 @@ public class RateLimitFilter implements Filter {
                 .build();
     }
 
+    // CF-Connecting-IP solo es confiable si Cloudflare es el UNICO camino para
+    // llegar al backend: si el origin (hoy Railway) es alcanzable por otra vía,
+    // cualquiera puede mandar ese header con el valor que quiera y saltear el
+    // rate limit rotando IPs falsas. Por default apagado — activalo (
+    // APP_TRUST_CLOUDFLARE_HEADER=true) recien cuando Cloudflare este
+    // confirmado como el unico camino de entrada (por ejemplo, con el dominio
+    // por defecto de Railway deshabilitado o inalcanzable).
+    @Value("${app.security.trust-cloudflare-header:false}")
+    private boolean trustCloudflareHeader;
+
     private String getClientIp(HttpServletRequest request) {
-        // Cloudflare pasa la IP real del cliente en CF-Connecting-IP (no spoofeable)
-        String cfIp = request.getHeader("CF-Connecting-IP");
-        if (cfIp != null && !cfIp.isBlank()) {
-            return cfIp.trim();
+        if (trustCloudflareHeader) {
+            String cfIp = request.getHeader("CF-Connecting-IP");
+            if (cfIp != null && !cfIp.isBlank()) {
+                return cfIp.trim();
+            }
         }
-        // Fallback para Railway/otros proxies
+        // X-Forwarded-For: confiamos en el primer hop porque Railway (el host
+        // actual) enruta el trafico HTTP a traves de su propio edge — el
+        // contenedor no queda expuesto por IP:puerto directo al público en su
+        // modelo estandar de despliegue.
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
             return xff.split(",")[0].trim();

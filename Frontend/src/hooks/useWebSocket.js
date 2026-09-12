@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { getAuthHeaders } from '../utils/api';
+import { asegurarTokenFresco } from '../utils/api';
 
 // Reconexión con backoff exponencial
 const INITIAL_DELAY = 2000;
@@ -62,7 +62,25 @@ export default function useWebSocket(agenciaId, onEvent, onConnect) {
 
         const client = new Client({
             webSocketFactory: () => new SockJS(wsUrl),
-            connectHeaders: { ...getAuthHeaders(), agenciaId: String(agenciaId) },
+            // Placeholder: beforeConnect (abajo) pisa esto con el Authorization
+            // vigente antes de CADA intento, incluido este primero.
+            connectHeaders: { agenciaId: String(agenciaId) },
+            // beforeConnect corre antes de CADA (re)conexión, incluidas las
+            // automáticas del backoff. Sin esto, connectHeaders quedaba fijado
+            // una sola vez al construir el Client, con el access token de ESE
+            // momento: con el token de 10hs de antes casi no importaba, pero con
+            // uno de minutos una pantalla como el Kanban —que se deja abierta
+            // sin tocar nada durante horas— reconectaba con un token ya vencido
+            // y WebSocketConfig.authenticateConnection la rechazaba en loop.
+            // asegurarTokenFresco refresca la sesión ACÁ si hace falta (nada
+            // más dispara un refresh si no hay requests REST en danza).
+            beforeConnect: async () => {
+                const token = await asegurarTokenFresco();
+                client.connectHeaders = {
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    agenciaId: String(agenciaId),
+                };
+            },
             // Backoff dinámico: el getter se evalúa antes de cada reconexión
             reconnectDelay: INITIAL_DELAY,
             debug: () => {},

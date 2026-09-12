@@ -45,6 +45,12 @@ public class Usuario {
 
     private LocalDateTime codigoExpiracion;
 
+    // Intentos fallidos consumidos contra codigoVerificacion desde que se
+    // emitió (ver V13__codigo_intentos.sql). Se resetea al generar un código
+    // nuevo; al llegar al máximo se invalida el código.
+    @Column(nullable = false)
+    private int codigoIntentos = 0;
+
     @Column(nullable = false)
     private boolean verificado = false;
 
