@@ -42,7 +42,7 @@ public class PayPalController {
         this.usuarioRepository = usuarioRepository;
     }
 
-    @PostMapping("/api/paypal/crear-suscripcion")
+    @PostMapping("/api/v1/paypal/crear-suscripcion")
     public ResponseEntity<?> crearSuscripcion(@RequestParam Long planId,
                                               @AuthenticationPrincipal UserDetails userDetails) {
         try {

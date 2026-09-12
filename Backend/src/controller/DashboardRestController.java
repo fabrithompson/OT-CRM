@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -228,6 +229,12 @@ public class DashboardRestController {
         }
     }
 
+    // UsuarioService.gestionarSolicitud ya valida que el admin pertenezca a la
+    // MISMA agencia que la solicitud, pero no el rol: hasta ahora cualquier
+    // miembro autenticado del equipo (no solo OWNER/ADMIN) podía aprobar o
+    // rechazar el ingreso de otra persona. @PreAuthorize corta esto antes de
+    // que el método se ejecute.
+    @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
     @PostMapping("/equipo/gestionar-solicitud")
     @Transactional
     public ResponseEntity<?> gestionarSolicitud(@RequestBody Map<String, Object> payload, Authentication auth) {
