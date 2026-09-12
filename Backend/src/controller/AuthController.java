@@ -1,6 +1,7 @@
 package controller;
 
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,8 +20,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import model.Usuario;
 import security.JwtUtil;
 import service.CustomUserDetailsService;
+import service.RefreshTokenService;
 import service.UsuarioService;
 
 @RestController
@@ -30,13 +34,16 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsService userDetailsService;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthController(UsuarioService usuarioService, AuthenticationManager authenticationManager,
-                          CustomUserDetailsService userDetailsService, JwtUtil jwtUtil) {
+                          CustomUserDetailsService userDetailsService, JwtUtil jwtUtil,
+                          RefreshTokenService refreshTokenService) {
         this.usuarioService = usuarioService;
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
         this.jwtUtil = jwtUtil;
+        this.refreshTokenService = refreshTokenService;
     }
 
     public record LoginRequest(
@@ -59,6 +66,8 @@ public class AuthController {
             @NotBlank String code,
             @NotBlank @Size(min = 8) String newPassword,
             @NotBlank String confirmPassword) {}
+    public record RefreshRequest(
+            @NotBlank String refreshToken) {}
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
@@ -71,9 +80,65 @@ public class AuthController {
         }
 
         final UserDetails userDetails = userDetailsService.loadUserByUsername(request.username());
-        final String jwt = jwtUtil.generateToken(userDetails);
+        final Usuario usuario = usuarioService.buscarPorUsername(request.username());
 
-        return ResponseEntity.ok(Map.of("token", jwt, "username", request.username()));
+        final String accessToken = jwtUtil.generateAccessToken(userDetails);
+        final String jti = UUID.randomUUID().toString();
+        final String refreshToken = jwtUtil.generateRefreshToken(userDetails, jti);
+        refreshTokenService.emitir(usuario.getId(), jti);
+
+        return ResponseEntity.ok(Map.of(
+                "token", accessToken,
+                "refreshToken", refreshToken,
+                "username", request.username()));
+    }
+
+    /**
+     * Renueva el access token usando el refresh token. Rota el refresh token
+     * en cada uso (RefreshTokenService.validarYRotar): el que llega se revoca
+     * y se emite uno nuevo, así una copia vieja filtrada deja de servir apenas
+     * el legítimo la usa una vez más.
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@Valid @RequestBody RefreshRequest request) {
+        var claims = jwtUtil.validarRefreshToken(request.refreshToken()).orElse(null);
+        if (claims == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Sesión expirada, iniciá sesión de nuevo."));
+        }
+
+        final UserDetails userDetails;
+        final Usuario usuario;
+        try {
+            userDetails = userDetailsService.loadUserByUsername(claims.username());
+            usuario = usuarioService.buscarPorUsername(claims.username());
+        } catch (UsernameNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Sesión expirada, iniciá sesión de nuevo."));
+        }
+
+        String jtiNuevo = UUID.randomUUID().toString();
+        if (!refreshTokenService.validarYRotar(claims.jti(), jtiNuevo, usuario.getId())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Sesión expirada, iniciá sesión de nuevo."));
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "token", jwtUtil.generateAccessToken(userDetails),
+                "refreshToken", jwtUtil.generateRefreshToken(userDetails, jtiNuevo)));
+    }
+
+    /**
+     * Logout con revocación real del lado del servidor: antes, cerrar sesión
+     * solo borraba el token en el navegador, sin invalidar nada acá. Best
+     * effort: si el refresh token ya es inválido/no existe, igual responde 200
+     * (no hay nada que filtre si una sesión ya estaba cerrada o nunca existió).
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@Valid @RequestBody RefreshRequest request) {
+        jwtUtil.validarRefreshToken(request.refreshToken())
+                .ifPresent(claims -> refreshTokenService.revocar(claims.jti()));
+        return ResponseEntity.ok(Map.of("message", "Sesión cerrada."));
     }
 
     @PostMapping("/register")

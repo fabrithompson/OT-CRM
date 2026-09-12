@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import LogoOrb from './LogoOrb';
 import { useLanguage } from '../context/LangContext';
 import { useUser } from '../context/UserContext';
+import api, { getRefreshToken, clearTokens } from '../utils/api';
 
 // requiereFlag: nombre del flag del plan que habilita esta sección
 const NAV_ITEMS = [
@@ -97,7 +98,16 @@ export default function Sidebar({ onHelpClick }) {
                 <li className="menu-item">
                     <button
                         onClick={() => {
-                            localStorage.removeItem('token');
+                            // Best-effort: revocar el refresh token del lado del
+                            // servidor (RefreshTokenService) para que cerrar sesión
+                            // invalide algo de verdad, no solo borre el token local.
+                            // No se espera la respuesta: si falla (offline, backend
+                            // caído), igual se cierra sesión localmente.
+                            const refreshToken = getRefreshToken();
+                            if (refreshToken) {
+                                api.post('/auth/logout', { refreshToken }).catch(() => {});
+                            }
+                            clearTokens();
                             window.dispatchEvent(new CustomEvent('crm:auth-changed'));
                             navigate('/login');
                         }}

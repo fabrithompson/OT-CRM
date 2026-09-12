@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
-import api, { formatTime, formatDate } from '../../utils/api';
+import api, { formatTime, formatDate, fetchConReintento } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 import { useLanguage } from '../../context/LangContext';
 import useSlashCommands, { SlashMenu } from './SlashCommandMenu';
@@ -218,10 +218,8 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
         form.append('filename', file.name);
         toast('Subiendo...', 'Espera un momento', '#3b82f6');
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/v1/chat/${clienteId}/send-file`, {
+            const res = await fetchConReintento(`/api/v1/chat/${clienteId}/send-file`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
                 body: form,
             });
             if (!res.ok) {

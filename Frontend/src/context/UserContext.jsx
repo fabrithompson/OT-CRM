@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '../utils/api';
+import api, { getToken, clearTokens } from '../utils/api';
 
 const UserContext = createContext(null);
 
@@ -7,10 +7,7 @@ export function UserProvider({ children }) {
     const [usuario, setUsuario] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const hasValidToken = useCallback(() => {
-        const token = localStorage.getItem('token');
-        return token && token !== 'undefined' && token !== 'null';
-    }, []);
+    const hasValidToken = useCallback(() => Boolean(getToken()), []);
 
     const clearUser = useCallback(() => {
         setUsuario(null);
@@ -32,8 +29,12 @@ export function UserProvider({ children }) {
             setUsuario(res.data);
         } catch (err) {
             console.error('Error cargando perfil', err);
-            if (err.response?.status === 401 || err.response?.status === 403) {
-                localStorage.removeItem('token');
+            // Solo 401: el interceptor de api.js ya intentó refrescar la sesión
+            // antes de que esto llegue acá, así que si sigue siendo 401 es que
+            // no hay sesión que salvar. 403 es "autenticado pero sin permiso
+            // para esto" — no corresponde desloguear a alguien por eso.
+            if (err.response?.status === 401) {
+                clearTokens();
                 setUsuario(null);
             }
         } finally {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import api, { setTokens } from '../utils/api';
 import '../assets/css/login.css';
 import LogoOrb from '../components/LogoOrb';
 import WaveCanvas from '../components/WaveCanvas';
@@ -78,7 +78,7 @@ export default function Auth() {
         try {
             const res = await api.post('/auth/login', { username: formData.username, password: formData.password });
             if (res.data?.token && res.data.token !== 'undefined') {
-                localStorage.setItem('token', res.data.token);
+                setTokens(res.data.token, res.data.refreshToken);
                 localStorage.removeItem('crm_theme');
                 window.dispatchEvent(new CustomEvent('crm:auth-changed'));
                 navigate('/dashboard');
