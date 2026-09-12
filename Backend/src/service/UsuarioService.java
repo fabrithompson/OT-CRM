@@ -76,6 +76,7 @@ public class UsuarioService {
     }
 
     private static final int CODIGO_EXPIRACION_MINUTOS = 15;
+    private static final int CODIGO_INTENTOS_MAXIMOS = 5;
 
     private boolean constantTimeEquals(String a, String b) {
         if (a == null || b == null) return false;
@@ -92,11 +93,53 @@ public class UsuarioService {
     private void setCodigoConExpiracion(Usuario usuario, String codigo) {
         usuario.setCodigoVerificacion(codigo);
         usuario.setCodigoExpiracion(LocalDateTime.now().plusMinutes(CODIGO_EXPIRACION_MINUTOS));
+        usuario.setCodigoIntentos(0);
     }
 
     private boolean codigoExpirado(Usuario usuario) {
         return usuario.getCodigoExpiracion() == null
                 || LocalDateTime.now().isAfter(usuario.getCodigoExpiracion());
+    }
+
+    /**
+     * Valida un código contra el que tiene guardado el usuario, contando el
+     * intento. El mismo campo codigoVerificacion se reutiliza para el código
+     * de verificación de cuenta y el de recuperación de password (ver
+     * verificarCodigo y restablecerPassword), así que el límite de intentos
+     * vive acá, compartido por los dos flujos.
+     *
+     * Al llegar a CODIGO_INTENTOS_MAXIMOS invalida el código directamente
+     * (aunque el intento que lo agotó fuera el correcto): agotar los intentos
+     * fuerza a pedir un código nuevo en vez de dejar una ventana abierta para
+     * seguir probando.
+     */
+    private boolean validarYConsumirIntento(Usuario usuario, String codigoIngresado) {
+        if (usuario.getCodigoVerificacion() == null || codigoExpirado(usuario)) {
+            return false;
+        }
+        if (usuario.getCodigoIntentos() >= CODIGO_INTENTOS_MAXIMOS) {
+            invalidarCodigo(usuario);
+            return false;
+        }
+
+        boolean coincide = constantTimeEquals(usuario.getCodigoVerificacion(), codigoIngresado);
+        if (!coincide) {
+            usuario.setCodigoIntentos(usuario.getCodigoIntentos() + 1);
+            if (usuario.getCodigoIntentos() >= CODIGO_INTENTOS_MAXIMOS) {
+                invalidarCodigo(usuario);
+            } else {
+                usuarioRepository.save(usuario);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private void invalidarCodigo(Usuario usuario) {
+        usuario.setCodigoVerificacion(null);
+        usuario.setCodigoExpiracion(null);
+        usuario.setCodigoIntentos(0);
+        usuarioRepository.save(usuario);
     }
 
     private String generarCodigoAgencia() {
@@ -219,24 +262,26 @@ public class UsuarioService {
 
     public boolean verificarCodigo(String username, String codigoIngresado) {
         return usuarioRepository.findByUsername(username).map(u -> {
-            if (u.getCodigoVerificacion() != null
-                    && constantTimeEquals(u.getCodigoVerificacion(), codigoIngresado)
-                    && !codigoExpirado(u)) {
-                u.setVerificado(true);
-                u.setCodigoVerificacion(null);
-                u.setCodigoExpiracion(null);
-                usuarioRepository.save(u);
-                return true;
+            if (!validarYConsumirIntento(u, codigoIngresado)) {
+                return false;
             }
-            return false;
+            u.setVerificado(true);
+            invalidarCodigo(u);
+            return true;
         }).orElse(false);
     }
 
     public void reenviarCodigo(String emailOrUsername) {
-        Usuario u = usuarioRepository.findByEmail(emailOrUsername)
-                .or(() -> usuarioRepository.findByUsername(emailOrUsername))
-                .orElseThrow(() -> new RegistroException("Usuario no encontrado."));
+        Optional<Usuario> encontrado = usuarioRepository.findByEmail(emailOrUsername)
+                .or(() -> usuarioRepository.findByUsername(emailOrUsername));
+        if (encontrado.isEmpty()) {
+            // No revelar si el usuario/email existe: mismo resultado que el
+            // caso exitoso (AuthController.resendCode ya devuelve un mensaje
+            // generico independientemente de esto).
+            return;
+        }
 
+        Usuario u = encontrado.get();
         if (Boolean.TRUE.equals(u.getVerificado())) {
             throw new RegistroException("El usuario ya está verificado.");
         }
@@ -255,38 +300,45 @@ public class UsuarioService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
     }
 
-    @SuppressWarnings("null")
     @Transactional
     public void iniciarRecuperacionPassword(String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RegistroException("No existe una cuenta con ese email."));
-        String codigo = generarCodigoEmail();
-        setCodigoConExpiracion(usuario, codigo);
-        usuarioRepository.save(usuario);
-
-        emailService.enviarCodigoRecuperacion(email, codigo);
-        log.info("Código de recuperación enviado a: {}", email);
+        // No revelar si la cuenta existe: si no se encuentra, no se hace nada y
+        // el controller responde exactamente el mismo mensaje que en el caso
+        // exitoso (AuthController.procesarSolicitudRecuperacion). Antes esto
+        // tiraba una excepción que el controller devolvía como 400 con
+        // "No existe una cuenta con ese email.", permitiendo enumerar emails
+        // registrados probando la recuperación de contraseña.
+        usuarioRepository.findByEmail(email).ifPresent(usuario -> {
+            String codigo = generarCodigoEmail();
+            setCodigoConExpiracion(usuario, codigo);
+            usuarioRepository.save(usuario);
+            emailService.enviarCodigoRecuperacion(email, codigo);
+            log.info("Código de recuperación enviado a: {}", email);
+        });
     }
 
-    @Transactional
+    // noRollbackFor: sin esto, el intento fallido que validarYConsumirIntento
+    // ya guardó (incrementar codigoIntentos, o invalidar el código al agotarlos)
+    // se pierde igual, porque el RegistroException de abajo hace rollback de
+    // TODA la transacción — incluido ese guardado. El límite de intentos nunca
+    // llegaba a cumplirse: cada request "fallido" en realidad revertía su
+    // propio contador.
+    @Transactional(noRollbackFor = RegistroException.class)
     public void restablecerPassword(String email, String codigo, String nuevaPassword) {
         if (nuevaPassword == null || nuevaPassword.length() < 8) {
             throw new RegistroException("La contraseña debe tener al menos 8 caracteres.");
         }
 
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RegistroException("No existe una cuenta con ese email."));
-
-        if (usuario.getCodigoVerificacion() == null
-                || !constantTimeEquals(usuario.getCodigoVerificacion(), codigo)
-                || codigoExpirado(usuario)) {
+        // Mismo mensaje genérico si la cuenta no existe o si el código es
+        // incorrecto/expiró/se agotaron los intentos: no dar pistas de cuáles
+        // emails están registrados.
+        Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
+        if (usuario == null || !validarYConsumirIntento(usuario, codigo)) {
             throw new RegistroException("El código de recuperación es incorrecto o ha expirado.");
         }
 
         usuario.setPassword(passwordEncoder.encode(nuevaPassword));
-        usuario.setCodigoVerificacion(null);
-        usuario.setCodigoExpiracion(null);
-        usuarioRepository.save(usuario);
+        invalidarCodigo(usuario);
 
         log.info("Contraseña restablecida para: {}", email);
     }
