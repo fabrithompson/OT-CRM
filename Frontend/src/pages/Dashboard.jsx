@@ -11,6 +11,7 @@ import NotificationBell from '../components/kanban/NotificationBell';
 import { useLanguage } from '../context/LangContext';
 import { useToast } from '../context/ToastContext';
 import { getDisplayName } from '../utils/userUtils';
+import { clickable } from '../utils/a11y';
 
 // Intervalo mínimo entre refreshes completos disparados por eventos de alta
 // frecuencia (mensajes entrantes). Un refresh son 6 requests con agregados
@@ -131,7 +132,7 @@ function CircularProgress({ pct, color, icon, label, sublabel }) {
                 </div>
             </div>
             <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white' }}>{label}</span>
-            <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.38)', textAlign: 'center', lineHeight: 1.3 }}>{sublabel}</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-3)', textAlign: 'center', lineHeight: 1.3 }}>{sublabel}</span>
         </div>
     );
 }
@@ -506,7 +507,7 @@ export default function Dashboard() {
     };
     const ttItemStyle = { fontSize: '0.78rem', padding: '2px 0', lineHeight: 1.4 };
     const secTitle = { margin: 0, fontSize: '0.98rem', fontWeight: 700, color: 'white' };
-    const secSub   = { margin: 0, fontSize: '0.73rem', color: 'rgba(255,255,255,0.38)' };
+    const secSub   = { margin: 0, fontSize: '0.73rem', color: 'var(--color-text-3)' };
 
     if (loading) return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -515,7 +516,7 @@ export default function Dashboard() {
     );
 
     return (
-        <div className="dashboard-content" style={{ padding: '18px 22px', overflowY: 'auto', height: '100%', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="dashboard-content db-page" style={{ overflowY: 'auto', height: '100%', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
             {/* ── Top bar ── */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
@@ -526,7 +527,7 @@ export default function Dashboard() {
                     </span>
                     <h1 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'white' }}>
                         {t('dashboard.metrics.title')}{' '}
-                        <span style={{ color:'rgba(255,255,255,0.4)', fontWeight:400, fontSize:'0.9rem' }}>{rangeText}</span>
+                        <span style={{ color:'var(--color-text-3)', fontWeight:400, fontSize:'0.9rem' }}>{rangeText}</span>
                     </h1>
                 </div>
 
@@ -539,14 +540,14 @@ export default function Dashboard() {
                                     padding: '5px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
                                     fontSize: '0.77rem', fontWeight: 600, transition: 'all 0.15s',
                                     background: dateRange === r ? 'rgba(255,255,255,0.13)' : 'transparent',
-                                    color: dateRange === r ? 'white' : 'rgba(255,255,255,0.38)',
+                                    color: dateRange === r ? 'white' : 'var(--color-text-3)',
                                 }}>{lbl}</button>
                             ))}
                             <button onClick={() => setPickerOpen(v => !v)} style={{
                                 padding: '5px 11px', borderRadius: 8, border: 'none', cursor: 'pointer',
                                 fontSize: '0.77rem', fontWeight: 600, transition: 'all 0.15s', display:'flex', alignItems:'center', gap:4,
                                 background: dateRange === 'custom' ? 'rgba(255,255,255,0.13)' : 'transparent',
-                                color: dateRange === 'custom' ? 'white' : 'rgba(255,255,255,0.38)',
+                                color: dateRange === 'custom' ? 'white' : 'var(--color-text-3)',
                             }}>
                                 <i className="fas fa-calendar-alt" style={{ fontSize:'0.7rem' }} />
                                 {dateRange === 'custom' ? 'Custom' : ''}
@@ -583,7 +584,7 @@ export default function Dashboard() {
                                         marginTop:14, width:'100%', padding:'8px', borderRadius:8, border:'none',
                                         cursor: customFrom ? 'pointer' : 'not-allowed',
                                         background: customFrom ? '#10b981' : 'rgba(255,255,255,0.1)',
-                                        color: customFrom ? 'white' : 'rgba(255,255,255,0.3)',
+                                        color: customFrom ? 'white' : 'var(--color-text-3)',
                                         fontSize:'0.82rem', fontWeight:600, transition:'all 0.15s',
                                     }}>
                                     {t('dashboard.picker.apply')}
@@ -625,7 +626,7 @@ export default function Dashboard() {
             </div>
 
             {/* ── KPI Row: 4 gradient cards ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+            <div className="db-grid db-grid--kpi">
                 <KpiCardV2
                     icon="fa-user-plus" label={t('dashboard.kpi.newLeads')}
                     value={data.nuevosLeads.toLocaleString()}
@@ -719,7 +720,7 @@ export default function Dashboard() {
             </div>
 
             {/* ── Row 2: Weekly chart + Lead origin ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '60% 1fr', gap: 16 }}>
+            <div className="db-grid db-grid--60">
                 <div style={card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                         <div>
@@ -793,7 +794,7 @@ export default function Dashboard() {
                 <div style={card}>
                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                         <p style={secTitle}>{t('dashboard.chart.leadOrigin')}</p>
-                        <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>{originLabel}</span>
+                        <span style={{ fontSize:'0.7rem', color:'var(--color-text-3)' }}>{originLabel}</span>
                     </div>
                     <div style={{ display:'flex', justifyContent:'center', position:'relative', marginTop:8 }}>
                         <PieChart width={175} height={175}>
@@ -815,7 +816,7 @@ export default function Dashboard() {
                         </PieChart>
                         <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', textAlign:'center', pointerEvents:'none' }}>
                             <div style={{ fontSize:'1.45rem', fontWeight:800, color:'white' }}>{(data.waLeads + data.tgLeads).toLocaleString()}</div>
-                            <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.38)', textTransform:'uppercase', letterSpacing:1 }}>LEADS</div>
+                            <div style={{ fontSize:'0.65rem', color:'var(--color-text-3)', textTransform:'uppercase', letterSpacing:1 }}>LEADS</div>
                         </div>
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 14px', marginTop:10 }}>
@@ -831,7 +832,7 @@ export default function Dashboard() {
             </div>
 
             {/* ── Row 3: Funnel + Objectives ── */}
-            <div style={{ display:'grid', gridTemplateColumns:'45% 1fr', gap:16 }}>
+            <div className="db-grid db-grid--45">
                 <div style={card}>
                     {(() => {
                         const maxClientes = Math.max(1, ...etapasStats.map(e => e.cantidadClientes));
@@ -840,12 +841,12 @@ export default function Dashboard() {
                             <>
                                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
                                     <p style={secTitle}>{t('dashboard.funnel.title')}</p>
-                                    <span style={{ fontSize:'0.7rem', color:'rgba(255,255,255,0.35)' }}>
+                                    <span style={{ fontSize:'0.7rem', color:'var(--color-text-3)' }}>
                                         {etapasStats.length} {t('dashboard.funnel.stages')} · {totalClientes} {t('dashboard.funnel.contacts')}
                                     </span>
                                 </div>
                                 {etapasStats.length === 0 ? (
-                                    <p style={{ color:'rgba(255,255,255,0.28)', fontSize:'0.82rem' }}>{t('dashboard.funnel.noStages')}</p>
+                                    <p style={{ color:'var(--color-text-3)', fontSize:'0.82rem' }}>{t('dashboard.funnel.noStages')}</p>
                                 ) : (
                                     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                                         {etapasStats.map(etapa => {
@@ -855,7 +856,7 @@ export default function Dashboard() {
                                                     <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
                                                         <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.72)', fontWeight:500 }}>{etapa.nombre}</span>
                                                         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-                                                            <span style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.38)' }}>{etapa.pctMensajes}% msgs</span>
+                                                            <span style={{ fontSize:'0.72rem', color:'var(--color-text-3)' }}>{etapa.pctMensajes}% msgs</span>
                                                             <span style={{ fontSize:'0.85rem', fontWeight:700, color:'white' }}>{etapa.cantidadClientes.toLocaleString()}</span>
                                                         </div>
                                                     </div>
@@ -882,7 +883,7 @@ export default function Dashboard() {
                                     padding:'4px 12px', borderRadius:6, border:'none', cursor:'pointer',
                                     fontSize:'0.74rem', fontWeight:600, transition:'all 0.15s',
                                     background: topView === v ? 'rgba(255,255,255,0.13)' : 'transparent',
-                                    color: topView === v ? 'white' : 'rgba(255,255,255,0.38)',
+                                    color: topView === v ? 'white' : 'var(--color-text-3)',
                                 }}>{lbl}</button>
                             ))}
                         </div>
@@ -891,7 +892,7 @@ export default function Dashboard() {
                         const list = (topView === 'agentes' ? topStats.topAgentes : topStats.topClientes).slice(0, 5);
                         const maxTotal = Math.max(1, ...list.map(r => r.total || 0));
                         if (!list.length) return (
-                            <p style={{ color:'rgba(255,255,255,0.28)', fontSize:'0.82rem' }}>
+                            <p style={{ color:'var(--color-text-3)', fontSize:'0.82rem' }}>
                                 {topView === 'agentes' ? t('dashboard.ranking.noSales') : t('dashboard.ranking.noLoads')}
                             </p>
                         );
@@ -899,7 +900,7 @@ export default function Dashboard() {
                             <div style={{ display:'flex', flexDirection:'column', gap:14, flex:1, justifyContent:'space-around' }}>
                                 {list.map((row, idx) => (
                                     <div key={row.id || idx} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                                        <span style={{ fontSize:'0.72rem', fontWeight:700, color:'rgba(255,255,255,0.28)', width:20, textAlign:'center', flexShrink:0 }}>#{idx+1}</span>
+                                        <span style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--color-text-3)', width:20, textAlign:'center', flexShrink:0 }}>#{idx+1}</span>
                                         {row.fotoUrl
                                             ? <img src={row.fotoUrl} alt={row.nombre} style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:`2px solid ${AGENT_COLORS[idx % 4]}` }} />
                                             : <div style={{
@@ -925,7 +926,7 @@ export default function Dashboard() {
                                             <div style={{ fontSize:'0.8rem', fontWeight:700, color:'white' }}>
                                                 ${row.total >= 1000 ? (row.total / 1000).toFixed(1) + 'K' : row.total?.toFixed(0)}
                                             </div>
-                                            <div style={{ fontSize:'0.65rem', color:'rgba(255,255,255,0.35)' }}>
+                                            <div style={{ fontSize:'0.65rem', color:'var(--color-text-3)' }}>
                                                 {topView === 'agentes' ? t('dashboard.ranking.inSales') : t('dashboard.ranking.inLoads')}
                                             </div>
                                         </div>
@@ -938,12 +939,12 @@ export default function Dashboard() {
             </div>
 
             {/* ── Channels status (compact) ── */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16 }}>
+            <div className="db-grid db-grid--2">
                 {[
                     { label:'WhatsApp', icon:'fa-whatsapp', connected:data.whatsappConectado, path:'/whatsapp-vincular', brandColor:'#25D366' },
                     { label:'Telegram', icon:'fa-telegram', connected:data.telegramConnected, path:'/telegram-vincular', brandColor:'#229ED9' },
                 ].map(ch => (
-                    <div key={ch.label} onClick={() => navigate(ch.path)} style={{ ...card, display:'flex', alignItems:'center', gap:14, cursor:'pointer' }}>
+                    <div key={ch.label} {...clickable(() => navigate(ch.path), { label: ch.label })} style={{ ...card, display:'flex', alignItems:'center', gap:14, cursor:'pointer' }}>
                         <div style={{
                             width:42, height:42, borderRadius:12, flexShrink:0,
                             background: ch.brandColor + '22',
@@ -956,7 +957,7 @@ export default function Dashboard() {
                             <div style={{ fontSize:'0.92rem', fontWeight:600, color:'white' }}>{ch.label}</div>
                             <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3 }}>
                                 <span style={{ width:7, height:7, borderRadius:'50%', background: ch.connected ? ch.brandColor : '#6b7280' }} />
-                                <span style={{ fontSize:'0.75rem', color: ch.connected ? ch.brandColor : 'rgba(255,255,255,0.38)' }}>
+                                <span style={{ fontSize:'0.75rem', color: ch.connected ? ch.brandColor : 'var(--color-text-3)' }}>
                                     {ch.connected ? t('dashboard.channels.connected') : t('dashboard.channels.disconnected')}
                                 </span>
                             </div>

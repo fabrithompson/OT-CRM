@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import api from '../utils/api';
+import { clickable } from '../utils/a11y';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LangContext';
 import '../assets/css/dashboard.css';
@@ -258,7 +259,7 @@ export default function AgenteIA() {
                                                         border: '1px solid rgba(34,211,238,0.20)',
                                                         cursor: 'pointer',
                                                     }}
-                                                    onClick={() => window.open(url, '_blank')}
+                                                    {...clickable(() => window.open(url, '_blank'), { label: `${t('agente.openImage')} ${j + 1}` })}
                                                 />
                                             ))}
                                         </div>
@@ -274,7 +275,7 @@ export default function AgenteIA() {
                                 <div style={{
                                     padding: '10px 16px', borderRadius: '14px 14px 14px 2px',
                                     background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)',
-                                    fontSize: '0.88rem', color: 'rgba(255,255,255,0.4)',
+                                    fontSize: '0.88rem', color: 'var(--color-text-3)',
                                 }}>
                                     <i className="fa-solid fa-ellipsis fa-fade" />
                                 </div>
@@ -394,7 +395,7 @@ export default function AgenteIA() {
                     {/* Image hint */}
                     <div style={{
                         padding: '0 18px 10px', flexShrink: 0,
-                        fontSize: '0.70rem', color: 'rgba(255,255,255,0.25)',
+                        fontSize: '0.70rem', color: 'var(--color-text-3)',
                         display: 'flex', alignItems: 'center', gap: 5,
                     }}>
                         <i className="fas fa-lightbulb" style={{ color: 'rgba(34,211,238,0.4)' }} />
@@ -414,7 +415,7 @@ export default function AgenteIA() {
                         </div>
                         <div style={{ flex: 1 }}>
                             <div className="db-metric-label">{t('agente.enabledLabel')}</div>
-                            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.40)', marginTop: 3 }}>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', marginTop: 3 }}>
                                 {t('agente.enabledSub')}
                             </div>
                         </div>

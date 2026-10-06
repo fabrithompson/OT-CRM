@@ -265,12 +265,12 @@ export default function Contactos() {
 
     const renderTableBody = () => {
         if (loading) {
-            return <tr><td colSpan={8} style={{ textAlign: 'center', padding: 40 }}><div className="spinner"></div></td></tr>;
+            return <tr><td colSpan={8} className="table-cards__full" style={{ textAlign: 'center', padding: 40 }}><div className="spinner"></div></td></tr>;
         }
         if (clientes.length === 0) {
             return (
                 <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: 40, color: '#94a3b8', height: 'calc(100vh - 268px)', verticalAlign: 'middle' }}>
+                    <td colSpan={8} className="table-cards__full" style={{ textAlign: 'center', padding: 40, color: '#94a3b8', height: 'calc(100dvh - 268px)', verticalAlign: 'middle' }}>
                         <i className="fas fa-users" style={{ fontSize: '2.5rem', marginBottom: 16, opacity: 0.3, display: 'block' }}></i>
                         <span style={{ fontSize: '1rem' }}>No se encontraron contactos</span>
                     </td>
@@ -279,32 +279,32 @@ export default function Contactos() {
         }
         return clientes.map(c => (
             <tr key={c.id} id={`row-${c.id}`}>
-                <td className="col-left ps-4" style={{ textAlign: 'left' }}>
+                <td className="col-left ps-4 cell-primary" style={{ textAlign: 'left' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div className="avatar-circle"><span>{(c.nombre || '?').charAt(0).toUpperCase()}</span></div>
                         <span style={{ fontWeight: 700, color: '#fff' }}>{c.nombre}</span>
                     </div>
                 </td>
-                <td className="col-center" style={{ textAlign: 'center' }}><div className="session-cell" style={{ justifyContent: 'center' }}><PlatformIcon origen={c.origen} /></div></td>
-                <td className="col-center text-muted" style={{ textAlign: 'center', fontFamily: 'monospace' }}>{c.telefono}</td>
-                <td className="col-center" style={{ textAlign: 'center' }}>
-                    {c.dispositivo ? <span className="badge-device"><i className="fas fa-mobile-alt" style={{ marginRight: 4 }}></i>{c.dispositivo.alias}</span> : <span style={{ color: '#666' }}>-</span>}
+                <td data-label={t('contactos.colPlatform')} className="col-center" style={{ textAlign: 'center' }}><div className="session-cell" style={{ justifyContent: 'center' }}><PlatformIcon origen={c.origen} /></div></td>
+                <td data-label={t('contactos.colPhone')} className="col-center text-muted" style={{ textAlign: 'center', fontFamily: 'monospace' }}>{c.telefono}</td>
+                <td data-label={t('contactos.colDevice')} className="col-center" style={{ textAlign: 'center' }}>
+                    {c.dispositivo ? <span className="badge-device"><i className="fas fa-mobile-alt" style={{ marginRight: 4 }}></i>{c.dispositivo.alias}</span> : <span style={{ color: 'var(--color-text-3)' }}>-</span>}
                 </td>
-                <td className="col-center" style={{ textAlign: 'center' }}>
+                <td data-label={t('contactos.colLabels')} className="col-center" style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
                         {c.etiquetas?.length > 0
                             ? c.etiquetas.map(tag => (<span key={tag.id} className="badge-tag" style={{ backgroundColor: `${tag.color}20`, color: tag.color, border: `1px solid ${tag.color}40` }}>{tag.nombre}</span>))
-                            : <span style={{ color: '#666' }}>-</span>
+                            : <span style={{ color: 'var(--color-text-3)' }}>-</span>
                         }
                     </div>
                 </td>
-                <td className="col-center" style={{ textAlign: 'center' }}>
-                    {c.etapa ? <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}><span className="stage-dot"></span><span className="text-sec">{c.etapa.nombre}</span></div> : <span style={{ color: '#666' }}>-</span>}
+                <td data-label={t('contactos.colStatus')} className="col-center" style={{ textAlign: 'center' }}>
+                    {c.etapa ? <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}><span className="stage-dot"></span><span className="text-sec">{c.etapa.nombre}</span></div> : <span style={{ color: 'var(--color-text-3)' }}>-</span>}
                 </td>
-                <td className="col-center" style={{ textAlign: 'center' }}>
+                <td data-label={t('contactos.colMessage')} className="col-center" style={{ textAlign: 'center' }}>
                     <p style={{ maxWidth: 200, margin: '0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#94a3b8', fontSize: '0.85rem' }}>{c.ultimoMensajeResumen || '-'}</p>
                 </td>
-                <td className="col-center pe-4" style={{ textAlign: 'center' }}>
+                <td data-label={t('contactos.colActions')} className="col-center pe-4" style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
                         <button type="button" className="btn-action-icon chat" title="Abrir Chat" onClick={() => abrirChat(c.id)}><i className="fas fa-comment-dots"></i></button>
                         <button type="button" className="btn-action-icon trash" title="Eliminar" onClick={() => setDeleteId(c.id)}><i className="fas fa-trash-alt"></i></button>
@@ -315,8 +315,8 @@ export default function Contactos() {
     };
 
     return (
-        <section className="page-wrapper" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="header-top" style={{ flexShrink: 0, padding: '20px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)' }}>
+        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="header-top contactos-head" style={{ flexShrink: 0, padding: '20px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                     <i className="fas fa-users text-primary" style={{ fontSize: '1.4rem' }}></i>
                     <div>
@@ -324,7 +324,7 @@ export default function Contactos() {
                         <span className="text-muted" style={{ fontSize: '0.85rem' }}>{totalItems} {t('contactos.clients')}</span>
                     </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+                <div className="contactos-head__right" style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                     <div className="search-wrapper" style={{ margin: 0, height: 40, position: 'relative' }}>
                         <i className="fas fa-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#aaa' }}></i>
                         <input type="text" placeholder={t('contactos.search')} value={search} onChange={e => handleSearch(e.target.value)} autoComplete="off" style={{ height: '100%', width: 240, paddingLeft: 35, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', borderRadius: 8, color: 'white', outline: 'none' }} />
@@ -340,10 +340,10 @@ export default function Contactos() {
                 </div>
             </div>
 
-            <div className="dashboard-content" style={{ flex: 1, overflow: 'hidden', padding: '30px 30px 20px 30px', display: 'flex', flexDirection: 'column' }}>
-                <div className="glass-table-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxHeight: 'calc(100vh - 150px)' }}>
+            <div className="dashboard-content contactos-body" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div className="glass-table-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
                     <div className="table-scroll-wrapper custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
-                        <table className="table custom-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                        <table className="table custom-table table-cards" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
                             <thead style={{ backgroundColor: '#0a0a14' }}>
                                 <tr>
                                     <th className="col-left ps-4 sticky-header" style={{ textAlign: 'left' }}>{t('contactos.colName')}</th>

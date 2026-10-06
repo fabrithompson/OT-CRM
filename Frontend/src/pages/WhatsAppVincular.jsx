@@ -286,11 +286,11 @@ export default function WhatsAppVincular() {
                 <h3 style={{ margin: '0 0 15px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('wa.vincularTitle')}</h3>
                 <div style={{ display: 'flex', gap: 10, marginBottom: 20, borderBottom: '1px solid #333', paddingBottom: 10 }}>
                     <button type="button" onClick={() => switchTab('qr')}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: qrTab === 'qr' ? '#10b981' : '#666', fontWeight: qrTab === 'qr' ? 'bold' : 'normal' }}>
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: qrTab === 'qr' ? '#10b981' : 'var(--color-text-3)', fontWeight: qrTab === 'qr' ? 'bold' : 'normal' }}>
                         {t('wa.qrTab')}
                     </button>
                     <button type="button" onClick={() => switchTab('code')}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: qrTab === 'code' ? '#10b981' : '#666', fontWeight: qrTab === 'code' ? 'bold' : 'normal' }}>
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: qrTab === 'code' ? '#10b981' : 'var(--color-text-3)', fontWeight: qrTab === 'code' ? 'bold' : 'normal' }}>
                         {t('wa.codeTab')}
                     </button>
                 </div>

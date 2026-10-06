@@ -54,6 +54,10 @@ export default function LogoOrb({
     <div
       className={`logo-orb-wrap ot-logo ${className}`}
       onClick={onClick ? handleClick : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? 'OT CRM' : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(e); } } : undefined}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
       <svg

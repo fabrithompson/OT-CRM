@@ -190,7 +190,7 @@ export default function Perfil() {
     );
 
     return (
-        <div id="profile-wrapper" className="profile-wrapper" style={{ height: '100vh', overflowY: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+        <div id="profile-wrapper" className="profile-wrapper" style={{ height: '100%', overflowY: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
             <div className="profile-content" style={{ width: '100%', maxWidth: 1400, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <h2 style={{ margin: 0, fontSize: '1.55rem', fontWeight: 800, color: '#fff' }}>{t('perfil.title')}</h2>
 
@@ -299,7 +299,7 @@ export default function Perfil() {
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{t('perfil.team.title')}</h3>
-                            <p style={{ margin: 0, fontSize: '0.82rem', color: '#6b7280' }}>{t('perfil.team.subtitle')}</p>
+                            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-3)' }}>{t('perfil.team.subtitle')}</p>
                         </div>
                     </div>
 
@@ -314,7 +314,7 @@ export default function Perfil() {
                             {usuario.agencia.codigoInvitacion && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
                                     <i className="fas fa-key" style={{ color: '#10b981' }}></i>
-                                    <span style={{ color: '#6b7280', fontSize: '0.88rem' }}>{t('perfil.team.yourCode')}</span>
+                                    <span style={{ color: 'var(--color-text-3)', fontSize: '0.88rem' }}>{t('perfil.team.yourCode')}</span>
                                     <code style={{ color: '#10b981', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.12em', background: 'rgba(16,185,129,0.1)', padding: '2px 10px', borderRadius: '6px' }}>
                                         {usuario.agencia.codigoInvitacion}
                                     </code>
@@ -380,12 +380,12 @@ export default function Perfil() {
                                         </span>
                                     )}
                                 </h3>
-                                <p style={{ margin: 0, fontSize: '0.82rem', color: '#6b7280' }}>{t('solicitudes.subtitle')}</p>
+                                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-3)' }}>{t('solicitudes.subtitle')}</p>
                             </div>
                         </div>
 
                         {solicitudes.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '20px 0', color: '#6b7280', fontSize: '0.9rem' }}>
+                            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--color-text-3)', fontSize: '0.9rem' }}>
                                 <i className="fas fa-inbox" style={{ fontSize: '1.5rem', marginBottom: 8, display: 'block' }}></i>
                                 {t('solicitudes.empty')}
                             </div>
@@ -408,7 +408,7 @@ export default function Perfil() {
                                                 <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {u.nombreCompleto || u.username}
                                                 </div>
-                                                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-3)' }}>
                                                     @{u.username} · {t('solicitudes.requested')} {fecha}
                                                 </div>
                                             </div>
@@ -445,7 +445,7 @@ export default function Perfil() {
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Google Contacts</h3>
-                            <p style={{ margin: 0, fontSize: '0.82rem', color: '#6b7280' }}>
+                            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-3)' }}>
                                 Sincroniza nombres de clientes con la agenda de tu celular
                             </p>
                         </div>
@@ -453,7 +453,7 @@ export default function Perfil() {
                             <span style={{
                                 padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700,
                                 background: googleConectado ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.15)',
-                                color: googleConectado ? '#10b981' : '#6b7280',
+                                color: googleConectado ? '#10b981' : 'var(--color-text-3)',
                                 border: `1px solid ${googleConectado ? 'rgba(16,185,129,0.3)' : 'rgba(107,114,128,0.3)'}`,
                             }}>
                                 {googleConectado ? 'Conectado' : 'No conectado'}

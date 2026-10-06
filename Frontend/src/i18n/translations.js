@@ -1,8 +1,20 @@
 export const TRANSLATIONS = {
   es: {
     lang: { toggle: 'EN', name: 'Español', code: 'es' },
+    ui: { cancel: 'Cancelar', confirm: 'Confirmar', close: 'Cerrar', loading: 'Cargando...' },
+    errors: {
+      title: 'Algo salió mal',
+      message: 'Ocurrió un error inesperado. Ya lo registramos; podés reintentar o volver al inicio.',
+      retry: 'Reintentar',
+      reload: 'Recargar la página',
+      backDashboard: 'Ir al dashboard',
+      backHome: 'Volver al inicio',
+      notFoundTitle: 'Página no encontrada',
+      notFoundMsg: 'La dirección que buscás no existe o fue movida.',
+    },
     auth: {
       backToHome: 'Volver al inicio',
+      x: { tabsLabel: 'Acceso', showPwd: 'Mostrar contraseña', hidePwd: 'Ocultar contraseña', panelText: 'Tus chats de WhatsApp y Telegram, tu embudo y tu equipo en un solo tablero.' },
       panels: {
         login: {
           title: 'Bienvenido',
@@ -94,6 +106,8 @@ export const TRANSLATIONS = {
       auditoria: 'Auditoría',
       cuenta: 'Cuenta',
       soporte: 'Soporte',
+      menu: 'Menú',
+      closeMenu: 'Cerrar menú',
     },
     auditor: {
       title: 'Auditoría IA',
@@ -369,6 +383,7 @@ export const TRANSLATIONS = {
       allLabels: 'Todas las etiquetas',
       search: 'Buscar contacto...',
       newStage: 'Nueva Etapa',
+      moveTo: 'Mover a…',
       mute: 'Silenciar',
       unmute: 'Activar',
     },
@@ -533,6 +548,9 @@ export const TRANSLATIONS = {
     },
     chat: {
       today: 'Hoy',
+      file: 'Archivo',
+      removeFile: 'Quitar archivo',
+      contactInfo: 'Datos del contacto',
       tags: 'Etiquetas',
       dropFile: 'Suelta el archivo aquí',
       loadOlder: 'Cargar mensajes anteriores',
@@ -556,6 +574,7 @@ export const TRANSLATIONS = {
       stage: 'Etapa',
     },
     agente: {
+      openImage: 'Abrir imagen',
       title: 'Agente IA',
       subtitle: 'Configurá tu agente de inteligencia artificial para atender clientes automáticamente.',
       chatTitle: 'Configurar con el Asistente',
@@ -583,6 +602,26 @@ export const TRANSLATIONS = {
     },
     landing: {
       nav: { inicio: 'Inicio', precios: 'Precios', nosotros: 'Nosotros', soporte: 'Soporte', ingresar: 'Ingresar' },
+      // Rediseño "dark cinematic" (Landing.jsx). Reutiliza el resto de las claves de landing.
+      x: {
+        navLabel: 'Secciones', navStart: 'Empezar gratis', langLabel: 'Cambiar a inglés',
+        heroChannels: 'WhatsApp · Telegram', scroll: 'Desliza para explorar',
+        aboutTitleA: 'Construido por vendedores,', aboutTitleB: 'para vendedores',
+        aboutLead: 'Un CRM que junta tus chats de WhatsApp y Telegram, tu embudo y tu equipo en un solo tablero, para que ninguna conversación se pierda.',
+        aboutInvite: '¿Querés verlo funcionando con tu equipo?', aboutInviteBtn: 'Escribinos',
+        manifestoA: 'Tres pasos', manifestoB: 'para empezar', manifestoLabel: 'Cómo funciona',
+        manifestoAlt: 'Nebulosa violeta con un planeta rosado',
+        workTag: 'Canales', workTitle: 'Un tablero para todos tus canales', workBtn: 'Ver precios',
+        work1Label: 'Canal 01 · Mensajería', work1Name: 'WhatsApp', work1Alt: 'Núcleo brillante de una nebulosa violeta',
+        work2Label: 'Canal 02 · Mensajería', work2Name: 'Telegram', work2Alt: 'Nube de gas azul y violeta con estrellas',
+        work3Label: 'Plan Enterprise · IA', work3Name: 'Agente IA', work3Alt: 'Esferas luminosas rosadas sobre una nebulosa',
+        pricingBtn: '¿Dudas? Escribinos',
+        badgePopular: 'Más elegido', badgeBusiness: 'Recomendado', badgeVip: 'Todo incluido',
+        closingTitle: 'Empezá hoy',
+        closingText: 'Creá tu cuenta gratis, conectá tu primer canal y sumá a tu equipo cuando quieras.',
+        madeBy: 'Hecho por',
+        photoCredit: 'Fotos de',
+      },
       hero: {
         badge: 'CRM para WhatsApp y Telegram.',
         titleA: 'Centralizá y convertí', titleB: 'tus leads', titleC: 'en ventas',
@@ -657,8 +696,20 @@ export const TRANSLATIONS = {
 
   en: {
     lang: { toggle: 'ES', name: 'English', code: 'en' },
+    ui: { cancel: 'Cancel', confirm: 'Confirm', close: 'Close', loading: 'Loading...' },
+    errors: {
+      title: 'Something went wrong',
+      message: 'An unexpected error occurred. We have logged it; you can retry or go back home.',
+      retry: 'Retry',
+      reload: 'Reload page',
+      backDashboard: 'Go to dashboard',
+      backHome: 'Back to home',
+      notFoundTitle: 'Page not found',
+      notFoundMsg: 'The address you are looking for does not exist or was moved.',
+    },
     auth: {
       backToHome: 'Back to home',
+      x: { tabsLabel: 'Access', showPwd: 'Show password', hidePwd: 'Hide password', panelText: 'Your WhatsApp and Telegram chats, your funnel and your team on one board.' },
       panels: {
         login: {
           title: 'Welcome',
@@ -750,6 +801,8 @@ export const TRANSLATIONS = {
       auditoria: 'Audit',
       cuenta: 'Account',
       soporte: 'Support',
+      menu: 'Menu',
+      closeMenu: 'Close menu',
     },
     auditor: {
       title: 'AI Audit',
@@ -1025,6 +1078,7 @@ export const TRANSLATIONS = {
       allLabels: 'All labels',
       search: 'Search contact...',
       newStage: 'New Stage',
+      moveTo: 'Move to…',
       mute: 'Mute',
       unmute: 'Unmute',
     },
@@ -1189,6 +1243,9 @@ export const TRANSLATIONS = {
     },
     chat: {
       today: 'Today',
+      file: 'File',
+      removeFile: 'Remove file',
+      contactInfo: 'Contact details',
       tags: 'Tags',
       dropFile: 'Drop file here',
       loadOlder: 'Load older messages',
@@ -1212,6 +1269,7 @@ export const TRANSLATIONS = {
       stage: 'Stage',
     },
     agente: {
+      openImage: 'Open image',
       title: 'AI Agent',
       subtitle: 'Set up your AI agent to automatically handle incoming customer messages.',
       chatTitle: 'Configure with Assistant',
@@ -1239,6 +1297,25 @@ export const TRANSLATIONS = {
     },
     landing: {
       nav: { inicio: 'Home', precios: 'Pricing', nosotros: 'About', soporte: 'Support', ingresar: 'Sign In' },
+      x: {
+        navLabel: 'Sections', navStart: 'Start for free', langLabel: 'Switch to Spanish',
+        heroChannels: 'WhatsApp · Telegram', scroll: 'Scroll to explore',
+        aboutTitleA: 'Built by salespeople,', aboutTitleB: 'for salespeople',
+        aboutLead: 'A CRM that brings your WhatsApp and Telegram chats, your funnel and your team into one board, so no conversation gets lost.',
+        aboutInvite: 'Want to see it working with your team?', aboutInviteBtn: 'Write to us',
+        manifestoA: 'Three steps', manifestoB: 'to get started', manifestoLabel: 'How it works',
+        manifestoAlt: 'Violet nebula with a pink planet',
+        workTag: 'Channels', workTitle: 'One board for all your channels', workBtn: 'See pricing',
+        work1Label: 'Channel 01 · Messaging', work1Name: 'WhatsApp', work1Alt: 'Bright core of a violet nebula',
+        work2Label: 'Channel 02 · Messaging', work2Name: 'Telegram', work2Alt: 'Blue and violet gas cloud with stars',
+        work3Label: 'Enterprise plan · AI', work3Name: 'AI Agent', work3Alt: 'Glowing pink spheres over a nebula',
+        pricingBtn: 'Questions? Write to us',
+        badgePopular: 'Most chosen', badgeBusiness: 'Recommended', badgeVip: 'All included',
+        closingTitle: 'Start today',
+        closingText: 'Create your free account, connect your first channel and add your team whenever you want.',
+        madeBy: 'Made by',
+        photoCredit: 'Photos from',
+      },
       hero: {
         badge: 'CRM for WhatsApp and Telegram.',
         titleA: 'Centralize and convert', titleB: 'your leads', titleC: 'into sales',

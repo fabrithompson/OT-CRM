@@ -6,7 +6,7 @@ import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LangContext';
 
 const PLAN_ICON = {
-    FREE: { icon: 'fa-seedling', color: '#6b7280' },
+    FREE: { icon: 'fa-seedling', color: 'var(--color-text-3)' },
     PRO: { icon: 'fa-bolt', color: '#3b82f6' },
     BUSINESS: { icon: 'fa-building', color: '#8b5cf6' },
     ENTERPRISE: { icon: 'fa-gem', color: '#f59e0b' },
@@ -91,7 +91,7 @@ export default function MiSuscripcion() {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                 <div className="spinner" />
             </div>
         );
@@ -109,7 +109,7 @@ export default function MiSuscripcion() {
     const unlimited = t('suscripcion.unlimited');
 
     return (
-        <section className="page-wrapper" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div className="dashboard-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
                 <div style={{ maxWidth: 650, width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -325,7 +325,7 @@ export default function MiSuscripcion() {
                                                         <span style={{ color: '#9ca3af', fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', padding: '1px 6px', borderRadius: 4 }}>{t('suscripcion.you')}</span>
                                                     )}
                                                 </div>
-                                                <span style={{ color: '#6b7280', fontSize: '0.78rem' }}>
+                                                <span style={{ color: 'var(--color-text-3)', fontSize: '0.78rem' }}>
                                                     {(m.rol === 'ADMIN' || m.rol === 'OWNER') ? t('suscripcion.admin') : t('suscripcion.collaborator')}
                                                 </span>
                                             </div>

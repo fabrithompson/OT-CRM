@@ -30,10 +30,14 @@ export function clearTokens() {
     localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
+// Sesión perdida: se limpian los tokens y se avisa con 'crm:auth-changed'.
+// UserProvider escucha ese evento y vacía el usuario, y MainLayout —que ya
+// hace <Navigate to="/login"> cuando no hay token— redirige por el router.
+// Antes esto era window.location.href = '/login', que recargaba toda la SPA.
 function irALogin() {
     clearTokens();
     if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+        window.dispatchEvent(new Event('crm:auth-changed'));
     }
 }
 

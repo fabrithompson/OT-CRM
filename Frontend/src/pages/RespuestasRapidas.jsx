@@ -75,7 +75,7 @@ export default function RespuestasRapidas() {
     if (loading) return <div style={{ padding: '2rem', color: 'white', display: 'flex', justifyContent: 'center' }}><div className="spinner"></div></div>;
 
     return (
-        <section className="page-wrapper" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div className="header-top" style={{ padding: '20px 30px', borderBottom: '1px solid var(--border-glass)', flexShrink: 0 }}>
                 <div className="header-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <i className="fas fa-bolt text-warning" style={{ fontSize: '1.4rem' }}></i>

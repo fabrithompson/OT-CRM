@@ -209,7 +209,7 @@
     flex: 1; background: transparent; border: none; color: #fff;
     font-size: 0.95rem; outline: none; box-shadow: none;
 }
-#chatModal .input-wrapper input::placeholder { color: rgba(255,255,255,0.35); }
+#chatModal .input-wrapper input::placeholder { color: var(--color-text-3); }
 
 #chatModal .btn-icon {
     background: none; border: none; color: rgba(255,255,255,0.45);
@@ -277,7 +277,7 @@ emoji-picker.show { display: flex; }
 #chatModal .attr-row { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 #chatModal .attr-label {
     font-size: 0.72rem; font-weight: 700;
-    color: rgba(255,255,255,0.35);
+    color: var(--color-text-3);
     text-transform: uppercase; letter-spacing: 0.08em;
 }
 
@@ -508,17 +508,58 @@ emoji-picker.show { display: flex; }
 
 .audio-mic-icon {
     font-size: 1.4rem;
-    color: rgba(255,255,255,0.35);
+    color: var(--color-text-3);
     margin-right: 4px;
 }
 .msg.sent .audio-mic-icon { color: rgba(16,185,129,0.55); }
 
 .msg.sent .msg-author { color: #6ee7b7; }
 
+/* El botón de datos del contacto solo existe en móvil/tablet */
+#chatModal .chat-info-toggle {
+    display: none;
+    width: 36px; height: 36px;
+    align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.05); border-radius: 8px;
+}
+#chatModal .chat-info-toggle[aria-pressed="true"] { background: rgba(16,185,129,0.20); color: #10b981; }
+#chatModal .btn-close-chat:focus-visible,
+#chatModal .chat-info-toggle:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+
 @media (max-width: 900px) {
-    #chatModal .pro-modal { flex-direction: column; width: 100%; height: 100%; border-radius: 0; }
-    #chatModal .chat-main-panel { height: 60vh; }
-    #chatModal .info-sidebar-pro { width: 100%; flex: 1; border-left: none; border-top: 1px solid rgba(255,255,255,0.1); overflow-y: auto; }
+    /* Pantalla completa real: se anulan el padding del overlay y el alto/ancho de escritorio */
+    /* !important: style.css (.modal-overlay) impone padding: 20px !important */
+    #chatModal.modal-overlay { padding: 0 !important; align-items: stretch; }
+    #chatModal .pro-modal {
+        flex-direction: column;
+        width: 100%; max-width: none; margin: 0;
+        height: 100vh; height: 100dvh;
+        border-radius: 0; border: none;
+    }
+    #chatModal .chat-main-panel { flex: 1 1 auto; min-height: 0; height: auto; }
+
+    /* Header en dos filas: identidad + acciones arriba, etapa debajo */
+    #chatModal .chat-header-pro { height: auto; min-height: 62px; padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
+    #chatModal .header-info-group { flex: 1; min-width: 0; flex-wrap: wrap; row-gap: 6px; }
+    #chatModal .header-name-input { min-width: 0; width: 100%; }
+    #chatModal .header-info-group > div:nth-child(2) { flex: 1; min-width: 0; }
+    #chatModal .stage-selector-wrapper { order: 3; flex-basis: 100%; padding-left: 0; border-left: none; }
+    #chatModal .chat-header-actions { flex-shrink: 0; }
+    #chatModal .chat-info-toggle { display: flex; }
+
+    /* Datos del contacto: pestaña alterna con la conversación */
+    #chatModal .info-sidebar-pro { display: none; }
+    /* !important: el área de mensajes tiene display:flex inline en ChatModal.jsx */
+    #chatModal .pro-modal.show-info .chat-messages-area,
+    #chatModal .pro-modal.show-info .chat-footer-pro { display: none !important; }
+    #chatModal .pro-modal.show-info .chat-main-panel { flex: 0 0 auto; }
+    #chatModal .pro-modal.show-info .info-sidebar-pro {
+        display: flex; flex: 1; width: 100%; min-height: 0;
+        border-left: none; border-top: none; overflow-y: auto;
+    }
+
+    #chatModal .chat-messages-area { padding-inline: 12px; }
+    #chatModal .chat-footer-pro { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
     emoji-picker { left: 50%; transform: translateX(-50%); bottom: 70px; width: 90%; }
 }
 

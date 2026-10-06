@@ -335,6 +335,7 @@ export default function Kanban() {
                     <KanbanColumn
                         key={etapa.id}
                         etapa={etapa}
+                        etapas={etapas}
                         clientes={clientesForEtapa(etapa.id)}
                         onOpenChat={setOpenChatId}
                         onEditStage={setEditStage}
@@ -357,12 +358,13 @@ export default function Kanban() {
 
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div className="header-top" style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass)', padding: '0 25px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="header-top kanban-head" style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass)', padding: '0 25px' }}>
+                <div className="kanban-head__left" style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+                    <div className="kanban-head__title" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10 }}>
                         <i className="fa-solid fa-filter" style={{ color: 'var(--brand-green)' }}></i> {t('kanban.title')}
                     </div>
 
+                    <div className="kanban-head__filters">
                     {/* FIX: filter dropdown with inline styles so it shows correctly without CSS class dependency */}
                     <div className="filter-dd-wrapper" ref={filterRef} style={{ position: 'relative' }}>
                         <button
@@ -430,19 +432,20 @@ export default function Kanban() {
                         <i className="fas fa-search"></i>
                         <input placeholder={t('kanban.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                     </div>
+                    </div>
                 </div>
 
                 {/* FIX: NotificationBell removed from here — now globally in MainLayout */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                    <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }} title={connectionStatus === 'connected' ? 'Conectado' : connectionStatus === 'reconnecting' ? 'Reconectando...' : connectionStatus === 'connecting' ? 'Conectando...' : 'Desconectado'}>
+                <div className="kanban-head__right" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <span className="kanban-head__user" style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }} title={connectionStatus === 'connected' ? 'Conectado' : connectionStatus === 'reconnecting' ? 'Reconectando...' : connectionStatus === 'connecting' ? 'Conectando...' : 'Desconectado'}>
                         <span className={`ws-status-dot ${connectionStatus}`}></span>
-                        <i className="fas fa-user" style={{ opacity: 0.6 }}></i> {usuario}
+                        <i className="fas fa-user" style={{ opacity: 0.6 }}></i> <span className="kanban-head__username">{usuario}</span>
                     </span>
                     <NotificationBell />
                 </div>
             </div>
 
-            <div id="tablero" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'scroll', overflowY: 'hidden', gap: 20, padding: '20px 25px 60px', width: '100%', height: 'calc(100vh - 80px)', alignItems: 'flex-start', scrollBehavior: 'smooth' }}>
+            <div id="tablero" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'scroll', overflowY: 'hidden', gap: 20, padding: '20px 25px 60px', width: '100%', flex: 1, minHeight: 0, alignItems: 'flex-start', scrollBehavior: 'smooth' }}>
                 {renderBoard()}
             </div>
 

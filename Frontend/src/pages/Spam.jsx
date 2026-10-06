@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
+import { clickable } from '../utils/a11y';
 import { useUser } from '../context/UserContext';
 import useWebSocket from '../hooks/useWebSocket';
 
@@ -250,6 +251,7 @@ function ContactosPanel({ deviceId, contactos, onReload }) {
                     <div key={c.id} onClick={() => toggleUno(c.id)}
                         style={{ ...rowStyle, background: seleccionados.has(c.id) ? C_AMBER_SOFT : 'transparent' }}>
                         <input type="checkbox" checked={seleccionados.has(c.id)} onChange={() => toggleUno(c.id)}
+                            aria-label={c.nombre || c.telefono}
                             style={{ marginRight: 10 }} onClick={e => e.stopPropagation()} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ color: C_TEXT, fontSize: '0.85rem' }}>{c.nombre}</div>
@@ -299,9 +301,9 @@ function ChatPanel({ bandeja, contactoActivo, mensajes, onSelectContacto, onResp
 
     return (
         <div style={{ ...card(), flex: 1.4, minHeight: 0 }}>
-            <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+            <div className="spam-chat-split" style={{ display: 'flex', height: '100%', minHeight: 0 }}>
                 {/* Bandeja */}
-                <div style={{ width: 240, borderRight: `1px solid ${C_BDR}`, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <div className="spam-chat-bandeja" style={{ width: 240, borderRight: `1px solid ${C_BDR}`, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <div style={cardTitle}><i className="fas fa-inbox" style={{ color: C_AMBER }} /> Bandeja</div>
                     <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                         {bandeja.length === 0 && (
@@ -310,7 +312,9 @@ function ChatPanel({ bandeja, contactoActivo, mensajes, onSelectContacto, onResp
                             </p>
                         )}
                         {bandeja.map(item => (
-                            <div key={item.contactoId} onClick={() => onSelectContacto(item)} style={{
+                            <div key={item.contactoId} {...clickable(() => onSelectContacto(item))}
+                                aria-current={contactoActivo?.contactoId === item.contactoId ? 'true' : undefined}
+                                style={{
                                 padding: '9px 13px', cursor: 'pointer',
                                 background: contactoActivo?.contactoId === item.contactoId ? C_AMBER_SOFT : 'transparent',
                                 borderLeft: `3px solid ${contactoActivo?.contactoId === item.contactoId ? C_AMBER : 'transparent'}`,
@@ -450,7 +454,7 @@ function CrearPlanModal({ active, onClose, onCreated, devices }) {
                         ? <p style={{ color: C_RED, fontSize: '0.80rem', margin: 0 }}>No hay líneas CONECTADAS. Conectá al menos 2 antes de crear el plan.</p>
                         : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                             {connected.map(d => (
-                                <div key={d.id} onClick={() => toggleDevice(d.id)} style={{
+                                <div key={d.id} {...clickable(() => toggleDevice(d.id), { role: 'checkbox', checked: selDevices.has(d.id) })} style={{
                                     padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: '0.82rem',
                                     border: `1px solid ${selDevices.has(d.id) ? C_AMBER_BDR : C_BDR}`,
                                     background: selDevices.has(d.id) ? C_AMBER_SOFT : 'rgba(255,255,255,0.04)',
@@ -719,7 +723,7 @@ function UpgradeWall() {
 
     return (
         <div style={{
-            height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'transparent', fontFamily: "'Montserrat', sans-serif", padding: 24,
         }}>
             <div style={{
@@ -801,7 +805,7 @@ function UpgradeWall() {
                 </button>
 
                 <p style={{ color: 'rgba(255,255,255,0.22)', fontSize: '0.75rem', marginTop: 14 }}>
-                    Podés empezar desde <strong style={{ color: 'rgba(255,255,255,0.40)' }}>Plan PRO</strong> · Cancelás cuando quieras
+                    Podés empezar desde <strong style={{ color: 'var(--color-text-3)' }}>Plan PRO</strong> · Cancelás cuando quieras
                 </p>
             </div>
         </div>
@@ -980,7 +984,7 @@ export default function Spam() {
     // ── Gates (después de todos los hooks para no romper Rules of Hooks) ──────
     if (loadingUser) {
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
                 <div className="spinner" />
             </div>
         );
@@ -989,17 +993,17 @@ export default function Spam() {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: 16, gap: 12, background: 'transparent', fontFamily: "'Montserrat', sans-serif" }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 16, gap: 12, background: 'transparent', fontFamily: "'Montserrat', sans-serif" }}>
 
             {/* ── Header estático (nunca cambia de tamaño) ── */}
-            <div style={{
+            <div className="spam-head" style={{
                 background: 'rgba(22,16,36,0.85)', backdropFilter: BLUR, WebkitBackdropFilter: BLUR,
                 border: `1px solid ${C_BDR}`, borderRadius: 16,
                 padding: '11px 18px', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap',
             }}>
                 {/* Izquierda: ícono + título */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 220px', minWidth: 0 }}>
                     <div style={{
                         width: 38, height: 38, borderRadius: 10, flexShrink: 0,
                         background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`,
@@ -1016,7 +1020,7 @@ export default function Spam() {
                 </div>
 
                 {/* Derecha: tabs + controles */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="spam-head__right" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     {/* Tab switcher — estilo dashboard */}
                     <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3, gap: 2 }}>
                         {[
@@ -1092,7 +1096,7 @@ export default function Spam() {
                                 <i className="fas fa-plus" /> Agregar primer número
                             </button>
                           </div>
-                        : <div style={{ flex: 1, display: 'flex', gap: 12, minHeight: 0 }}>
+                        : <div className="spam-body" style={{ flex: 1, display: 'flex', gap: 12, minHeight: 0 }}>
                             <ContactosPanel deviceId={deviceActivoId} contactos={contactos} onReload={() => loadContactos(deviceActivoId)} />
                             <ChatPanel bandeja={bandeja} contactoActivo={contactoActivo} mensajes={mensajes}
                                 onSelectContacto={seleccionarContacto} onResponder={responder} />

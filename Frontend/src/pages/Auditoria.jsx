@@ -523,7 +523,7 @@ export default function Auditoria() {
                                                 )}
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)' }}>
+                                        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-3)' }}>
                                             {t('auditor.period')}: {fmtPeriod(selected.periodoInicio, selected.periodoFin)}
                                             {selected.nombre && (
                                                 <span style={{ marginLeft: 10 }}>· {fmtDate(selected.createdAt)}</span>
@@ -670,12 +670,12 @@ export default function Auditoria() {
                                                                     {t(`auditor.states.${p.estado}`)}
                                                                 </span>
                                                                 {evidencias.length > 0 && (
-                                                                    <span style={{ fontSize: '0.70rem', color: 'rgba(255,255,255,0.38)' }}>
+                                                                    <span style={{ fontSize: '0.70rem', color: 'var(--color-text-3)' }}>
                                                                         {evidencias.length} {evidencias.length > 1 ? t('auditor.evidences') : t('auditor.evidence')}
                                                                     </span>
                                                                 )}
                                                                 <i className={`fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}
-                                                                   style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.75rem' }} />
+                                                                   style={{ color: 'var(--color-text-3)', fontSize: '0.75rem' }} />
                                                             </div>
                                                         </button>
 
@@ -701,7 +701,7 @@ export default function Auditoria() {
 
                                                                 {evidencias.length === 0 ? (
                                                                     <div style={{
-                                                                        fontSize: '0.76rem', color: 'rgba(255,255,255,0.3)',
+                                                                        fontSize: '0.76rem', color: 'var(--color-text-3)',
                                                                         fontStyle: 'italic', textAlign: 'center', padding: 8,
                                                                     }}>
                                                                         {t('auditor.noEvidences')}
@@ -733,7 +733,7 @@ export default function Auditoria() {
                                             {visibles.length === 0 && hallazgos.length > 0 && (
                                                 <div style={{
                                                     textAlign: 'center', padding: '20px',
-                                                    color: 'rgba(255,255,255,0.30)', fontSize: '0.85rem',
+                                                    color: 'var(--color-text-3)', fontSize: '0.85rem',
                                                 }}>
                                                     {t('auditor.allFP')}
                                                 </div>
@@ -812,7 +812,7 @@ export default function Auditoria() {
                                                             display: 'flex', justifyContent: 'space-between',
                                                             alignItems: 'center', flexWrap: 'wrap', gap: 8,
                                                         }}>
-                                                            <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.35)' }}>
+                                                            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-3)' }}>
                                                                 {h.vendedor && (
                                                                     <span>
                                                                         <i className="fa-solid fa-user" style={{ marginRight: 4, color: '#a78bfa' }} />
@@ -839,7 +839,7 @@ export default function Auditoria() {
                                                                     background: isFP
                                                                         ? 'rgba(167,139,250,0.12)'
                                                                         : 'rgba(255,255,255,0.04)',
-                                                                    color: isFP ? '#c4b5fd' : 'rgba(255,255,255,0.38)',
+                                                                    color: isFP ? '#c4b5fd' : 'var(--color-text-3)',
                                                                     cursor: 'pointer', transition: '0.15s',
                                                                 }}
                                                             >
@@ -1035,7 +1035,7 @@ function EvidenciaCard({ ev, meta, t }) {
                     <i className="fa-solid fa-user" style={{ color: '#a78bfa' }} />
                     <strong style={{ color: '#c4b5fd' }}>{ev.vendedor || t('auditor.vendorUnknown')}</strong>
                     {ev.cliente_id && (
-                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>
+                        <span style={{ color: 'var(--color-text-3)' }}>
                             · {t('auditor.client')} #{ev.cliente_id}
                         </span>
                     )}
@@ -1051,7 +1051,7 @@ function EvidenciaCard({ ev, meta, t }) {
             {ev.como && (
                 <div style={{ fontSize: '0.80rem', color: 'rgba(255,255,255,0.58)', lineHeight: 1.55 }}>
                     <span style={{
-                        color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem', marginRight: 6,
+                        color: 'var(--color-text-3)', fontSize: '0.72rem', marginRight: 6,
                         textTransform: 'uppercase', letterSpacing: '0.06em',
                     }}>
                         {t('auditor.how')}:
@@ -1145,7 +1145,7 @@ function EmptyHistory({ t }) {
             }}>
                 <i className="fa-solid fa-folder-open" />
             </div>
-            <div style={{ color: 'rgba(255,255,255,0.30)', fontSize: '0.83rem', lineHeight: 1.7 }}>
+            <div style={{ color: 'var(--color-text-3)', fontSize: '0.83rem', lineHeight: 1.7 }}>
                 {t('auditor.emptyState')}<br />
                 {t('auditor.emptyStateHint')} <strong style={{ color: 'rgba(255,255,255,0.5)' }}>&quot;{t('auditor.runNow')}&quot;</strong>.
             </div>
@@ -1408,7 +1408,7 @@ function TiempoRespuestaBar({ score, avgMin }) {
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {avgMin != null && (
-                        <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--color-text-3)' }}>
                             ~{avgMin}min
                         </span>
                     )}
@@ -1455,7 +1455,7 @@ function ConversacionesSection({ conversaciones }) {
                 <i className="fa-solid fa-comments" style={{ color: '#a78bfa' }} />
                 Conversaciones analizadas ({conversaciones.length})
                 <i className={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'}`}
-                   style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.70rem', marginLeft: 4 }} />
+                   style={{ color: 'var(--color-text-3)', fontSize: '0.70rem', marginLeft: 4 }} />
             </button>
 
             {open && (
@@ -1474,7 +1474,7 @@ function ConversacionesSection({ conversaciones }) {
                                         <i className="fa-solid fa-user" style={{ color: '#a78bfa', fontSize: '0.75rem' }} />
                                         {conv.vendedor || 'Vendedor desconocido'}
                                         {conv.cliente_id && (
-                                            <span style={{ fontSize: '0.70rem', color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>
+                                            <span style={{ fontSize: '0.70rem', color: 'var(--color-text-3)', fontWeight: 400 }}>
                                                 · Cliente #{conv.cliente_id}
                                             </span>
                                         )}
@@ -1518,14 +1518,14 @@ function ConversacionesSection({ conversaciones }) {
                                                 }
                                             </span>
                                         ) : (
-                                            <span style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.30)', fontStyle: 'italic' }}>
+                                            <span style={{ fontSize: '0.74rem', color: 'var(--color-text-3)', fontStyle: 'italic' }}>
                                                 {conv.estado === 'sin_responder' ? 'Sin respuesta' : 'No medido'}
                                             </span>
                                         )}
                                         {tsStyle && (
                                             <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 90 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                                    <span style={{ fontSize: '0.62rem', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                                                         Puntaje
                                                     </span>
                                                     <span style={{ fontSize: '0.76rem', fontWeight: 800, color: tsStyle.color }}>
@@ -1636,13 +1636,13 @@ function StagesManager({ isMobile }) {
                 </div>
             </div>
 
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.40)', lineHeight: 1.5, marginTop: -4 }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', lineHeight: 1.5, marginTop: -4 }}>
                 Definí las etapas del proceso de venta. Cada etapa tiene un peso relativo que
                 determina su impacto en el score. Los pesos no necesitan sumar 100.
             </div>
 
             {loading ? (
-                <div style={{ padding: 20, color: 'rgba(255,255,255,0.30)', fontSize: '0.85rem', textAlign: 'center' }}>
+                <div style={{ padding: 20, color: 'var(--color-text-3)', fontSize: '0.85rem', textAlign: 'center' }}>
                     Cargando etapas...
                 </div>
             ) : stages.length === 0 ? (
@@ -1832,7 +1832,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                 </div>
                 <div style={{ flex: 1 }}>
                     <div className="db-metric-label">{t('auditor.config.enableLabel')}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.40)', marginTop: 3 }}>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', marginTop: 3 }}>
                         {t('auditor.config.enableHint')}
                     </div>
                 </div>
@@ -1873,7 +1873,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                     <i className="fa-solid fa-clock" style={{ color: '#a78bfa' }} />
                     {t('auditor.config.scheduleLabel')}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, marginTop: -6 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', lineHeight: 1.5, marginTop: -6 }}>
                     {t('auditor.config.scheduleHint')}
                 </div>
                 <TimeRangePicker
@@ -1929,7 +1929,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                     <select
                         value={cfg.auditDispositivoId}
                         onChange={e => update('auditDispositivoId', e.target.value)}
-                        style={{ ...baseInput, color: cfg.auditDispositivoId ? '#fff' : 'rgba(255,255,255,0.35)' }}
+                        style={{ ...baseInput, color: cfg.auditDispositivoId ? '#fff' : 'var(--color-text-3)' }}
                     >
                         <option value="">{t('auditor.config.deviceNone')}</option>
                         {dispositivos.map(d => (
@@ -1991,7 +1991,7 @@ function ResponseTimeCard({ cfg, setCfg }) {
                 <i className="fa-solid fa-stopwatch" style={{ color: '#a78bfa' }} />
                 Tiempo de respuesta del vendedor
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5, marginTop: -6 }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', lineHeight: 1.5, marginTop: -6 }}>
                 El auditor mide el tiempo desde el primer mensaje del cliente hasta la
                 primera respuesta del vendedor y evalúa si fue adecuado.
             </div>
@@ -2016,7 +2016,7 @@ function ResponseTimeCard({ cfg, setCfg }) {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div>
                     <div className="db-metric-label">Horarios pico (mayor exigencia)</div>
-                    <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)', marginTop: 3, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-3)', marginTop: 3, lineHeight: 1.5 }}>
                         En estos períodos el umbral es más estricto.
                     </div>
                 </div>
@@ -2073,7 +2073,7 @@ function ResponseTimeCard({ cfg, setCfg }) {
                                         onChange={e => updateRango(i, 'inicio', e.target.value)}
                                         style={{ ...inputStyle, flex: 1, padding: '6px 10px' }}
                                     />
-                                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>→</span>
+                                    <span style={{ color: 'var(--color-text-3)', fontSize: '0.8rem' }}>→</span>
                                     <input
                                         type="time" value={r.fin}
                                         onChange={e => updateRango(i, 'fin', e.target.value)}
@@ -2144,7 +2144,7 @@ function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
                     onChange={e => onChange(e.target.value, fin)}
                     style={{ ...baseInput, flex: 1 }}
                 />
-                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>→</span>
+                <span style={{ color: 'var(--color-text-3)', fontSize: '0.8rem' }}>→</span>
                 <input
                     type="time"
                     value={fin}
@@ -2188,7 +2188,7 @@ function Field({ label, hint, children }) {
                 {hint && (
                     <i className="fa-regular fa-circle-question"
                        title={hint}
-                       style={{ color: 'rgba(255,255,255,0.25)', cursor: 'help', marginLeft: 6 }} />
+                       style={{ color: 'var(--color-text-3)', cursor: 'help', marginLeft: 6 }} />
                 )}
             </div>
             {children}

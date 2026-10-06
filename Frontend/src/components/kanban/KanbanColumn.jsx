@@ -39,7 +39,7 @@ IconBtn.propTypes = {
 IconBtn.defaultProps = { style: {}, className: '', id: undefined };
 
 export default function KanbanColumn({
-    etapa, clientes, onOpenChat, onEditStage, onDeleteStage,
+    etapa, etapas, clientes, onOpenChat, onEditStage, onDeleteStage,
     onDropCard, onDropColumn, mutedStages, onToggleMute, onMakeMain, onColorChange,
 }) {
     const [showColorPicker, setShowColorPicker] = useState(false);
@@ -141,7 +141,7 @@ export default function KanbanColumn({
                         icon={`fas ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'}`}
                         title="Silenciar"
                         onClick={(e) => { e.stopPropagation(); onToggleMute(etapa.id); }}
-                        style={{ color: isMuted ? '#ef4444' : '#6b7280' }}
+                        style={{ color: isMuted ? '#ef4444' : 'var(--color-text-3)' }}
                     />
 
                     {/* Color dot */}
@@ -193,7 +193,7 @@ export default function KanbanColumn({
                         icon={`fas fa-inbox${etapa.esInicial ? ' active' : ''}`}
                         title="Principal"
                         onClick={(e) => { e.stopPropagation(); makeMain(); }}
-                        style={{ color: etapa.esInicial ? '#10b981' : '#6b7280' }}
+                        style={{ color: etapa.esInicial ? '#10b981' : 'var(--color-text-3)' }}
                     />
 
                     {/* Edit */}
@@ -221,7 +221,7 @@ export default function KanbanColumn({
                 style={{ minHeight: 50, background: isDragOver ? 'rgba(16,185,129,0.05)' : undefined, transition: 'background 0.2s' }}
             >
                 {clientes.map(c => (
-                    <KanbanCard key={c.id} cliente={c} onOpen={onOpenChat} />
+                    <KanbanCard key={c.id} cliente={c} onOpen={onOpenChat} etapas={etapas} onMove={onDropCard} />
                 ))}
             </div>
         </div>
@@ -235,6 +235,7 @@ KanbanColumn.propTypes = {
         color: PropTypes.string,
         esInicial: PropTypes.bool,
     }).isRequired,
+    etapas: PropTypes.array,
     clientes: PropTypes.array.isRequired,
     onOpenChat: PropTypes.func.isRequired,
     onEditStage: PropTypes.func.isRequired,

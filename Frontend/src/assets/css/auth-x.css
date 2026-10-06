@@ -1,0 +1,183 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Login / registro — mismo sistema visual que la landing (landing-x.css).
+ * El root es `.lx.ax`: hereda tokens, tipografías, botones (.lx-btn), campos
+ * (.lx-field) y píldora (.lx-pill) de la landing; acá solo va el layout propio.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.ax {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+}
+
+/* ── Panel cinematográfico ─────────────────────────────────────────────── */
+.ax-visual {
+    position: sticky;
+    top: 0;
+    isolation: isolate;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    border-right: 1px solid var(--lx-border);
+}
+.ax-visual__media { position: absolute; inset: 0; z-index: -2; }
+.ax-visual__veil {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(to bottom, rgba(6, 6, 15, 0.55), rgba(6, 6, 15, 0) 35%),
+        radial-gradient(ellipse 80% 55% at 20% 70%, rgba(6, 6, 15, 0.6), rgba(6, 6, 15, 0) 70%);
+}
+.ax-visual__inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 32px;
+    height: 100%;
+    /* El texto termina por encima del borde brillante del horizonte (~17% inferior) */
+    padding: 32px 48px clamp(150px, 24vh, 240px);
+}
+.ax-visual__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ax-visual__copy { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; max-width: 560px; }
+.ax-visual__title {
+    font-family: var(--lx-display);
+    font-size: clamp(32px, 3.6vw, 56px);
+    font-weight: 500;
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+.ax-visual__text { max-width: 440px; font-size: 18px; color: var(--lx-text-2); text-wrap: pretty; }
+
+/* ── Formularios ───────────────────────────────────────────────────────── */
+.ax-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 24px 32px 48px;
+}
+.ax-main__top { display: flex; justify-content: flex-end; }
+.ax-card {
+    width: 100%;
+    max-width: 440px;
+    margin: auto;
+    padding-block: 32px;
+    animation: ax-in 0.4s var(--lx-ease) both;
+}
+@keyframes ax-in { from { opacity: 0; transform: translateY(12px); } }
+
+.ax-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-bottom: 36px;
+    padding: 4px;
+    background: rgba(13, 11, 31, 0.55);
+    border: 1px solid var(--lx-border);
+    border-radius: 999px;
+}
+.ax-tab {
+    height: 44px;
+    font: 600 15px var(--lx-body);
+    color: var(--lx-text-2);
+    background: none;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.ax-tab:hover { color: var(--lx-text); }
+.ax-tab.is-active { color: var(--lx-text); background: rgba(238, 236, 255, 0.12); }
+
+.ax-title {
+    margin-bottom: 8px !important;
+    font-family: var(--lx-display);
+    font-size: clamp(28px, 3vw, 40px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+.ax-subtitle { margin-bottom: 28px !important; color: var(--lx-text-2); text-wrap: pretty; }
+
+.ax-form { display: flex; flex-direction: column; gap: 18px; }
+/* El campo de contraseña usa <label> directo (no <span>) por el botón de mostrar */
+.ax .lx-field > label { font-size: 14px; font-weight: 600; color: var(--lx-text-2); }
+.ax-submit { width: 100%; margin-top: 6px; }
+.ax-submit:disabled { opacity: 0.7; cursor: wait; transform: none; }
+
+.ax-forgot { align-self: flex-end; margin-top: -8px; padding: 0; font-size: 14px; }
+
+.ax-pwd { position: relative; }
+.ax-pwd input { padding-right: 52px; }
+.ax-pwd__toggle {
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--lx-text-2);
+    background: none;
+    border: 0;
+    border-radius: 12px;
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+.ax-pwd__toggle:hover { color: var(--lx-text); }
+
+.ax-code { font-size: 1.4rem !important; letter-spacing: 0.35em; text-align: center; }
+
+.ax-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 12px 14px;
+    font-size: 15px;
+    border: 1px solid;
+    border-radius: 14px;
+}
+.ax-alert i { margin-top: 3px; }
+.ax-alert--error { color: #FECACA; background: rgba(248, 113, 113, 0.08); border-color: rgba(248, 113, 113, 0.4); }
+.ax-alert--success { color: #BBF7D0; background: rgba(110, 231, 183, 0.08); border-color: rgba(110, 231, 183, 0.35); }
+
+.ax-back { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px; padding: 0; }
+.ax-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: 20px;
+    color: var(--lx-accent);
+    border: 1px solid var(--lx-border);
+    border-radius: 16px;
+}
+.ax-resend { margin-top: 24px !important; font-size: 15px; color: var(--lx-text-2); }
+.ax-inline-link {
+    min-height: 44px;
+    padding: 0 4px;
+    color: var(--lx-text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.ax-inline-link:disabled { color: var(--lx-text-2); text-decoration: none; cursor: default; }
+
+/* ── Responsive: el panel del cielo pasa a ser una franja arriba ───────── */
+@media (max-width: 900px) {
+    .ax { grid-template-columns: 1fr; }
+    .ax-visual { position: relative; height: auto; min-height: 300px; border-right: 0; border-bottom: 1px solid var(--lx-border); }
+    .ax-visual__inner { padding: 20px 20px 96px; }
+    .ax-visual__copy { gap: 16px; }
+    .ax-visual__title { font-size: clamp(26px, 7vw, 36px); }
+    .ax-visual__text { display: none; }
+    .ax-main { min-height: 0; padding: 16px 20px 40px; }
+    .ax-card { padding-block: 8px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ax-card { animation: none; }
+}

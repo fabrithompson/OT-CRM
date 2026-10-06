@@ -1,0 +1,30 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Accesibilidad global. Se importa ÚLTIMO en main.jsx.
+ *
+ * Foco visible (WCAG 2.4.7): el CSS histórico tiene ~27 `outline: none` y el
+ * JSX ~21 `outline: 'none'` inline, muchos sin estado de foco alternativo. En
+ * vez de revisarlos uno por uno, esta regla con !important gana sobre ambos
+ * y solo aplica a :focus-visible (navegación con teclado), así que no cambia
+ * nada para quien usa el mouse en botones y enlaces.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+:where(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"]), [role="button"], [role="checkbox"], [role="radio"], [role="tab"], [contenteditable="true"]):focus-visible {
+    outline: 2px solid var(--color-focus) !important;
+    outline-offset: 2px !important;
+}
+
+/* En campos de texto el anillo va pegado al borde para no tapar el contenido vecino */
+:where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus-visible {
+    outline-offset: 0 !important;
+}
+
+/* Reducir movimiento (WCAG 2.3.3): corta animaciones y transiciones en toda la
+   app, incluidas las inline y las de páginas que no tienen su propia regla. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
