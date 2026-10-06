@@ -145,14 +145,14 @@ export default function Planes() {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                 <div className="spinner"></div>
             </div>
         );
     }
 
     return (
-        <section className="page-wrapper" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             <div className="dashboard-content custom-scrollbar" style={{ overflowY: 'auto', flex: 1, padding: '2rem 2rem 3rem' }}>
 
@@ -208,7 +208,7 @@ export default function Planes() {
 
 
                 {planes.length === 0 && !loadError ? (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
+                    <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-3)' }}>
                         <i className="fas fa-box-open" style={{ fontSize: '3rem', marginBottom: 16, opacity: 0.4 }}></i>
                         <p style={{ fontSize: '1rem' }}>{t('planes.noPlanAvail')}</p>
                         <button onClick={fetchData} style={{ marginTop: 12, background: '#10b981', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
@@ -238,7 +238,7 @@ export default function Planes() {
                 )}
 
 
-                <div style={{ textAlign: 'center', marginTop: '2rem', color: '#6b7280', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--color-text-3)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <span>
                         <i className="fas fa-shield-alt" style={{ color: '#10b981', marginRight: '6px' }}></i>
                         {t('planes.secureFooter')}
@@ -453,12 +453,12 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                                 </div>
                                 <div>
                                     <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>Plan {planLabel}</div>
-                                    <div style={{ color: '#6b7280', fontSize: '0.78rem' }}>{t('planes.subscriptionLabel')}</div>
+                                    <div style={{ color: 'var(--color-text-3)', fontSize: '0.78rem' }}>{t('planes.subscriptionLabel')}</div>
                                 </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.15rem' }}>${formatPrecio(plan.precioMensual)}</div>
-                                <div style={{ color: '#6b7280', fontSize: '0.72rem' }}>ARS/mes</div>
+                                <div style={{ color: 'var(--color-text-3)', fontSize: '0.72rem' }}>ARS/mes</div>
                             </div>
                         </div>
                     </div>
@@ -466,7 +466,7 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
 
                 {/* Payment methods */}
                 <div style={{ padding: '20px 32px 24px' }}>
-                    <div style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
                         {t('planes.payMethod')}
                     </div>
 
@@ -540,7 +540,7 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                                     {/* Text */}
                                     <div style={{ flex: 1, textAlign: 'left' }}>
                                         <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{m.nombre}</div>
-                                        <div style={{ color: '#6b7280', fontSize: '0.8rem', marginTop: 2 }}>{m.desc}</div>
+                                        <div style={{ color: 'var(--color-text-3)', fontSize: '0.8rem', marginTop: 2 }}>{m.desc}</div>
                                     </div>
                                 </button>
                             );
@@ -558,7 +558,7 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                             background: selected ? '#3b82f6' : 'rgba(255,255,255,0.06)',
                             border: 'none',
                             borderRadius: 12,
-                            color: selected ? '#fff' : '#6b7280',
+                            color: selected ? '#fff' : 'var(--color-text-3)',
                             fontSize: '0.95rem',
                             fontWeight: 700,
                             cursor: (!selected || !!procesando) ? 'not-allowed' : 'pointer',
@@ -647,7 +647,7 @@ const styles = {
     precioContainer: { margin: '4px 0' },
     precioMoneda: { color: '#9ca3af', fontSize: '1.1rem', fontWeight: 600 },
     precioMonto: { fontSize: '2.4rem', fontWeight: 800, lineHeight: 1 },
-    precioPeriodo: { color: '#6b7280', fontSize: '0.85rem' },
+    precioPeriodo: { color: 'var(--color-text-3)', fontSize: '0.85rem' },
     dispositivosBadge: { display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '6px 14px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: 700 },
     beneficiosList: { listStyle: 'none', padding: 0, margin: '4px 0', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 },
     beneficioItem: { display: 'flex', alignItems: 'center', gap: '9px', fontSize: '0.85rem' },

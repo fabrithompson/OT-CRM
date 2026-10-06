@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import LogoOrb from './LogoOrb';
 import { useLanguage } from '../context/LangContext';
@@ -18,7 +19,7 @@ const NAV_ITEMS = [
     { to: '/perfil',             icon: 'fa-circle-user',    labelKey: 'nav.cuenta',      accent: 'nav-teal'   },
 ];
 
-export default function Sidebar({ onHelpClick }) {
+export default function Sidebar({ onHelpClick, open = false, onNavigate, onClose }) {
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const { lang, toggleLang, t } = useLanguage();
@@ -28,8 +29,11 @@ export default function Sidebar({ onHelpClick }) {
     const plan = usuario?.plan || {};
 
     return (
-        <div className="sidebar">
+        <div id="app-sidebar" className={`sidebar${open ? ' sidebar--open' : ''}`}>
             <div className="sidebar-glow" aria-hidden="true" />
+            <button type="button" className="sidebar-close" onClick={onClose} aria-label={t('nav.closeMenu')}>
+                <i className="fas fa-times" aria-hidden="true" />
+            </button>
 
             {/* Logo */}
             <div className="sidebar-header">
@@ -44,6 +48,7 @@ export default function Sidebar({ onHelpClick }) {
                         <li key={to} className="menu-item">
                             <NavLink
                                 to={bloqueado ? '/planes' : to}
+                                onClick={onNavigate}
                                 title={bloqueado ? `Disponible desde plan ${minPlan}` : undefined}
                                 className={({ isActive }) =>
                                     `nav-pill ${accent}${(isActive || (suscripcion && isSuscripcionActive)) ? ' active' : ''}${bloqueado ? ' nav-pill-locked' : ''}`
@@ -108,6 +113,7 @@ export default function Sidebar({ onHelpClick }) {
                                 api.post('/auth/logout', { refreshToken }).catch(() => {});
                             }
                             clearTokens();
+                            onNavigate?.();
                             window.dispatchEvent(new CustomEvent('crm:auth-changed'));
                             navigate('/login');
                         }}
@@ -124,3 +130,10 @@ export default function Sidebar({ onHelpClick }) {
         </div>
     );
 }
+
+Sidebar.propTypes = {
+    onHelpClick: PropTypes.func,
+    open: PropTypes.bool,
+    onNavigate: PropTypes.func,
+    onClose: PropTypes.func,
+};

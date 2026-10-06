@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, lazy, Suspense } from 'react';
+import * as Sentry from '@sentry/react';
 
 const PAGE_TITLES = {
   '/':                  'OT CRM — CRM para WhatsApp y Telegram',
@@ -27,6 +28,9 @@ function TitleUpdater() {
 // Auth se carga eager (es la primera pantalla que ve el usuario)
 import Auth from './pages/Auth';
 import MainLayout from './components/MainLayout';
+import ErrorFallback from './components/ErrorFallback';
+import NotFound from './pages/NotFound';
+import Spinner from './components/ui/Spinner';
 import { ToastProvider } from './context/ToastContext';
 import { UserProvider } from './context/UserContext';
 import { LangProvider } from './context/LangContext';
@@ -53,9 +57,10 @@ function App() {
     <LangProvider>
     <UserProvider>
     <ToastProvider>
+      <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
       <Router>
         <TitleUpdater />
-        <Suspense fallback={<div className="app-loading" />}>
+        <Suspense fallback={<div className="app-loading"><Spinner size="lg" /></div>}>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />
@@ -75,9 +80,12 @@ function App() {
               <Route path="/auditoria"       element={<Auditoria />} />
               <Route path="/spam"            element={<Spam />} />
             </Route>
+
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </Router>
+      </Sentry.ErrorBoundary>
     </ToastProvider>
     </UserProvider>
     </LangProvider>

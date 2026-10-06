@@ -1,49 +1,104 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import api, { setTokens } from '../utils/api';
-import '../assets/css/login.css';
+import '../assets/css/landing-x.css';
+import '../assets/css/auth-x.css';
 import LogoOrb from '../components/LogoOrb';
-import WaveCanvas from '../components/WaveCanvas';
+import PlanetHorizon from '../components/landing/PlanetHorizon';
+import LineIcon from '../components/landing/LineIcon';
 import { useLanguage } from '../context/LangContext';
+import cielo1280 from '../assets/landing/cielo-1280.webp';
+import cielo2400 from '../assets/landing/cielo-2400.webp';
 
-function PwdField({ id, name, field, labelKey, placeholder, showPassword, formData, handleInput, togglePwd, t }) {
+const ALERT_ID = 'auth-alert';
+
+/* Campo de texto con etiqueta asociada. Si hay un error general visible, el
+   campo lo referencia con aria-describedby para que el lector lo anuncie. */
+function Field({ id, label, describedBy, ...inputProps }) {
     return (
-        <div className="auth-field">
+        <label className="lx-field" htmlFor={id}>
+            <span>{label}</span>
+            <input id={id} aria-describedby={describedBy} {...inputProps} />
+        </label>
+    );
+}
+
+Field.propTypes = {
+    id: PropTypes.string.isRequired,
+    label: PropTypes.string.isRequired,
+    describedBy: PropTypes.string,
+};
+
+function PwdField({ id, name, field, labelKey, autoComplete, showPassword, formData, handleInput, togglePwd, describedBy, t }) {
+    const visible = showPassword[field];
+    return (
+        <div className="lx-field">
             <label htmlFor={id}>{t(labelKey)}</label>
-            <div className="auth-pwd-wrap">
+            <div className="ax-pwd">
                 <input
-                    id={id} name={name} placeholder={placeholder} required
-                    type={showPassword[field] ? 'text' : 'password'}
+                    id={id} name={name} placeholder="••••••••" required
+                    type={visible ? 'text' : 'password'}
+                    autoComplete={autoComplete}
+                    aria-describedby={describedBy}
                     value={formData[name]} onChange={handleInput}
                 />
-                <button type="button" className="auth-pwd-toggle" onClick={() => togglePwd(field)}>
-                    <i className={`fas ${showPassword[field] ? 'fa-eye-slash' : 'fa-eye'}`} />
+                <button
+                    type="button"
+                    className="ax-pwd__toggle"
+                    onClick={() => togglePwd(field)}
+                    aria-label={visible ? t('auth.x.hidePwd') : t('auth.x.showPwd')}
+                    aria-pressed={visible}
+                >
+                    <i className={`fas ${visible ? 'fa-eye-slash' : 'fa-eye'}`} aria-hidden="true" />
                 </button>
             </div>
         </div>
     );
 }
 
+PwdField.propTypes = {
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    field: PropTypes.string.isRequired,
+    labelKey: PropTypes.string.isRequired,
+    autoComplete: PropTypes.string.isRequired,
+    showPassword: PropTypes.object.isRequired,
+    formData: PropTypes.object.isRequired,
+    handleInput: PropTypes.func.isRequired,
+    togglePwd: PropTypes.func.isRequired,
+    describedBy: PropTypes.string,
+    t: PropTypes.func.isRequired,
+};
+
 function SubmitBtn({ children, loading }) {
     return (
-        <button type="submit" className="auth-submit-btn" disabled={loading}>
-            {loading ? <i className="fas fa-spinner fa-spin" /> : children}
+        <button type="submit" className="lx-btn lx-btn--primary lx-btn--lg ax-submit" disabled={loading} aria-busy={loading || undefined}>
+            {loading ? <i className="fas fa-spinner fa-spin" aria-hidden="true" /> : children}
         </button>
     );
 }
 
+SubmitBtn.propTypes = { children: PropTypes.node, loading: PropTypes.bool };
+
+/* Errores: role="alert" (se anuncian al aparecer). Éxitos: role="status". */
 function Alert({ type, msg }) {
     if (!msg) return null;
     return (
-        <div className={`auth-alert auth-alert--${type}`}>
-            <i className={`fas ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle'}`} />
-            {msg}
+        <div id={type === 'error' ? ALERT_ID : undefined} className={`ax-alert ax-alert--${type}`} role={type === 'error' ? 'alert' : 'status'}>
+            <i className={`fas ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}`} aria-hidden="true" />
+            <span>{msg}</span>
         </div>
     );
 }
 
+Alert.propTypes = { type: PropTypes.oneOf(['error', 'success']).isRequired, msg: PropTypes.node };
+
 export default function Auth() {
-    const [mode, setMode] = useState('login'); // login | register | forgot | reset | verify
+    // /login?modo=registro abre directo en "Crear cuenta" (CTA "Empezar gratis" de la landing)
+    const [mode, setMode] = useState(() => (
+        new URLSearchParams(window.location.search).get('modo') === 'registro' ? 'register' : 'login'
+    )); // login | register | forgot | reset | verify
     const [showPassword, setShowPassword] = useState({ login: false, register: false, new: false, confirm: false });
     const [formData, setFormData] = useState({
         username: '', password: '', email: '', codigoInvitacion: '',
@@ -53,9 +108,10 @@ export default function Auth() {
     const [success, setSuccess] = useState(null);
     const [loading, setLoading] = useState(false);
     const [resendCooldown, setResendCooldown] = useState(0);
+    const tabsId = useId();
 
     const navigate = useNavigate();
-    const { t } = useLanguage();
+    const { lang, toggleLang, t } = useLanguage();
 
     useEffect(() => {
         if (resendCooldown <= 0) return;
@@ -72,7 +128,7 @@ export default function Auth() {
     const handleInput = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
     const togglePwd   = (field) => setShowPassword(s => ({ ...s, [field]: !s[field] }));
 
-    /* ── Handlers ── */
+    /* ── Handlers (sin cambios de lógica) ── */
     const handleLogin = async (e) => {
         e.preventDefault(); setError(null); setLoading(true);
         try {
@@ -162,219 +218,197 @@ export default function Auth() {
         } finally { setLoading(false); }
     };
 
-    const submitProps = { loading };
-    const pwdProps = { showPassword, formData, handleInput, togglePwd, t };
+    const describedBy = error ? ALERT_ID : undefined;
+    const pwdProps = { showPassword, formData, handleInput, togglePwd, describedBy, t };
+    const isMain = mode === 'login' || mode === 'register';
+    const isReg  = mode === 'register';
 
-    const isMain   = mode === 'login' || mode === 'register';
-    const isReg    = mode === 'register';
+    // Pestañas con flechas izquierda/derecha (patrón ARIA "tabs")
+    const onTabKey = (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const next = isReg ? 'login' : 'register';
+            switchTo(next);
+            document.getElementById(`${tabsId}-${next}`)?.focus();
+        }
+    };
+
+    const backLink = (to, labelKey) => (
+        <button type="button" className="lx-link ax-back" onClick={() => switchTo(to)}>
+            <i className="fas fa-arrow-left" aria-hidden="true" /> {t(labelKey)}
+        </button>
+    );
 
     return (
-        <>
-            <WaveCanvas />
-            <div className="landing-noise" aria-hidden="true" />
+        <div className="lx ax" data-mode={mode}>
+            {/* ── Panel cinematográfico ── */}
+            <aside className="ax-visual">
+                <div className="ax-visual__media" aria-hidden="true">
+                    <img className="lx-sky__photo" src={cielo2400} srcSet={`${cielo1280} 1280w, ${cielo2400} 2400w`}
+                        sizes="(max-width: 900px) 100vw, 50vw" alt="" decoding="async" fetchPriority="high" />
+                    <PlanetHorizon className="lx-sky__horizon" />
+                </div>
+                <div className="ax-visual__veil" aria-hidden="true" />
+                <div className="ax-visual__inner">
+                    <div className="ax-visual__top">
+                        <a href="/" className="lx-logo" onClick={(e) => { e.preventDefault(); navigate('/'); }} aria-label="OT CRM">
+                            <LogoOrb width={56} height={46} showText={false} />
+                        </a>
+                        <button type="button" className="lx-btn lx-btn--ghost lx-btn--sm" onClick={() => navigate('/')}>
+                            <i className="fas fa-arrow-left" aria-hidden="true" /> {t('auth.backToHome')}
+                        </button>
+                    </div>
+                    <div className="ax-visual__copy">
+                        <span className="lx-pill"><span className="lx-pill__dot" aria-hidden="true" />{t('landing.hero.badge')}</span>
+                        <p className="ax-visual__title">
+                            {t('landing.hero.titleA')} <span className="lx-accent">{t('landing.hero.titleB')}</span> {t('landing.hero.titleC')}
+                        </p>
+                        <p className="ax-visual__text">{t('auth.x.panelText')}</p>
+                    </div>
+                </div>
+            </aside>
 
-            {/* ── Top bar: back button only ── */}
-            <div className="auth-topbar">
-                <button className="auth-topbar-btn" onClick={() => navigate('/')}>
-                    <i className="fa-solid fa-arrow-left" />
-                    {t('auth.backToHome')}
-                </button>
-            </div>
+            {/* ── Formularios ── */}
+            <main className="ax-main">
+                <div className="ax-main__top">
+                    <button type="button" className="lx-btn lx-btn--ghost lx-btn--sm" onClick={toggleLang} aria-label={t('landing.x.langLabel')}>
+                        <LineIcon name="globe" size={18} />
+                        {lang === 'es' ? 'EN' : 'ES'}
+                    </button>
+                </div>
 
-            <div className="auth-scene">
-                {isMain ? (
-                    /* ════════════════════════════════════════
-                       SPLIT CARD — Login / Register
-                    ════════════════════════════════════════ */
-                    <div className={`auth-split-card${isReg ? ' is-register' : ''}`}>
+                <div className="ax-card" key={isMain ? 'main' : mode}>
+                    {isMain ? (
+                        <>
+                            <div className="ax-tabs" role="tablist" aria-label={t('auth.x.tabsLabel')}>
+                                {['login', 'register'].map((m) => (
+                                    <button
+                                        key={m}
+                                        id={`${tabsId}-${m}`}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={mode === m}
+                                        aria-controls={`${tabsId}-panel`}
+                                        tabIndex={mode === m ? 0 : -1}
+                                        className={`ax-tab${mode === m ? ' is-active' : ''}`}
+                                        onClick={() => switchTo(m)}
+                                        onKeyDown={onTabKey}
+                                    >
+                                        {m === 'login' ? t('landing.nav.ingresar') : t('auth.overlay.forLogin.btn')}
+                                    </button>
+                                ))}
+                            </div>
 
-                        {/* ── LEFT HALF: Login form ── */}
-                        <div className="auth-half auth-half--login" aria-hidden={isReg}>
-                            <div className="auth-half-inner">
-                                <h1 className="auth-title">{t('auth.panels.login.title')}</h1>
-                                <p className="auth-subtitle">{t('auth.panels.login.subtitle')}</p>
-                                <Alert type="error"   msg={!isReg && error}   />
-                                <Alert type="success" msg={!isReg && success} />
-                                <form onSubmit={handleLogin}>
-                                    <div className="auth-field">
-                                        <label htmlFor="login-user">{t('auth.panels.login.username')}</label>
-                                        <input id="login-user" name="username" type="text"
-                                            placeholder={t('auth.panels.login.userPlaceholder')}
-                                            required value={formData.username} onChange={handleInput} />
-                                    </div>
-                                    <PwdField id="login-pwd" name="password" field="login"
-                                        labelKey="auth.panels.login.password"
-                                        placeholder="••••••••" {...pwdProps} />
-                                    <SubmitBtn {...submitProps}>{t('auth.panels.login.submit')}</SubmitBtn>
-                                    <div className="auth-forgot-link">
-                                        <button type="button" className="auth-link-btn" onClick={() => switchTo('forgot')}>
+                            <div id={`${tabsId}-panel`} role="tabpanel" aria-labelledby={`${tabsId}-${mode}`}>
+                                <h1 className="ax-title">{t(`auth.panels.${mode}.title`)}</h1>
+                                <p className="ax-subtitle">{t(`auth.panels.${mode}.subtitle`)}</p>
+                                <Alert type="error" msg={error} />
+                                <Alert type="success" msg={success} />
+
+                                {!isReg ? (
+                                    <form className="ax-form" onSubmit={handleLogin}>
+                                        <Field id="login-user" name="username" type="text" autoComplete="username" required
+                                            label={t('auth.panels.login.username')} placeholder={t('auth.panels.login.userPlaceholder')}
+                                            value={formData.username} onChange={handleInput} describedBy={describedBy} />
+                                        <PwdField id="login-pwd" name="password" field="login" autoComplete="current-password"
+                                            labelKey="auth.panels.login.password" {...pwdProps} />
+                                        <button type="button" className="lx-link ax-forgot" onClick={() => switchTo('forgot')}>
                                             {t('auth.panels.login.forgotPwd')}
                                         </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        {/* ── RIGHT HALF: Register form ── */}
-                        <div className="auth-half auth-half--register" aria-hidden={!isReg}>
-                            <div className="auth-half-inner">
-                                <h1 className="auth-title">{t('auth.panels.register.title')}</h1>
-                                <p className="auth-subtitle">{t('auth.panels.register.subtitle')}</p>
-                                <Alert type="error" msg={isReg && error} />
-                                <form onSubmit={handleRegister}>
-                                    <div className="auth-field">
-                                        <label htmlFor="reg-user">{t('auth.panels.register.username')}</label>
-                                        <input id="reg-user" name="username" type="text"
-                                            placeholder={t('auth.panels.register.userPlaceholder')}
-                                            required value={formData.username} onChange={handleInput} />
-                                    </div>
-                                    <div className="auth-field">
-                                        <label htmlFor="reg-email">{t('auth.panels.register.email')}</label>
-                                        <input id="reg-email" name="email" type="email"
-                                            placeholder={t('auth.panels.register.emailPlaceholder')}
-                                            required value={formData.email} onChange={handleInput} />
-                                    </div>
-                                    <PwdField id="reg-pwd" name="password" field="register"
-                                        labelKey="auth.panels.register.password"
-                                        placeholder="••••••••" {...pwdProps} />
-                                    <div className="auth-field">
-                                        <label htmlFor="reg-code">{t('auth.panels.register.inviteCode')}</label>
-                                        <input id="reg-code" name="codigoInvitacion" type="text"
-                                            placeholder={t('auth.panels.register.invitePlaceholder')}
+                                        <SubmitBtn loading={loading}>{t('auth.panels.login.submit')}</SubmitBtn>
+                                    </form>
+                                ) : (
+                                    <form className="ax-form" onSubmit={handleRegister}>
+                                        <Field id="reg-user" name="username" type="text" autoComplete="username" required
+                                            label={t('auth.panels.register.username')} placeholder={t('auth.panels.register.userPlaceholder')}
+                                            value={formData.username} onChange={handleInput} describedBy={describedBy} />
+                                        <Field id="reg-email" name="email" type="email" autoComplete="email" required
+                                            label={t('auth.panels.register.email')} placeholder={t('auth.panels.register.emailPlaceholder')}
+                                            value={formData.email} onChange={handleInput} describedBy={describedBy} />
+                                        <PwdField id="reg-pwd" name="password" field="register" autoComplete="new-password"
+                                            labelKey="auth.panels.register.password" {...pwdProps} />
+                                        <Field id="reg-code" name="codigoInvitacion" type="text" autoComplete="off"
+                                            label={t('auth.panels.register.inviteCode')} placeholder={t('auth.panels.register.invitePlaceholder')}
                                             value={formData.codigoInvitacion} onChange={handleInput} />
-                                    </div>
-                                    <SubmitBtn {...submitProps}>{t('auth.panels.register.submit')}</SubmitBtn>
-                                </form>
+                                        <SubmitBtn loading={loading}>{t('auth.panels.register.submit')}</SubmitBtn>
+                                    </form>
+                                )}
                             </div>
-                        </div>
+                        </>
+                    ) : (
+                        <>
+                            {mode === 'forgot' && (
+                                <>
+                                    {backLink('login', 'auth.panels.forgot.back')}
+                                    <h1 className="ax-title">{t('auth.panels.forgot.title')}</h1>
+                                    <p className="ax-subtitle">{t('auth.panels.forgot.subtitle')}</p>
+                                    <Alert type="error" msg={error} />
+                                    <Alert type="success" msg={success} />
+                                    <form className="ax-form" onSubmit={handleForgot}>
+                                        <Field id="forgot-email" name="email" type="email" autoComplete="email" required
+                                            label={t('auth.panels.forgot.email')} placeholder={t('auth.panels.forgot.emailPlaceholder')}
+                                            value={formData.email} onChange={handleInput} describedBy={describedBy} />
+                                        <SubmitBtn loading={loading}>{t('auth.panels.forgot.submit')}</SubmitBtn>
+                                    </form>
+                                </>
+                            )}
 
-                        {/* ══ SLIDING OVERLAY PANEL ══ */}
-                        <div className="auth-overlay-panel">
-                            {/* Ambient glows */}
-                            <div className="overlay-glow overlay-glow--top"    aria-hidden="true" />
-                            <div className="overlay-glow overlay-glow--bottom" aria-hidden="true" />
+                            {mode === 'reset' && (
+                                <>
+                                    {backLink('forgot', 'auth.panels.reset.back')}
+                                    <h1 className="ax-title">{t('auth.panels.reset.title')}</h1>
+                                    <p className="ax-subtitle">{t('auth.panels.reset.subtitle')}</p>
+                                    <Alert type="error" msg={error} />
+                                    <Alert type="success" msg={success} />
+                                    <form className="ax-form" onSubmit={handleReset}>
+                                        <Field id="reset-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" required
+                                            label={t('auth.panels.reset.code')} placeholder={t('auth.panels.reset.codePlaceholder')}
+                                            value={formData.code} onChange={handleInput} describedBy={describedBy} />
+                                        <PwdField id="reset-new" name="newPassword" field="new" autoComplete="new-password"
+                                            labelKey="auth.panels.reset.newPwd" {...pwdProps} />
+                                        <PwdField id="reset-conf" name="confirmPassword" field="confirm" autoComplete="new-password"
+                                            labelKey="auth.panels.reset.confirmPwd" {...pwdProps} />
+                                        <SubmitBtn loading={loading}>{t('auth.panels.reset.submit')}</SubmitBtn>
+                                    </form>
+                                </>
+                            )}
 
-                            <div className="overlay-inner">
-                                {/* Content shown when overlay is on right (LOGIN mode) */}
-                                <div className="overlay-content overlay-for-login">
-                                    <LogoOrb width={72} height={74} showText={false} />
-                                    <h2 className="overlay-heading">{t('auth.overlay.forLogin.heading')}</h2>
-                                    <p className="overlay-sub">{t('auth.overlay.forLogin.sub')}</p>
-                                    <button className="overlay-action-btn" onClick={() => switchTo('register')}>
-                                        {t('auth.overlay.forLogin.btn')}
-                                    </button>
-                                </div>
-
-                                {/* Content shown when overlay is on left (REGISTER mode) */}
-                                <div className="overlay-content overlay-for-register">
-                                    <LogoOrb width={72} height={74} showText={false} />
-                                    <h2 className="overlay-heading">{t('auth.overlay.forRegister.heading')}</h2>
-                                    <p className="overlay-sub">{t('auth.overlay.forRegister.sub')}</p>
-                                    <button className="overlay-action-btn" onClick={() => switchTo('login')}>
-                                        {t('auth.overlay.forRegister.btn')}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                ) : (
-                    /* ════════════════════════════════════════
-                       UTILITY CARD — Forgot / Reset / Verify
-                    ════════════════════════════════════════ */
-                    <div className="auth-util-card" key={mode}>
-
-                        {mode === 'forgot' && (
-                            <div className="auth-util-inner">
-                                <div className="util-back">
-                                    <button type="button" className="auth-link-btn" onClick={() => switchTo('login')}>
-                                        <i className="fas fa-arrow-left" /> {t('auth.panels.forgot.back')}
-                                    </button>
-                                </div>
-                                <h1 className="auth-title">{t('auth.panels.forgot.title')}</h1>
-                                <p className="auth-subtitle">{t('auth.panels.forgot.subtitle')}</p>
-                                <Alert type="error"   msg={error}   />
-                                <Alert type="success" msg={success} />
-                                <form onSubmit={handleForgot}>
-                                    <div className="auth-field">
-                                        <label htmlFor="forgot-email">{t('auth.panels.forgot.email')}</label>
-                                        <input id="forgot-email" name="email" type="email"
-                                            placeholder={t('auth.panels.forgot.emailPlaceholder')}
-                                            required value={formData.email} onChange={handleInput} />
-                                    </div>
-                                    <SubmitBtn {...submitProps}>{t('auth.panels.forgot.submit')}</SubmitBtn>
-                                </form>
-                            </div>
-                        )}
-
-                        {mode === 'reset' && (
-                            <div className="auth-util-inner">
-                                <div className="util-back">
-                                    <button type="button" className="auth-link-btn" onClick={() => switchTo('forgot')}>
-                                        <i className="fas fa-arrow-left" /> {t('auth.panels.reset.back')}
-                                    </button>
-                                </div>
-                                <h1 className="auth-title">{t('auth.panels.reset.title')}</h1>
-                                <p className="auth-subtitle">{t('auth.panels.reset.subtitle')}</p>
-                                <Alert type="error"   msg={error}   />
-                                <Alert type="success" msg={success} />
-                                <form onSubmit={handleReset}>
-                                    <div className="auth-field">
-                                        <label htmlFor="reset-code">{t('auth.panels.reset.code')}</label>
-                                        <input id="reset-code" name="code" type="text"
-                                            placeholder={t('auth.panels.reset.codePlaceholder')}
-                                            required value={formData.code} onChange={handleInput} />
-                                    </div>
-                                    <PwdField id="reset-new"  name="newPassword"     field="new"     labelKey="auth.panels.reset.newPwd"     placeholder="••••••••" {...pwdProps} />
-                                    <PwdField id="reset-conf" name="confirmPassword" field="confirm" labelKey="auth.panels.reset.confirmPwd" placeholder="••••••••" {...pwdProps} />
-                                    <SubmitBtn {...submitProps}>{t('auth.panels.reset.submit')}</SubmitBtn>
-                                </form>
-                            </div>
-                        )}
-
-                        {mode === 'verify' && (
-                            <div className="auth-util-inner">
-                                <div className="util-back">
-                                    <button type="button" className="auth-link-btn" onClick={() => switchTo('login')}>
-                                        <i className="fas fa-arrow-left" /> {t('auth.panels.verify.back')}
-                                    </button>
-                                </div>
-                                <div className="util-icon-wrap">
-                                    <i className="fas fa-shield-alt" />
-                                </div>
-                                <h1 className="auth-title">{t('auth.panels.verify.title')}</h1>
-                                <p className="auth-subtitle">{t('auth.panels.verify.subtitle')}</p>
-                                <Alert type="error"   msg={error}   />
-                                <Alert type="success" msg={success} />
-                                <form onSubmit={handleVerify}>
-                                    <div className="auth-field">
-                                        <label htmlFor="verify-code">{t('auth.panels.verify.code')}</label>
-                                        <input
-                                            id="verify-code" name="verifyCode" type="text"
-                                            inputMode="numeric" placeholder="123456"
-                                            maxLength={6} required autoComplete="one-time-code"
-                                            value={formData.verifyCode} onChange={handleInput}
-                                            style={{ letterSpacing: '0.35em', textAlign: 'center', fontSize: '1.4rem' }}
-                                        />
-                                    </div>
-                                    <SubmitBtn {...submitProps}>{t('auth.panels.verify.submit')}</SubmitBtn>
-                                </form>
-                                <p className="util-resend-text">
-                                    {t('auth.panels.verify.noCode')}{' '}
-                                    <button type="button" className="auth-link-btn"
-                                        onClick={handleResend} disabled={resendCooldown > 0}
-                                        style={{ opacity: resendCooldown > 0 ? 0.5 : 1 }}>
-                                        {resendCooldown > 0
-                                            ? `${t('auth.panels.verify.resendIn')} ${resendCooldown}s`
-                                            : t('auth.panels.verify.resend')}
-                                    </button>
-                                </p>
-                            </div>
-                        )}
-
-                    </div>
-                )}
-            </div>
-        </>
+                            {mode === 'verify' && (
+                                <>
+                                    {backLink('login', 'auth.panels.verify.back')}
+                                    <span className="ax-icon" aria-hidden="true"><LineIcon name="shield" size={28} /></span>
+                                    <h1 className="ax-title">{t('auth.panels.verify.title')}</h1>
+                                    <p className="ax-subtitle">{t('auth.panels.verify.subtitle')}</p>
+                                    <Alert type="error" msg={error} />
+                                    <Alert type="success" msg={success} />
+                                    <form className="ax-form" onSubmit={handleVerify}>
+                                        <label className="lx-field" htmlFor="verify-code">
+                                            <span>{t('auth.panels.verify.code')}</span>
+                                            <input
+                                                id="verify-code" name="verifyCode" type="text" className="ax-code"
+                                                inputMode="numeric" placeholder="123456"
+                                                maxLength={6} required autoComplete="one-time-code"
+                                                aria-describedby={describedBy}
+                                                value={formData.verifyCode} onChange={handleInput}
+                                            />
+                                        </label>
+                                        <SubmitBtn loading={loading}>{t('auth.panels.verify.submit')}</SubmitBtn>
+                                    </form>
+                                    <p className="ax-resend">
+                                        {t('auth.panels.verify.noCode')}{' '}
+                                        <button type="button" className="lx-link ax-inline-link"
+                                            onClick={handleResend} disabled={resendCooldown > 0}>
+                                            {resendCooldown > 0
+                                                ? `${t('auth.panels.verify.resendIn')} ${resendCooldown}s`
+                                                : t('auth.panels.verify.resend')}
+                                        </button>
+                                    </p>
+                                </>
+                            )}
+                        </>
+                    )}
+                </div>
+            </main>
+        </div>
     );
 }

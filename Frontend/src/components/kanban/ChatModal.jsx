@@ -3,6 +3,7 @@ import EmojiPicker, { Theme } from 'emoji-picker-react';
 import api, { formatTime, formatDate, fetchConReintento } from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 import { useLanguage } from '../../context/LangContext';
+import { clickable } from '../../utils/a11y';
 import useSlashCommands, { SlashMenu } from './SlashCommandMenu';
 
 const FORMAT_BYTES = (bytes) => {
@@ -15,6 +16,8 @@ const FORMAT_BYTES = (bytes) => {
 const COLORS_TAG = ['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#a855f7'];
 
 export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, usuario, onClose, onMoveCard, onUpdateCard }) {
+    // Solo móvil (<=900px): alterna entre la conversación y el panel de datos del contacto
+    const [showInfo, setShowInfo] = useState(false);
     const { t, lang } = useLanguage();
     const toast = useToast();
     const [cliente, setCliente]           = useState(null);
@@ -505,7 +508,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
 
     return (
         <div id="chatModal" className="modal-overlay show" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="pro-modal">
+            <div className={`pro-modal${showInfo ? ' show-info' : ''}`}>
                 <div className="chat-main-panel" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop} style={{ position: 'relative' }}>
                 {isDragging && (
                     <div style={{ position: 'absolute', inset: 0, zIndex: 9999, background: 'rgba(16,185,129,0.15)', border: '3px dashed #10b981', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2px)', pointerEvents: 'none' }}>
@@ -544,7 +547,17 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
                                 </div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div className="chat-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button
+                                type="button"
+                                className="btn-icon chat-info-toggle"
+                                onClick={() => setShowInfo(p => !p)}
+                                aria-pressed={showInfo}
+                                aria-label={t('chat.contactInfo')}
+                                title={t('chat.contactInfo')}
+                            >
+                                <i className="fas fa-circle-info" aria-hidden="true"></i>
+                            </button>
                             {isWhatsApp && (
                                 <div style={{ position: 'relative' }}>
                                     <button
@@ -573,7 +586,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
                                     )}
                                 </div>
                             )}
-                            <button className="btn-icon btn-close-chat" onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <button type="button" className="btn-icon btn-close-chat" onClick={onClose} aria-label={t('ui.close')} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <i className="fas fa-times" style={{ fontSize: '1rem' }}></i>
                             </button>
                         </div>
@@ -599,7 +612,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
                         <div className="file-preview-overlay" onClick={cancelSendFile}>
                             <div className="file-preview-modal" onClick={e => e.stopPropagation()}>
                                 <div className="file-preview-header">
-                                    <button className="btn-icon" onClick={cancelSendFile}><i className="fas fa-times"></i></button>
+                                    <button type="button" className="btn-icon" onClick={cancelSendFile} aria-label={t('ui.close')}><i className="fas fa-times" aria-hidden="true"></i></button>
                                     <span className="file-preview-title">
                                         {pendingFiles[activeFileIdx]?.file.type.startsWith('image/') ? t('chat.sendImage') : t('chat.sendFile')}
                                         {pendingFiles.length > 1 && <span style={{ opacity: 0.55, fontWeight: 400, fontSize: '0.85rem', marginLeft: 6 }}>{pendingFiles.length} archivos</span>}
@@ -623,12 +636,14 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
                                 </div>
                                 <div className="file-strip">
                                     {pendingFiles.map((entry, idx) => (
-                                        <div key={idx} className={`file-strip-thumb${idx === activeFileIdx ? ' active' : ''}`} onClick={() => setActiveFileIdx(idx)}>
+                                        <div key={idx} className={`file-strip-thumb${idx === activeFileIdx ? ' active' : ''}`}
+                                            {...clickable(() => setActiveFileIdx(idx), { label: entry.file?.name || `${t('chat.file')} ${idx + 1}` })}
+                                            aria-current={idx === activeFileIdx ? 'true' : undefined}>
                                             {entry.preview
                                                 ? <img src={entry.preview} alt="" />
                                                 : <i className="fas fa-file-alt"></i>
                                             }
-                                            <button className="file-strip-remove" onClick={e => { e.stopPropagation(); removeFileFromQueue(idx); }}>
+                                            <button type="button" className="file-strip-remove" aria-label={t('chat.removeFile')} onClick={e => { e.stopPropagation(); removeFileFromQueue(idx); }}>
                                                 <i className="fas fa-times"></i>
                                             </button>
                                         </div>

@@ -1,6 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import * as Sentry from '@sentry/react';
 import Sidebar from './Sidebar';
+import PageSkeleton from './PageSkeleton';
+import ErrorFallback from './ErrorFallback';
+import Spinner from './ui/Spinner';
+import Button from './ui/Button';
+import LogoOrb from './LogoOrb';
 import useWebSocket from '../hooks/useWebSocket';
 import useAudio from '../hooks/useAudio';
 import api from '../utils/api';
@@ -83,9 +89,26 @@ function HelpModal({ open, setOpen }) {
 export default function MainLayout() {
     const token = localStorage.getItem('token');
     const { agenciaId, loading } = useUser();
+    const { pathname } = useLocation();
     const { playConnect, playDisconnect, playNotification } = useAudio();
     const { t } = useLanguage();
     const [helpOpen, setHelpOpen] = useState(false);
+
+    // Menú lateral en móvil (<=768px). En escritorio el sidebar es un riel fijo
+    // y estos estados no tienen efecto visual.
+    const [navOpen, setNavOpen] = useState(false);
+    const menuBtnRef = useRef(null);
+    const closeNav = useCallback((restoreFocus = false) => {
+        setNavOpen(false);
+        if (restoreFocus) menuBtnRef.current?.focus();
+    }, []);
+    useEffect(() => {
+        if (!navOpen) return undefined;
+        const onKeyDown = (e) => { if (e.key === 'Escape') closeNav(true); };
+        document.addEventListener('keydown', onKeyDown);
+        document.querySelector('#app-sidebar .nav-pill')?.focus();
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [navOpen, closeNav]);
 
     // Cache sessionId → alias para mostrar el nombre real del dispositivo
     const deviceCacheRef = useRef({});
@@ -255,7 +278,7 @@ export default function MainLayout() {
     });
 
     if (!token) return <Navigate to="/login" replace />;
-    if (loading) return <div className="app-loading" />;
+    if (loading) return <div className="app-loading"><Spinner size="lg" /></div>;
 
     return (
         <>
@@ -279,9 +302,37 @@ export default function MainLayout() {
                 </div>
             )}
             <div className="app-container">
-                <Sidebar onHelpClick={() => setHelpOpen(true)} />
+                <header className="mobile-topbar">
+                    <Button
+                        ref={menuBtnRef}
+                        variant="ghost"
+                        iconOnly
+                        icon="fas fa-bars"
+                        aria-label={t('nav.menu')}
+                        aria-expanded={navOpen}
+                        aria-controls="app-sidebar"
+                        onClick={() => setNavOpen(true)}
+                    />
+                    <LogoOrb width={44} height={36} showText={false} />
+                </header>
+                {navOpen && <div className="sidebar-backdrop" onClick={() => closeNav(true)} aria-hidden="true" />}
+                <Sidebar
+                    open={navOpen}
+                    onNavigate={() => closeNav()}
+                    onClose={() => closeNav(true)}
+                    onHelpClick={() => { closeNav(); setHelpOpen(true); }}
+                />
                 <div className="content-area">
-                    <Outlet />
+                    {/* key=pathname: al navegar se descarta el error y se vuelve a montar la página.
+                        Suspense propio para que el sidebar no desaparezca mientras carga el chunk. */}
+                    <Sentry.ErrorBoundary
+                        key={pathname}
+                        fallback={({ resetError }) => <ErrorFallback inline onReset={resetError} />}
+                    >
+                        <Suspense fallback={<PageSkeleton />}>
+                            <Outlet />
+                        </Suspense>
+                    </Sentry.ErrorBoundary>
                 </div>
             </div>
         </>

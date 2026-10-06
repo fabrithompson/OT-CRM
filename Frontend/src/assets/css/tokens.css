@@ -1,0 +1,100 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Design tokens de OT CRM.
+ *
+ * Se importa ANTES que style.css. Los tokens de color apuntan con var() a las
+ * variables históricas (--brand-green, --text-sec, ...), que siguen siendo la
+ * fuente de verdad: así cambiar un color en un solo lugar se propaga a ambos
+ * sistemas y migrar una pantalla a tokens nuevos no altera su aspecto.
+ *
+ * Convención:  --color-*  --fs-*  --space-*  --radius-*  --shadow-*
+ *              --duration-*  --ease-*  --z-*
+ * ───────────────────────────────────────────────────────────────────────────── */
+:root {
+    /* Color · texto */
+    --color-text-1: var(--text-main);
+    --color-text-2: var(--text-sec);
+    --color-text-3: var(--text-muted);
+    --color-text-on-accent: #04130d;
+
+    /* Color · superficies (de la más profunda a la más elevada) */
+    --color-surface-0: var(--bg-app);
+    --color-surface-1: #0e0e1c;
+    --color-surface-2: #13131f;
+    --color-surface-3: #1c1c2b;
+    --color-overlay: rgba(0, 0, 0, 0.65);
+
+    /* Color · bordes */
+    --color-border: rgba(255, 255, 255, 0.10);
+    --color-border-strong: rgba(255, 255, 255, 0.20);
+
+    /* Color · semánticos */
+    --color-accent: var(--brand-green);
+    --color-accent-hover: var(--brand-green-hover);
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-danger: var(--danger);
+    --color-danger-hover: #dc2626;
+    --color-info: #3b82f6;
+    --color-focus: #6ee7b7;
+
+    /* Variantes translúcidas para fondos de badge/alerta */
+    --color-accent-soft: rgba(16, 185, 129, 0.15);
+    --color-success-soft: rgba(16, 185, 129, 0.15);
+    --color-warning-soft: rgba(245, 158, 11, 0.15);
+    --color-danger-soft: rgba(239, 68, 68, 0.15);
+    --color-info-soft: rgba(59, 130, 246, 0.15);
+
+    /* Tipografía */
+    --font-sans: 'Montserrat', system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --fs-xs: 0.75rem;
+    --fs-sm: 0.8125rem;
+    --fs-md: 0.9375rem;
+    --fs-base: 1rem;
+    --fs-lg: 1.125rem;
+    --fs-xl: 1.375rem;
+    --fs-2xl: 1.75rem;
+    --fs-3xl: 2.25rem;
+    --fw-regular: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+    --lh-tight: 1.25;
+    --lh-base: 1.5;
+
+    /* Espaciado (base 4px) */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-7: 2rem;
+    --space-8: 3rem;
+
+    /* Radios */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-full: 999px;
+
+    /* Sombras */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.40);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+    --shadow-focus: 0 0 0 3px rgba(110, 231, 183, 0.35);
+
+    /* Movimiento */
+    --duration-fast: 120ms;
+    --duration-base: 200ms;
+    --duration-slow: 320ms;
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Capas (--z-sidebar, --z-modal y --z-toast ya existen en style.css) */
+    --z-dropdown: 100;
+    --z-overlay: var(--z-modal);
+
+    /* Tamaños mínimos de interacción (WCAG 2.5.8) */
+    --target-min: 36px;
+}

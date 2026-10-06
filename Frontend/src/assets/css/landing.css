@@ -546,7 +546,7 @@
   border-radius: 6px;
   padding: 4px 12px;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-3);
   font-family: 'Montserrat', sans-serif;
   display: flex;
   align-items: center;
@@ -958,7 +958,7 @@
 
 .plan-price-period {
   font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.40);
+  color: var(--color-text-3);
   margin-left: 2px;
 }
 
@@ -1315,7 +1315,7 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.40);
+  color: var(--color-text-3);
   font-weight: 600;
 }
 
@@ -1389,7 +1389,7 @@
 
 .footer-brand p {
   font-size: 0.88rem;
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--color-text-3);
   line-height: 1.65;
   margin: 0;
   max-width: 280px;
@@ -1405,7 +1405,7 @@
   font-size: 0.80rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-3);
   margin-bottom: 4px;
 }
 
@@ -1454,7 +1454,7 @@
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.40);
+  color: var(--color-text-3);
 }
 
 .footer-member-links {
@@ -1503,7 +1503,7 @@
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 24px;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--color-text-3);
   text-align: center;
 }
 

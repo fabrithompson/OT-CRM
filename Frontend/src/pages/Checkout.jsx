@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import { clickable } from '../utils/a11y';
 import { useUser } from '../context/UserContext';
 
 const METODOS = [
@@ -12,7 +13,7 @@ const METODOS = [
         logoStyle: { background: 'rgba(0,158,227,0.15)', borderColor: 'rgba(0,158,227,0.3)', color: '#009ee3' },
         logo: <i className="fas fa-wallet" />,
         extra: (
-            <div style={{ display: 'flex', gap: 6, fontSize: '1.05rem', color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 6, fontSize: '1.05rem', color: 'var(--color-text-3)', flexShrink: 0 }}>
                 <i className="fab fa-cc-visa" /><i className="fab fa-cc-mastercard" />
             </div>
         ),
@@ -136,14 +137,14 @@ export default function Checkout() {
 
     if (cargando) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                 <div className="spinner" />
             </div>
         );
     }
 
     return (
-        <section className="page-wrapper" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div className="dashboard-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '30px 20px' }}>
 
                 <div style={{ maxWidth: 860, margin: '0 auto' }}>
@@ -154,15 +155,15 @@ export default function Checkout() {
                     <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
                         <div style={{ flex: 1, minWidth: 280 }}>
-                            <span style={S.sectionLabel}>Elegí tu método de pago</span>
+                            <span id="checkout-metodo-label" style={S.sectionLabel}>Elegí tu método de pago</span>
 
-                            <div style={S.list}>
+                            <div style={S.list} role="radiogroup" aria-labelledby="checkout-metodo-label">
                                 {METODOS.map(m => {
                                     const selected = metodo === m.id && m.activo;
                                     return (
                                         <div
                                             key={m.id}
-                                            onClick={() => m.activo && setMetodo(m.id)}
+                                            {...clickable(() => setMetodo(m.id), { role: 'radio', checked: selected, disabled: !m.activo })}
                                             style={{
                                                 ...S.row,
                                                 background: selected ? 'rgba(16,185,129,0.07)' : 'transparent',

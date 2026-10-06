@@ -76,7 +76,7 @@ export function SlashMenu({ suggestions, activeIdx, onSelect }) {
             zIndex: 2000,
             marginBottom: 6,
         }}>
-            <div style={{ padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '0.68rem', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <div style={{ padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '0.68rem', color: 'var(--color-text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 Respuestas rápidas
             </div>
             {suggestions.map((cmd, i) => (

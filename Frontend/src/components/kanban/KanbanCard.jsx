@@ -1,8 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { formatTime } from '../../utils/api';
+import { useLanguage } from '../../context/LangContext';
 
-export default function KanbanCard({ cliente, onOpen }) {
+export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
+    const { t: tr } = useLanguage();
     const nombre = (cliente.nombre && !cliente.nombre.includes('@'))
         ? cliente.nombre
         : (cliente.telefono || '?');
@@ -83,6 +85,22 @@ export default function KanbanCard({ cliente, onOpen }) {
                         <span className={`card-instance-label ${platformClass}`}>{cliente.nombreInstancia}</span>
                     )}
                 </div>
+                {/* Alternativa táctil al drag & drop (solo visible en móvil / sin hover, ver .card-move) */}
+                {onMove && etapas.length > 1 && (
+                    <select
+                        className="card-move"
+                        aria-label={tr('kanban.moveTo')}
+                        value=""
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onChange={(e) => { if (e.target.value) onMove(cliente.id, Number(e.target.value)); }}
+                    >
+                        <option value="">{tr('kanban.moveTo')}</option>
+                        {etapas.filter(et => et.id !== cliente.etapa?.id).map(et => (
+                            <option key={et.id} value={et.id}>{et.nombre}</option>
+                        ))}
+                    </select>
+                )}
                 {/* Tags */}
                 {cliente.etiquetas?.length > 0 && (
                     <div style={{ display: 'flex', gap: 3, marginTop: 5 }}>
@@ -115,4 +133,6 @@ KanbanCard.propTypes = {
         })),
     }).isRequired,
     onOpen: PropTypes.func.isRequired,
+    etapas: PropTypes.array,
+    onMove: PropTypes.func,
 };
