@@ -3,6 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { clickable } from '../utils/a11y';
 import { useUser } from '../context/UserContext';
+import '../assets/css/pages/Checkout.css';
+import { useLanguage } from '../context/LangContext';
 
 const METODOS = [
     {
@@ -13,7 +15,7 @@ const METODOS = [
         logoStyle: { background: 'rgba(0,158,227,0.15)', borderColor: 'rgba(0,158,227,0.3)', color: '#009ee3' },
         logo: <i className="fas fa-wallet" />,
         extra: (
-            <div style={{ display: 'flex', gap: 6, fontSize: '1.05rem', color: 'var(--color-text-3)', flexShrink: 0 }}>
+            <div className="chk-1">
                 <i className="fab fa-cc-visa" /><i className="fab fa-cc-mastercard" />
             </div>
         ),
@@ -38,9 +40,9 @@ const METODOS = [
         activo: false,
         logoStyle: { background: 'rgba(255,255,255,0.04)' },
         logo: (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, lineHeight: 1 }}>
-                <span style={{ fontSize: '0.58rem', fontWeight: 900, color: '#fff', letterSpacing: 1 }}>VISA</span>
-                <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#eb001b' }}>MC</span>
+            <div className="chk-2">
+                <span className="chk-3">VISA</span>
+                <span className="chk-4">MC</span>
             </div>
         ),
     },
@@ -73,7 +75,7 @@ const METODOS = [
         desc: 'Pay with Apple Pay',
         activo: false,
         logoStyle: { background: 'rgba(255,255,255,0.04)', color: '#fff' },
-        logo: <i className="fab fa-apple" style={{ fontSize: '1.25rem' }} />,
+        logo: <i className="fab fa-apple chk-5" />,
     },
     {
         id: 'crypto',
@@ -88,6 +90,7 @@ const METODOS = [
 const formatPrecio = (v) => Number(v).toLocaleString('es-AR', { minimumFractionDigits: 0 });
 
 export default function Checkout() {
+    const { t } = useLanguage();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const planId = searchParams.get('planId');
@@ -137,25 +140,25 @@ export default function Checkout() {
 
     if (cargando) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <div className="chk-6">
                 <div className="spinner" />
             </div>
         );
     }
 
     return (
-        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="dashboard-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '30px 20px' }}>
+        <section className="page-wrapper chk-7">
+            <div className="dashboard-content custom-scrollbar chk-8">
 
-                <div style={{ maxWidth: 860, margin: '0 auto' }}>
-                    <button onClick={() => navigate('/planes')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '0.85rem', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}>
-                        <i className="fas fa-arrow-left" /> Volver a Planes
+                <div className="chk-9">
+                    <button className="chk-10" onClick={() => navigate('/planes')}>
+                        <i className="fas fa-arrow-left" /> {t('checkout.back')}
                     </button>
 
-                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <div className="chk-11">
 
-                        <div style={{ flex: 1, minWidth: 280 }}>
-                            <span id="checkout-metodo-label" style={S.sectionLabel}>Elegí tu método de pago</span>
+                        <div className="chk-12">
+                            <span id="checkout-metodo-label" style={S.sectionLabel}>{t('checkout.chooseMethod')}</span>
 
                             <div style={S.list} role="radiogroup" aria-labelledby="checkout-metodo-label">
                                 {METODOS.map(m => {
@@ -179,13 +182,13 @@ export default function Checkout() {
                                                 {m.logo}
                                             </div>
 
-                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div className="chk-13">
                                                 <span style={S.nombre}>{m.nombre}</span>
                                                 <span style={S.desc}>{m.desc}</span>
                                             </div>
 
                                             {m.activo && m.extra}
-                                            {!m.activo && <span style={S.badge}>Próximamente</span>}
+                                            {!m.activo && <span style={S.badge}>{t('checkout.soon')}</span>}
                                         </div>
                                     );
                                 })}
@@ -193,107 +196,79 @@ export default function Checkout() {
 
                             {metodo === 'mp' && (
                                 <div style={S.aviso}>
-                                    <i className="fas fa-info-circle" style={{ color: '#60a5fa', flexShrink: 0, marginTop: 2 }} />
-                                    <div style={{ flex: 1 }}>
-                                        <p style={{ color: '#93c5fd', fontSize: '0.82rem', margin: '0 0 8px 0', lineHeight: 1.45 }}>
-                                            Email de tu cuenta de Mercado Pago:
+                                    <i className="fas fa-info-circle chk-14" />
+                                    <div className="chk-15">
+                                        <p className="chk-16">
+                                            {t('checkout.mpEmail')}
                                         </p>
-                                        <input
+                                        <input className="chk-17" aria-label={t('checkout.mpEmailLabel')} autoComplete="email"
                                             type="email"
                                             value={email}
                                             onChange={e => setEmail(e.target.value)}
-                                            placeholder="tu@email.com"
-                                            style={{
-                                                width: '100%',
-                                                background: 'rgba(255,255,255,0.07)',
-                                                border: '1px solid rgba(59,130,246,0.35)',
-                                                borderRadius: 8,
-                                                padding: '7px 10px',
-                                                color: '#fff',
-                                                fontSize: '0.85rem',
-                                                outline: 'none',
-                                                boxSizing: 'border-box',
-                                            }}
+                                            placeholder={t('checkout.emailPh')}
                                         />
-                                        <p style={{ color: '#6b8fbd', fontSize: '0.75rem', margin: '5px 0 0 0' }}>
-                                            Modificalo si es distinto al email del CRM.
+                                        <p className="chk-18">
+                                            {t('checkout.mpEmailHint')}
                                         </p>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        <div style={{ width: 290, flexShrink: 0, position: 'sticky', top: 20 }}>
+                        <div className="chk-19">
                             <div style={S.summary}>
                                 <div style={S.summaryHead}>
-                                    <span style={{ display: 'block', fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 2, color: '#10b981', marginBottom: 6 }}>Plan Seleccionado</span>
-                                    <span style={{ display: 'block', fontSize: '1.55rem', fontWeight: 800, color: '#fff', marginBottom: 4 }}>
+                                    <span className="chk-20">{t('checkout.selectedPlan')}</span>
+                                    <span className="chk-21">
                                         {plan.nombre.charAt(0) + plan.nombre.slice(1).toLowerCase()}
                                     </span>
-                                    <span style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.65)', fontWeight: 600 }}>
-                                        $ {formatPrecio(plan.precioMensual)} <span style={{ fontSize: '0.68rem', opacity: 0.55 }}>ARS/mes</span>
+                                    <span className="chk-22">
+                                        $ {formatPrecio(plan.precioMensual)} <span className="chk-23">{t('checkout.perMonthArs')}</span>
                                     </span>
                                 </div>
 
-                                <div style={{ padding: '16px 20px' }}>
+                                <div className="chk-24">
                                     {[
                                         { label: 'Subtotal', valor: `$ ${formatPrecio(plan.precioMensual)}` },
                                         { label: 'Descuento', valor: '— $ 0', color: '#10b981' },
                                         { label: 'Renovación', valor: 'Mensual' },
                                     ].map(r => (
                                         <div key={r.label} style={S.summaryRow}>
-                                            <span style={{ color: '#94a3b8' }}>{r.label}</span>
-                                            <span style={{ color: r.color || '#e2e8f0', fontWeight: 600 }}>{r.valor}</span>
+                                            <span className="chk-25">{r.label}</span>
+                                            <span className="chk-26" style={{ color: r.color || '#e2e8f0' }}>{r.valor}</span>
                                         </div>
                                     ))}
                                 </div>
 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                                    <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>Total hoy</span>
-                                    <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>
-                                        $ {formatPrecio(plan.precioMensual)} <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>ARS</span>
+                                <div className="chk-27">
+                                    <span className="chk-28">{t('checkout.totalToday')}</span>
+                                    <span className="chk-29">
+                                        $ {formatPrecio(plan.precioMensual)} <span className="chk-30">ARS</span>
                                     </span>
                                 </div>
                             </div>
 
                             {error && (
-                                <div style={{ marginTop: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid #ef4444', borderRadius: 8, padding: '10px 14px', color: '#fca5a5', fontSize: '0.82rem', display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <div className="chk-31">
                                     <i className="fas fa-exclamation-triangle" />
                                     {error}
                                 </div>
                             )}
 
-                            <button
+                            <button className="chk-32"
                                 onClick={handlePagar}
                                 disabled={procesando}
-                                style={{
-                                    width: '100%',
-                                    padding: 15,
-                                    fontWeight: 700,
-                                    fontSize: '0.95rem',
-                                    borderRadius: 12,
-                                    border: 'none',
-                                    cursor: procesando ? 'not-allowed' : 'pointer',
-                                    marginTop: 14,
-                                    background: procesando ? 'rgba(255,255,255,0.1)' : metodoActivo?.btnGradient,
-                                    color: '#fff',
-                                    boxShadow: procesando ? 'none' : metodoActivo?.btnShadow,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 10,
-                                    transition: 'all 0.2s',
-                                }}
+                                style={{ cursor: procesando ? 'not-allowed' : 'pointer', background: procesando ? 'rgba(255,255,255,0.1)' : metodoActivo?.btnGradient, boxShadow: procesando ? 'none' : metodoActivo?.btnShadow }}
                             >
                                 {procesando
-                                    ? <><div style={S.spinner} /> Conectando con la pasarela...</>
-                                    : <><i className="fas fa-lock" style={{ fontSize: '0.85rem' }} /> Pagar Ahora</>
+                                    ? <><div style={S.spinner} /> {t('checkout.connecting')}</>
+                                    : <><i className="fas fa-lock chk-33" /> {t('checkout.payNow')}</>
                                 }
                             </button>
 
-                            <p style={{ textAlign: 'center', marginTop: 13, color: '#64748b', fontSize: '0.74rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                                <i className="fas fa-shield-alt" style={{ color: '#10b981' }} />
-                                Pago 100% seguro y encriptado
+                            <p className="chk-34">
+                                <i className="fas fa-shield-alt chk-35" />
+                                {t('checkout.secure')}
                             </p>
                         </div>
 

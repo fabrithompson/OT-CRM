@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import PageSkeleton from './PageSkeleton';
 import ErrorFallback from './ErrorFallback';
 import Spinner from './ui/Spinner';
+import useDialog from '../hooks/useDialog';
 import Button from './ui/Button';
 import LogoOrb from './LogoOrb';
 import useWebSocket from '../hooks/useWebSocket';
@@ -35,15 +36,16 @@ function HelpModal({ open, setOpen }) {
         setTimeout(() => { setSent(false); setOpen(false); setForm({ nombre: '', email: '', mensaje: '' }); }, 3500);
     };
 
+    const dialog = useDialog(open, () => setOpen(false));
     if (!open) return null;
 
     return (
         <div className="help-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-            <div className="help-modal">
+            <div className="help-modal" {...dialog}>
                 <div className="help-modal-header">
                     <div className="help-modal-title">
                         <i className="fas fa-headset" />
-                        <strong>{t('help.title')}</strong>
+                        <strong data-dialog-title>{t('help.title')}</strong>
                     </div>
                     <button className="help-modal-close" onClick={() => setOpen(false)}>
                         <i className="fas fa-times" />
@@ -61,17 +63,17 @@ function HelpModal({ open, setOpen }) {
                         <form onSubmit={handleSubmit}>
                             <div className="sf-field">
                                 <label>{t('help.name')}</label>
-                                <input type="text" name="nombre" placeholder="Juan García"
+                                <input aria-label={t('help.name')} autoComplete="name" type="text" name="nombre" placeholder={t('help.namePh')}
                                     value={form.nombre} onChange={handleChange} required />
                             </div>
                             <div className="sf-field">
                                 <label>{t('help.email')}</label>
-                                <input type="email" name="email" placeholder="juan@empresa.com"
+                                <input aria-label={t('help.email')} autoComplete="email" type="email" name="email" placeholder={t('help.emailPh')}
                                     value={form.email} onChange={handleChange} required />
                             </div>
                             <div className="sf-field">
                                 <label>{t('help.message')}</label>
-                                <textarea name="mensaje" rows={4}
+                                <textarea aria-label={t('help.message')} name="mensaje" rows={4}
                                     placeholder={t('help.msgPlaceholder')}
                                     value={form.mensaje} onChange={handleChange} required />
                             </div>

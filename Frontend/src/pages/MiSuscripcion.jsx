@@ -4,6 +4,7 @@ import api from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LangContext';
+import '../assets/css/pages/MiSuscripcion.css';
 
 const PLAN_ICON = {
     FREE: { icon: 'fa-seedling', color: 'var(--color-text-3)' },
@@ -91,7 +92,7 @@ export default function MiSuscripcion() {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <div className="sub-1">
                 <div className="spinner" />
             </div>
         );
@@ -109,41 +110,28 @@ export default function MiSuscripcion() {
     const unlimited = t('suscripcion.unlimited');
 
     return (
-        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="dashboard-content custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
-                <div style={{ maxWidth: 650, width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <section className="page-wrapper sub-2">
+            <div className="dashboard-content custom-scrollbar sub-3">
+                <div className="sub-4">
 
                     {/* Plan Card */}
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
-                        <div style={{ padding: '24px 28px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div className="sub-5">
+                        <div className="sub-6">
                             <div>
-                                <h2 style={{ color: '#fff', margin: 0, fontSize: '1.4rem', fontWeight: 700 }}>
+                                <h2 className="sub-7">
                                     {t('suscripcion.title')}
                                 </h2>
-                                <p style={{ color: '#9ca3af', margin: '5px 0 0', fontSize: '0.88rem' }}>
+                                <p className="sub-8">
                                     {esEquipo
                                         ? `Plan "${equipo.agenciaNombre}" — ${miembros.length} ${miembros.length !== 1 ? t('suscripcion.members') : t('suscripcion.member')}`
                                         : t('suscripcion.currentPlanInfo')}
                                 </p>
                             </div>
-                            <button
+                            <button className="sub-9"
                                 onClick={handleRefresh}
                                 disabled={refreshing}
                                 title={t('suscripcion.refreshPlan')}
-                                style={{
-                                    background: 'rgba(16,185,129,0.1)',
-                                    border: '1px solid rgba(16,185,129,0.25)',
-                                    color: '#10b981',
-                                    padding: '8px 12px',
-                                    borderRadius: 8,
-                                    cursor: refreshing ? 'wait' : 'pointer',
-                                    fontSize: '0.82rem',
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                    flexShrink: 0,
-                                }}
+                                style={{ cursor: refreshing ? 'wait' : 'pointer' }}
                             >
                                 <i className={`fas ${refreshing ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`} />
                                 {refreshing ? t('suscripcion.refreshing') : t('suscripcion.refreshPlan')}
@@ -151,54 +139,54 @@ export default function MiSuscripcion() {
                         </div>
 
                         {okMsg && (
-                            <div style={{ background: 'rgba(16,185,129,0.08)', color: '#10b981', padding: '10px 28px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div className="sub-10">
                                 <i className="fas fa-check-circle" />
                                 {okMsg}
                             </div>
                         )}
 
-                        <div style={{ padding: 28 }}>
+                        <div className="sub-11">
                             {/* Active Plan */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 20, background: 'rgba(255,255,255,0.02)', padding: 20, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ height: 60, width: 60, background: '#1e293b', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', color: planCfg.color, flexShrink: 0 }}>
+                            <div className="sub-12">
+                                <div className="sub-13" style={{ color: planCfg.color }}>
                                     <i className={`fas ${planCfg.icon}`} />
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <span style={{ color: '#9ca3af', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.1em' }}>
+                                <div className="sub-14">
+                                    <span className="sub-15">
                                         {esEquipo ? t('suscripcion.teamPlanLabel') : t('suscripcion.activePlanLabel')}
                                     </span>
-                                    <h3 style={{ color: '#fff', margin: '4px 0 0', fontSize: '1.5rem', fontWeight: 800 }}>
+                                    <h3 className="sub-16">
                                         {capitalize(planNombre)}
                                     </h3>
                                 </div>
                                 {esEquipo && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16,185,129,0.1)', padding: '6px 12px', borderRadius: 20, flexShrink: 0 }}>
-                                        <i className="fas fa-users" style={{ color: '#10b981', fontSize: '0.75rem' }} />
-                                        <span style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 600 }}>{miembros.length}</span>
+                                    <div className="sub-17">
+                                        <i className="fas fa-users sub-18" />
+                                        <span className="sub-19">{miembros.length}</span>
                                     </div>
                                 )}
                             </div>
 
                             {/* Stats Grid: vencimiento + estado */}
-                            <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <span style={{ color: '#9ca3af', fontSize: '0.72rem', display: 'block', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>{t('suscripcion.nextExpiry')}</span>
-                                    <strong style={{ color: '#fff', fontSize: '1rem' }}>{formatVencimiento(vencimiento, t('suscripcion.noDate'))}</strong>
+                            <div className="sub-20">
+                                <div className="sub-21">
+                                    <span className="sub-22">{t('suscripcion.nextExpiry')}</span>
+                                    <strong className="sub-23">{formatVencimiento(vencimiento, t('suscripcion.noDate'))}</strong>
                                 </div>
-                                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <span style={{ color: '#9ca3af', fontSize: '0.72rem', display: 'block', marginBottom: 6, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em' }}>{t('suscripcion.accountStatus')}</span>
-                                    <strong style={{ color: planNombre !== 'FREE' ? '#10b981' : '#9ca3af', fontSize: '1rem' }}>
+                                <div className="sub-21">
+                                    <span className="sub-22">{t('suscripcion.accountStatus')}</span>
+                                    <strong className="sub-24" style={{ color: planNombre !== 'FREE' ? '#10b981' : '#9ca3af' }}>
                                         {planNombre !== 'FREE' ? t('suscripcion.statusActive') : t('suscripcion.statusNone')}
                                     </strong>
                                 </div>
                             </div>
 
                             {/* Payment Provider Actions */}
-                            <div style={{ marginTop: 28, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 24 }}>
+                            <div className="sub-25">
                                 {esEquipo && !esAdmin && proveedor && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(59,130,246,0.08)', padding: '14px 18px', borderRadius: 10, border: '1px solid rgba(59,130,246,0.15)', marginBottom: 16 }}>
-                                        <i className="fas fa-info-circle" style={{ color: '#3b82f6', fontSize: '1rem', flexShrink: 0 }} />
-                                        <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0, lineHeight: 1.5 }}>
+                                    <div className="sub-26">
+                                        <i className="fas fa-info-circle sub-27" />
+                                        <p className="sub-28">
                                             {t('suscripcion.managedByAdmin')}
                                         </p>
                                     </div>
@@ -206,14 +194,13 @@ export default function MiSuscripcion() {
 
                                 {(esAdmin || !esEquipo) && proveedor === 'PayPal' && (
                                     <>
-                                        <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: 14, lineHeight: 1.5 }}>
+                                        <p className="sub-29">
                                             {t('suscripcion.paypalManage')}
                                         </p>
-                                        <a
+                                        <a className="sub-30"
                                             href="https://www.paypal.com/myaccount/autopay/"
                                             target="_blank"
                                             rel="noreferrer"
-                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, textDecoration: 'none', padding: 15, background: '#003087', color: '#fff', borderRadius: 10, fontWeight: 700, fontSize: '0.95rem' }}
                                         >
                                             <i className="fab fa-paypal" /> {t('suscripcion.paypalBtn')}
                                         </a>
@@ -222,14 +209,13 @@ export default function MiSuscripcion() {
 
                                 {(esAdmin || !esEquipo) && proveedor === 'Mercado Pago' && (
                                     <>
-                                        <p style={{ color: '#9ca3af', fontSize: '0.85rem', marginBottom: 14, lineHeight: 1.5 }}>
+                                        <p className="sub-29">
                                             {t('suscripcion.mpManage')}
                                         </p>
-                                        <a
+                                        <a className="sub-31"
                                             href="https://www.mercadopago.com.ar/subscriptions/"
                                             target="_blank"
                                             rel="noreferrer"
-                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, textDecoration: 'none', padding: 15, background: '#009ee3', color: '#fff', borderRadius: 10, fontWeight: 700, fontSize: '0.95rem' }}
                                         >
                                             <i className="fas fa-wallet" /> {t('suscripcion.mpBtn')}
                                         </a>
@@ -237,12 +223,12 @@ export default function MiSuscripcion() {
                                 )}
 
                                 {(esAdmin || !esEquipo) && !proveedor && (
-                                    <p style={{ color: '#9ca3af', fontSize: '0.85rem', textAlign: 'center' }}>
+                                    <p className="sub-32">
                                         {t('suscripcion.noSub')}
                                     </p>
                                 )}
 
-                                <p style={{ textAlign: 'center', marginTop: 22 }}>
+                                <p className="sub-33">
                                     <Link to="/planes" style={{ color: '#9ca3af', fontSize: '0.82rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                         <i className="fas fa-arrow-left" /> {t('suscripcion.backToPlans')}
                                     </Link>
@@ -253,12 +239,12 @@ export default function MiSuscripcion() {
 
                     {/* Limits Card */}
                     {planEfectivo.id && (
-                        <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
-                            <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                <h3 style={{ color: '#fff', margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{t('suscripcion.limitsTitle')}</h3>
-                                <p style={{ color: '#9ca3af', margin: '3px 0 0', fontSize: '0.8rem' }}>{t('suscripcion.limitsSubtitle')}</p>
+                        <div className="sub-5">
+                            <div className="sub-34">
+                                <h3 className="sub-35">{t('suscripcion.limitsTitle')}</h3>
+                                <p className="sub-36">{t('suscripcion.limitsSubtitle')}</p>
                             </div>
-                            <div style={{ padding: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                            <div className="sub-37">
                                 <LimitItem icon="fa-users" label={t('suscripcion.limitContactos')} value={fmtUso(uso.contactos, planEfectivo.maxContactos, unlimited)} color={planCfg.color} />
                                 <LimitItem icon="fa-mobile-alt" label={t('suscripcion.limitDispEmbudo')} value={fmtUso(uso.dispositivosEmbudo, planEfectivo.maxDispositivos, unlimited)} color={planCfg.color} />
                                 <LimitItem icon="fa-bullhorn" label={t('suscripcion.limitDispCampanias')} value={fmtUso(uso.dispositivosCampanias, planEfectivo.maxDispositivosCampanias, unlimited)} color={planCfg.color} />
@@ -271,75 +257,55 @@ export default function MiSuscripcion() {
 
                     {/* Team Members Card */}
                     {esEquipo && (
-                        <div style={{ background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
-                            <div style={{ padding: '20px 28px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div className="sub-5">
+                            <div className="sub-38">
                                 <div>
-                                    <h3 style={{ color: '#fff', margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{t('suscripcion.teamMembers')}</h3>
-                                    <p style={{ color: '#9ca3af', margin: '3px 0 0', fontSize: '0.8rem' }}>{t('suscripcion.eachMember')}</p>
+                                    <h3 className="sub-35">{t('suscripcion.teamMembers')}</h3>
+                                    <p className="sub-36">{t('suscripcion.eachMember')}</p>
                                 </div>
-                                <span style={{ color: '#9ca3af', fontSize: '0.8rem', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', borderRadius: 8 }}>
+                                <span className="sub-39">
                                     {miembros.length} {miembros.length !== 1 ? t('suscripcion.members') : t('suscripcion.member')}
                                 </span>
                             </div>
-                            <div style={{ padding: '8px 12px' }}>
+                            <div className="sub-40">
                                 {miembros.map(m => {
                                     const mPlan = m.plan?.nombre || 'FREE';
                                     const mCfg = PLAN_ICON[mPlan] || PLAN_ICON.FREE;
                                     const esYo = m.id === perfil?.id;
 
                                     return (
-                                        <div
+                                        <div className="sub-41"
                                             key={m.id}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 14,
-                                                padding: '14px 16px',
-                                                borderRadius: 10,
-                                                background: esYo ? 'rgba(255,255,255,0.03)' : 'transparent',
-                                                transition: 'background 0.15s',
-                                            }}
+                                            style={{ background: esYo ? 'rgba(255,255,255,0.03)' : 'transparent' }}
                                         >
                                             {m.fotoUrl ? (
-                                                <img
+                                                <img className="sub-42"
                                                     src={m.fotoUrl}
                                                     alt={m.nombreCompleto}
-                                                    style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
                                                 />
                                             ) : (
-                                                <div style={{
-                                                    width: 40, height: 40, borderRadius: '50%', background: '#1e293b',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: '0.95rem', fontWeight: 700, color: '#fff', flexShrink: 0,
-                                                }}>
+                                                <div className="sub-43">
                                                     {(m.nombreCompleto || m.username || '?').charAt(0).toUpperCase()}
                                                 </div>
                                             )}
 
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <span style={{ color: '#fff', fontSize: '0.92rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <div className="sub-44">
+                                                <div className="sub-45">
+                                                    <span className="sub-46">
                                                         {m.nombreCompleto || m.username}
                                                     </span>
                                                     {esYo && (
-                                                        <span style={{ color: '#9ca3af', fontSize: '0.7rem', background: 'rgba(255,255,255,0.08)', padding: '1px 6px', borderRadius: 4 }}>{t('suscripcion.you')}</span>
+                                                        <span className="sub-47">{t('suscripcion.you')}</span>
                                                     )}
                                                 </div>
-                                                <span style={{ color: 'var(--color-text-3)', fontSize: '0.78rem' }}>
+                                                <span className="sub-48">
                                                     {(m.rol === 'ADMIN' || m.rol === 'OWNER') ? t('suscripcion.admin') : t('suscripcion.collaborator')}
                                                 </span>
                                             </div>
 
-                                            <div style={{
-                                                display: 'flex', alignItems: 'center', gap: 6,
-                                                background: `${mCfg.color}15`,
-                                                border: `1px solid ${mCfg.color}30`,
-                                                padding: '5px 12px',
-                                                borderRadius: 20,
-                                                flexShrink: 0,
-                                            }}>
-                                                <i className={`fas ${mCfg.icon}`} style={{ color: mCfg.color, fontSize: '0.7rem' }} />
-                                                <span style={{ color: mCfg.color, fontSize: '0.78rem', fontWeight: 700 }}>
+                                            <div className="sub-57" style={{ borderRadius: '20px', background: `${mCfg.color}15`, border: `1px solid ${mCfg.color}30` }}>
+                                                <i className={`fas ${mCfg.icon} sub-50`} style={{ color: mCfg.color }} />
+                                                <span className="sub-51" style={{ color: mCfg.color }}>
                                                     {capitalize(mPlan)}
                                                 </span>
                                             </div>
@@ -358,12 +324,12 @@ export default function MiSuscripcion() {
 
 function LimitItem({ icon, label, value, color }) {
     return (
-        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '14px 16px', borderRadius: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9ca3af', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: 6 }}>
+        <div className="sub-52">
+            <div className="sub-53">
                 <i className={`fas ${icon}`} style={{ color }} />
                 {label}
             </div>
-            <strong style={{ color: '#fff', fontSize: '1.05rem' }}>{value}</strong>
+            <strong className="sub-54">{value}</strong>
         </div>
     );
 }
@@ -371,13 +337,13 @@ function LimitItem({ icon, label, value, color }) {
 function FeatureItem({ icon, label, enabled, tIncluded, tNot }) {
     const c = enabled ? '#10b981' : '#6b7280';
     return (
-        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '14px 16px', borderRadius: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#9ca3af', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.05em', marginBottom: 6 }}>
+        <div className="sub-52">
+            <div className="sub-53">
                 <i className={`fas ${icon}`} style={{ color: c }} />
                 {label}
             </div>
-            <strong style={{ color: c, fontSize: '0.95rem' }}>
-                <i className={`fas ${enabled ? 'fa-check-circle' : 'fa-times-circle'}`} style={{ marginRight: 6 }} />
+            <strong className="sub-55" style={{ color: c }}>
+                <i className={`fas ${enabled ? 'fa-check-circle' : 'fa-times-circle'} sub-56`} />
                 {enabled ? tIncluded : tNot}
             </strong>
         </div>

@@ -1,0 +1,33 @@
+/* Estilos extraídos de los style={{}} estáticos de RespuestasRapidas.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.rr-1) { padding: 2rem !important; color: white !important; display: flex !important; justify-content: center !important; }
+:where(.rr-2) { height: 100% !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+:where(.rr-3) { padding: 20px 30px !important; border-bottom: 1px solid var(--border-glass) !important; flex-shrink: 0 !important; }
+:where(.rr-4) { display: flex !important; align-items: center !important; gap: 12px !important; }
+:where(.rr-5) { font-size: 1.4rem !important; }
+:where(.rr-6) { font-size: 1.4rem !important; font-weight: 700 !important; color: #fff !important; }
+:where(.rr-7) { padding: 30px !important; overflow-y: auto !important; flex: 1 !important; }
+:where(.rr-8) { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important; gap: 20px !important; }
+:where(.rr-9) { background: var(--bg-card) !important; border: 1px solid var(--border-glass) !important; border-radius: 12px !important; padding: 20px !important; display: flex !important; flex-direction: column !important; transition: transform 0.2s !important; box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important; }
+:where(.rr-10) { display: flex !important; justify-content: space-between !important; align-items: flex-start !important; margin-bottom: 15px !important; }
+:where(.rr-11) { background: rgba(245, 158, 11, 0.15) !important; color: var(--color-warning) !important; padding: 6px 12px !important; border-radius: 8px !important; font-size: 0.85rem !important; font-weight: 700 !important; display: flex !important; align-items: center !important; gap: 8px !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; }
+:where(.rr-12) { color: #d1d5db !important; font-size: 0.95rem !important; flex-grow: 1 !important; margin: 0 0 20px 0 !important; white-space: pre-wrap !important; line-height: 1.5 !important; }
+:where(.rr-13) { display: flex !important; justify-content: space-between !important; border-top: 1px solid rgba(255,255,255,0.05) !important; padding-top: 15px !important; }
+:where(.rr-14) { background: rgba(255,255,255,0.05) !important; border: none !important; color: #9ca3af !important; cursor: pointer !important; padding: 8px !important; border-radius: 8px !important; width: 36px !important; height: 36px !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s !important; }
+:where(.rr-15) { background: rgba(239, 68, 68, 0.1) !important; border: none !important; color: var(--color-danger) !important; cursor: pointer !important; padding: 8px !important; border-radius: 8px !important; width: 36px !important; height: 36px !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s !important; }
+:where(.rr-16) { min-height: 200px !important; height: auto !important; max-width: none !important; width: 100% !important; }
+:where(.rr-17) { position: fixed !important; inset: 0 !important; background: rgba(0,0,0,0.7) !important; backdrop-filter: blur(4px) !important; z-index: 1060 !important; display: flex !important; justify-content: center !important; align-items: center !important; }
+:where(.rr-18) { background: linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 16px !important; padding: 30px !important; width: 90% !important; max-width: 440px !important; box-shadow: 0 25px 50px rgba(0,0,0,0.7) !important; }
+:where(.rr-19) { margin: 0 0 5px !important; font-size: 1.4rem !important; background: linear-gradient(to right, #fff, #aebac1) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }
+:where(.rr-20) { color: var(--color-text-3) !important; font-size: 0.9rem !important; margin-bottom: 20px !important; }
+:where(.rr-21) { display: block !important; color: var(--color-text-3) !important; margin-bottom: 6px !important; font-size: 0.85rem !important; font-weight: 500 !important; }
+:where(.rr-22) { width: 100% !important; margin-bottom: 16px !important; font-family: monospace !important; }
+:where(.rr-23) { width: 100% !important; margin-bottom: 20px !important; min-height: 120px !important; line-height: 1.5 !important; }
+:where(.rr-24) { background: linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 16px !important; padding: 30px !important; width: 90% !important; max-width: 400px !important; box-shadow: 0 25px 50px rgba(0,0,0,0.7) !important; }
+:where(.rr-25) { text-align: center !important; }
+:where(.rr-26) { margin: 0 auto 15px !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.8rem !important; color: var(--color-danger) !important; }
+:where(.rr-27) { color: #fff !important; margin: 0 0 8px !important; font-size: 1.3rem !important; }
+:where(.rr-28) { color: var(--color-text-3) !important; margin-bottom: 20px !important; }

@@ -1,0 +1,50 @@
+/* Estilos extraídos de los style={{}} estáticos de AgenteIA.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.agt-1) { align-items: center !important; justify-content: center !important; }
+:where(.agt-2) { color: rgba(255,255,255,0.5) !important; }
+:where(.agt-3) { height: 100% !important; overflow: hidden !important; }
+:where(.agt-4) { flex-shrink: 0 !important; }
+:where(.agt-5) { font-size: clamp(1.1rem, 2vw, 1.45rem) !important; }
+:where(.agt-6) { margin-right: 10px !important; color: #22d3ee !important; }
+:where(.agt-7) { background: rgba(34,211,238,0.10) !important; border-color: rgba(34,211,238,0.20) !important; color: #22d3ee !important; }
+:where(.agt-8) { background: #22d3ee !important; }
+:where(.agt-9) { display: flex !important; gap: 16px !important; flex: 1 !important; overflow: hidden !important; min-height: 0 !important; }
+:where(.agt-10) { flex: 0 0 57% !important; padding: 0 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; gap: 0 !important; }
+:where(.agt-11) { padding: 12px 18px !important; border-bottom: 1px solid rgba(255,255,255,0.06) !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; }
+:where(.agt-12) { margin: 0 !important; }
+:where(.agt-13) { color: #22d3ee !important; }
+:where(.agt-14) { flex: 1 !important; overflow-y: auto !important; padding: 16px 18px !important; display: flex !important; flex-direction: column !important; gap: 10px !important; }
+:where(.agt-15) { display: flex !important; }
+:where(.agt-16) { max-width: 80% !important; padding: 10px 14px !important; font-size: 0.88rem !important; line-height: 1.6 !important; color: rgba(255,255,255,0.88) !important; }
+:where(.agt-17) { display: flex !important; gap: 6px !important; flex-wrap: wrap !important; }
+:where(.agt-18) { max-width: 180px !important; max-height: 130px !important; border-radius: 8px !important; object-fit: cover !important; border: 1px solid rgba(34,211,238,0.20) !important; cursor: pointer !important; }
+:where(.agt-19) { white-space: pre-wrap !important; }
+:where(.agt-20) { display: flex !important; justify-content: flex-start !important; }
+:where(.agt-21) { padding: 10px 16px !important; border-radius: 14px 14px 14px 2px !important; background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.07) !important; font-size: 0.88rem !important; color: var(--color-text-3) !important; }
+:where(.agt-22) { padding: 8px 18px 0 !important; display: flex !important; gap: 8px !important; flex-wrap: wrap !important; flex-shrink: 0 !important; border-top: 1px solid rgba(255,255,255,0.05) !important; }
+:where(.agt-23) { position: relative !important; }
+:where(.agt-24) { width: 58px !important; height: 58px !important; object-fit: cover !important; border-radius: 8px !important; border: 1px solid rgba(34,211,238,0.30) !important; display: block !important; }
+:where(.agt-25) { position: absolute !important; top: -5px !important; right: -5px !important; background: var(--color-danger) !important; border: none !important; border-radius: 50% !important; width: 18px !important; height: 18px !important; cursor: pointer !important; color: #fff !important; font-size: 10px !important; line-height: 18px !important; text-align: center !important; padding: 0 !important; font-weight: 700 !important; }
+:where(.agt-26) { padding: 10px 18px 14px !important; border-top: 1px solid rgba(255,255,255,0.06) !important; display: flex !important; gap: 8px !important; flex-shrink: 0 !important; align-items: center !important; }
+:where(.agt-27) { flex-shrink: 0 !important; width: 38px !important; height: 38px !important; border-radius: 9px !important; border: 1px solid rgba(255,255,255,0.10) !important; font-size: 0.9rem !important; transition: 0.15s !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+:where(.agt-28) { flex: 1 !important; resize: none !important; font-size: 0.88rem !important; padding: 9px 13px !important; border-radius: 10px !important; background: rgba(0,0,0,0.28) !important; border: 1px solid rgba(255,255,255,0.10) !important; color: #fff !important; outline: none !important; font-family: Montserrat, sans-serif !important; line-height: 0.8 !important; }
+:where(.agt-29) { flex-shrink: 0 !important; width: 38px !important; height: 38px !important; border-radius: 9px !important; border: none !important; font-weight: 700 !important; font-size: 0.95rem !important; transition: 0.2s !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+:where(.agt-30) { padding: 0 18px 10px !important; flex-shrink: 0 !important; font-size: 0.70rem !important; color: var(--color-text-3) !important; display: flex !important; align-items: center !important; gap: 5px !important; }
+:where(.agt-31) { color: rgba(34,211,238,0.4) !important; }
+:where(.agt-32) { flex: 1 !important; display: flex !important; flex-direction: column !important; gap: 14px !important; overflow-y: auto !important; min-height: 0 !important; }
+:where(.agt-33) { flex-direction: row !important; align-items: center !important; gap: 16px !important; flex-shrink: 0 !important; }
+:where(.agt-34) { flex: 1 !important; }
+:where(.agt-35) { font-size: 0.78rem !important; color: var(--color-text-3) !important; margin-top: 3px !important; }
+:where(.agt-36) { position: relative !important; display: inline-block !important; width: 46px !important; height: 26px !important; cursor: pointer !important; flex-shrink: 0 !important; }
+:where(.agt-37) { opacity: 0 !important; width: 0 !important; height: 0 !important; position: absolute !important; }
+:where(.agt-38) { position: absolute !important; inset: 0 !important; border-radius: 13px !important; transition: 0.2s !important; }
+:where(.agt-39) { position: absolute !important; top: 3px !important; width: 20px !important; height: 20px !important; border-radius: 50% !important; background: #fff !important; transition: 0.2s !important; }
+:where(.agt-40) { flex: 1 !important; gap: 14px !important; }
+:where(.agt-41) { margin-bottom: 8px !important; }
+:where(.agt-42) { width: 100% !important; resize: none !important; height: 450px !important; font-size: 0.85rem !important; box-sizing: border-box !important; }
+:where(.agt-43) { width: 100% !important; resize: none !important; height: 85px !important; font-size: 0.85rem !important; box-sizing: border-box !important; }
+:where(.agt-44) { width: 100% !important; margin-top: auto !important; }
+:where(.agt-45) { margin-right: 6px !important; }

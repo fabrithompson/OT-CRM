@@ -1,0 +1,27 @@
+/* Estilos extraídos de los style={{}} estáticos de TelegramVincular.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.tg-1) { background: rgba(0,136,204,0.1) !important; color: #0088cc !important; }
+:where(.tg-2) { font-size: 0.75rem !important; opacity: 0.5 !important; margin-top: 5px !important; }
+:where(.tg-3) { background-color: var(--color-warning) !important; color: white !important; }
+:where(.tg-4) { background-color: var(--color-warning) !important; color: white !important; border: none !important; }
+:where(.tg-5) { justify-content: space-between !important; background: transparent !important; border: none !important; padding-bottom: 0 !important; }
+:where(.tg-6) { margin: 0 !important; font-size: 1.8rem !important; display: flex !important; align-items: center !important; gap: 10px !important; }
+:where(.tg-7) { color: #0088cc !important; }
+:where(.tg-8) { margin: 5px 0 0 !important; color: var(--text-sec) !important; font-size: 0.95rem !important; }
+:where(.tg-9) { padding-top: 10px !important; }
+:where(.tg-10) { min-height: 200px !important; height: auto !important; max-width: none !important; width: 100% !important; }
+:where(.tg-11) { padding: 40px !important; }
+:where(.tg-12) { margin: 0 0 5px !important; font-size: 1.4rem !important; background: linear-gradient(to right, #fff, #aebac1) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }
+:where(.tg-13) { color: var(--color-text-3) !important; font-size: 0.9rem !important; margin-bottom: 20px !important; }
+:where(.tg-14) { width: 100% !important; margin-bottom: 20px !important; }
+:where(.tg-15) { color: var(--color-text-3) !important; font-size: 0.9rem !important; margin-bottom: 20px !important; line-height: 1.6 !important; }
+:where(.tg-16) { color: #0088cc !important; font-weight: 600 !important; }
+:where(.tg-17) { width: 100% !important; margin-bottom: 20px !important; text-align: center !important; letter-spacing: 5px !important; font-size: 1.5rem !important; }
+:where(.tg-18) { text-align: center !important; }
+:where(.tg-19) { width: 60px !important; height: 60px !important; border-radius: 50% !important; background: rgba(245,158,11,0.1) !important; color: var(--color-warning) !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 auto 15px !important; font-size: 1.8rem !important; }
+:where(.tg-20) { color: #fff !important; margin: 0 0 8px !important; font-size: 1.3rem !important; }
+:where(.tg-21) { color: var(--color-text-3) !important; margin-bottom: 20px !important; }
+:where(.tg-22) { margin: 0 auto 15px !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.8rem !important; color: var(--color-danger) !important; }

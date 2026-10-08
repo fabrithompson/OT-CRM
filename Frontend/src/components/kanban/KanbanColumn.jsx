@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import KanbanCard from './KanbanCard';
 import api from '../../utils/api';
+import '../../assets/css/pages/KanbanColumn.css';
+import { useLanguage } from '../../context/LangContext';
 
 const COLORS = ['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#a855f7'];
 
@@ -42,6 +44,7 @@ export default function KanbanColumn({
     etapa, etapas, clientes, onOpenChat, onEditStage, onDeleteStage,
     onDropCard, onDropColumn, mutedStages, onToggleMute, onMakeMain, onColorChange,
 }) {
+    const { t } = useLanguage();
     const [showColorPicker, setShowColorPicker] = useState(false);
     const [pickerClosing, setPickerClosing]     = useState(false);
     const [isDragOver, setIsDragOver]           = useState(false);
@@ -126,20 +129,20 @@ export default function KanbanColumn({
             onDrop={onDrop}
         >
             {/* Column Header */}
-            <div className="col-header" style={{ position: 'relative', overflow: 'visible' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="col-header kcol-1">
+                <div className="kcol-2">
                     <span className="stage-name">{etapa.nombre}</span>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '1px 7px' }}>
+                    <span className="kcol-3">
                         {clientes.length}
                     </span>
                 </div>
 
-                <div className="column-header-actions" style={{ overflow: 'visible', position: 'relative' }}>
+                <div className="column-header-actions kcol-4">
                     {/* Mute */}
                     <IconBtn
                         id={`mute-icon-${etapa.id}`}
                         icon={`fas ${isMuted ? 'fa-volume-mute' : 'fa-volume-up'}`}
-                        title="Silenciar"
+                        title={t('kanban.mute')}
                         onClick={(e) => { e.stopPropagation(); onToggleMute(etapa.id); }}
                         style={{ color: isMuted ? '#ef4444' : 'var(--color-text-3)' }}
                     />
@@ -148,38 +151,22 @@ export default function KanbanColumn({
                     <div ref={colorRef} style={{ position: 'relative' }}>
                         <button
                             type="button"
-                            className="stage-color-dot"
-                            style={{ background: color, border: 'none', cursor: 'pointer', padding: 0 }}
+                            className="stage-color-dot kcol-5"
+                            style={{ background: color }}
                             onClick={(e) => { e.stopPropagation(); showColorPicker ? closePicker() : setShowColorPicker(true); }}
-                            title="Cambiar color"
-                            aria-label="Cambiar color de etapa"
+                            title={t('kanban.changeColor')}
+                            aria-label={t('kanban.changeStageColor')}
                         />
                         {showColorPicker && (
                             <div
-                                className={`color-picker-menu ${pickerClosing ? 'exiting' : 'entering'}`}
-                                style={{
-                                    position: 'absolute',
-                                    top: 'calc(100% + 6px)',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    display: 'flex',
-                                    gap: 8,
-                                    padding: '8px 12px',
-                                    zIndex: 9999,
-                                    borderRadius: 12,
-                                    background: '#1e2a33',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                                    whiteSpace: 'nowrap',
-                                    minWidth: '150px',
-                                }}
+                                className={`color-picker-menu ${pickerClosing ? 'exiting' : 'entering'} kcol-6`}
                             >
                                 {COLORS.map(c => (
                                     <button
                                         key={c}
                                         type="button"
-                                        className="color-option"
-                                        style={{ background: c, border: 'none', cursor: 'pointer', padding: 0 }}
+                                        className="color-option kcol-5"
+                                        style={{ background: c }}
                                         onClick={() => changeColor(c)}
                                         aria-label={`Color ${c}`}
                                     />
@@ -191,7 +178,7 @@ export default function KanbanColumn({
                     {/* Make principal */}
                     <IconBtn
                         icon={`fas fa-inbox${etapa.esInicial ? ' active' : ''}`}
-                        title="Principal"
+                        title={t('kanban.main')}
                         onClick={(e) => { e.stopPropagation(); makeMain(); }}
                         style={{ color: etapa.esInicial ? '#10b981' : 'var(--color-text-3)' }}
                     />
@@ -199,7 +186,7 @@ export default function KanbanColumn({
                     {/* Edit */}
                     <IconBtn
                         icon="fas fa-pencil-alt"
-                        title="Editar"
+                        title={t('common.edit')}
                         onClick={(e) => { e.stopPropagation(); onEditStage(etapa); }}
                         style={{ color: '#837878' }}
                     />
@@ -207,7 +194,7 @@ export default function KanbanColumn({
                     {/* Delete */}
                     <IconBtn
                         icon="fas fa-trash-alt"
-                        title="Eliminar"
+                        title={t('common.delete')}
                         onClick={(e) => { e.stopPropagation(); onDeleteStage(etapa); }}
                         style={{ color: '#ef4444' }}
                     />
@@ -216,9 +203,9 @@ export default function KanbanColumn({
 
             {/* Column Body */}
             <div
-                className="col-body"
+                className="col-body kcol-7"
                 id={`col-body-${etapa.id}`}
-                style={{ minHeight: 50, background: isDragOver ? 'rgba(16,185,129,0.05)' : undefined, transition: 'background 0.2s' }}
+                style={{ background: isDragOver ? 'rgba(16,185,129,0.05)' : undefined }}
             >
                 {clientes.map(c => (
                     <KanbanCard key={c.id} cliente={c} onOpen={onOpenChat} etapas={etapas} onMove={onDropCard} />

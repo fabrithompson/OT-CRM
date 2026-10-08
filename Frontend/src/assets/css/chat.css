@@ -1065,3 +1065,7 @@ emoji-picker.show { display: flex; }
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
     border-radius: 12px !important;
 }
+
+/* Texto del mensaje: saltos de línea reales sin <br> inyectado (ver MessageText en ChatModal.jsx) */
+#chatModal .msg-text-part { white-space: pre-wrap; overflow-wrap: anywhere; }
+#chatModal .msg-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

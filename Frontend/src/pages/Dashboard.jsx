@@ -12,6 +12,10 @@ import { useLanguage } from '../context/LangContext';
 import { useToast } from '../context/ToastContext';
 import { getDisplayName } from '../utils/userUtils';
 import { clickable } from '../utils/a11y';
+import useDialog from '../hooks/useDialog';
+import Skeleton from '../components/ui/Skeleton';
+import OnboardingChecklist from '../components/OnboardingChecklist';
+import '../assets/css/pages/Dashboard.css';
 
 // Intervalo mínimo entre refreshes completos disparados por eventos de alta
 // frecuencia (mensajes entrantes). Un refresh son 6 requests con agregados
@@ -44,32 +48,23 @@ function buildLeadOrigin(wa, tg) {
 ───────────────────────────────────────────── */
 function KpiCardV2({ icon, label, value, trend, trendDir, gradient, sparkData, gradId }) {
     return (
-        <div style={{
-            background: gradient, borderRadius: 16, padding: '20px 22px 0',
-            overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 155,
-        }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{
-                    background: 'rgba(255,255,255,0.18)', borderRadius: 10,
-                    width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                    <i className={`fas ${icon}`} style={{ color: 'white', fontSize: '0.95rem' }} />
+        <div className="dsh-1" style={{ background: gradient }}>
+            <div className="dsh-2">
+                <div className="dsh-3">
+                    <i className={`fas ${icon} dsh-4`} />
                 </div>
                 {trend && (
-                    <span style={{
-                        fontSize: '0.72rem', fontWeight: 700, padding: '3px 9px', borderRadius: 20,
-                        background: 'rgba(255,255,255,0.2)', color: 'white',
-                    }}>
-                        <i className={`fas fa-arrow-${trendDir === 'up' ? 'up' : 'down'}`} style={{ fontSize: '0.6rem', marginRight: 3 }} />
+                    <span className="dsh-5">
+                        <i className={`fas fa-arrow-${trendDir === 'up' ? 'up' : 'down'} dsh-6`} />
                         {trend}
                     </span>
                 )}
             </div>
-            <div style={{ marginTop: 14, flex: 1 }}>
-                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'white', lineHeight: 1 }}>{value}</div>
-                <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.72)', marginTop: 5 }}>{label}</div>
+            <div className="dsh-7">
+                <div className="dsh-8">{value}</div>
+                <div className="dsh-9">{label}</div>
             </div>
-            <div style={{ marginLeft: -22, marginRight: -22, marginTop: 8 }}>
+            <div className="dsh-10">
                 <ResponsiveContainer width="100%" height={44}>
                     <AreaChart data={sparkData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
                         <defs>
@@ -116,23 +111,22 @@ function CircularProgress({ pct, color, icon, label, sublabel }) {
     const circ = 2 * Math.PI * r;
     const dash = Math.min(pct / 100, 1) * circ;
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <div style={{ position: 'relative', width: 90, height: 90 }}>
-                <svg width="90" height="90" viewBox="0 0 90 90" style={{ transform: 'rotate(-90deg)' }}>
+        <div className="dsh-11">
+            <div className="dsh-12">
+                <svg className="dsh-13" width="90" height="90" viewBox="0 0 90 90">
                     <circle cx="45" cy="45" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="7" />
-                    <circle
+                    <circle className="dsh-14"
                         cx="45" cy="45" r={r} fill="none" stroke={color} strokeWidth="7"
                         strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-                        style={{ transition: 'stroke-dasharray 0.7s ease' }}
                     />
                 </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                    <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white' }}>{pct}%</span>
-                    <i className={`fas ${icon}`} style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)' }} />
+                <div className="dsh-15">
+                    <span className="dsh-16">{pct}%</span>
+                    <i className={`fas ${icon} dsh-17`} />
                 </div>
             </div>
-            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'white' }}>{label}</span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-3)', textAlign: 'center', lineHeight: 1.3 }}>{sublabel}</span>
+            <span className="dsh-18">{label}</span>
+            <span className="dsh-19">{sublabel}</span>
         </div>
     );
 }
@@ -141,6 +135,7 @@ function CircularProgress({ pct, color, icon, label, sublabel }) {
    Team Avatars
 ───────────────────────────────────────────── */
 function TeamAvatars({ equipo, usuarioActual, onlineUsers, rol, agenciaId, onLeave }) {
+    const { t } = useLanguage();
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
     useEffect(() => {
@@ -162,7 +157,7 @@ function TeamAvatars({ equipo, usuarioActual, onlineUsers, rol, agenciaId, onLea
 
     return (
         <div className="team-avatars-wrap" ref={ref}>
-            <button type="button" className="team-avatars-trigger" onClick={() => setOpen(v => !v)} title="Ver equipo">
+            <button type="button" className="team-avatars-trigger" onClick={() => setOpen(v => !v)} title={t('dashboard.viewTeam')}>
                 {visible.map((m, i) => (
                     <span key={m.id || i} className="team-avatar-slot" style={{ zIndex: 3 - i }}>
                         {m.fotoUrl
@@ -175,7 +170,7 @@ function TeamAvatars({ equipo, usuarioActual, onlineUsers, rol, agenciaId, onLea
             </button>
             {open && (
                 <div className="team-dropdown">
-                    <div className="team-dropdown-title">Equipo · {all.length} miembro{all.length !== 1 ? 's' : ''}</div>
+                    <div className="team-dropdown-title">{t('dashboard.teamTitle')} · {all.length} {all.length !== 1 ? t('dashboard.members') : t('dashboard.member')}</div>
                     {all.map((m, i) => (
                         <div key={m.id || i} className="team-dropdown-row">
                             <span className="team-dd-avatar-slot">
@@ -194,7 +189,7 @@ function TeamAvatars({ equipo, usuarioActual, onlineUsers, rol, agenciaId, onLea
                     {rol !== 'ADMIN' && agenciaId && (
                         <div className="team-dropdown-footer">
                             <button type="button" className="team-dd-leave-btn" onClick={onLeave}>
-                                <i className="fas fa-sign-out-alt" /> Dejar equipo
+                                <i className="fas fa-sign-out-alt" /> {t('common.leaveTeam')}
                             </button>
                         </div>
                     )}
@@ -227,6 +222,7 @@ export default function Dashboard() {
         equipo: [], solicitudes: [],
     });
     const [modalAbandonar, setModalAbandonar] = useState(false);
+    const leaveDialog = useDialog(modalAbandonar, () => setModalAbandonar(false));
     const [agenciaId, setAgenciaId]           = useState(null);
     const [onlineUsers, setOnlineUsers]       = useState(new Set());
     const [etapasStats, setEtapasStats]       = useState([]);
@@ -437,7 +433,7 @@ export default function Dashboard() {
             await api.post('/dashboard/equipo/abandonar');
             setModalAbandonar(false);
             fetchData(true);
-        } catch { toast('Error', 'No se pudo abandonar el equipo.', '#ef4444'); }
+        } catch { toast(t('common.errorTitle'), t('dashboard.errLeave'), '#ef4444'); }
     };
 
     /* ── Derived data (series reales del backend: /dashboard/series) ── */
@@ -510,83 +506,68 @@ export default function Dashboard() {
     const secSub   = { margin: 0, fontSize: '0.73rem', color: 'var(--color-text-3)' };
 
     if (loading) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <div className="spinner" />
+        <div className="dashboard-content db-page dash-skeleton" role="status" aria-busy="true">
+            <span className="ui-sr-only">{t('ui.loading')}</span>
+            <Skeleton variant="text" width="260px" height="2.2rem" />
+            <div className="db-grid db-grid--kpi">
+                {[1, 2, 3, 4].map(i => <Skeleton key={i} height="155px" className="dash-skeleton__card" />)}
+            </div>
+            <div className="db-grid db-grid--60">
+                <Skeleton height="300px" className="dash-skeleton__card" />
+                <Skeleton height="300px" className="dash-skeleton__card" />
+            </div>
+            <div className="db-grid db-grid--2">
+                <Skeleton height="76px" className="dash-skeleton__card" />
+                <Skeleton height="76px" className="dash-skeleton__card" />
+            </div>
         </div>
     );
 
     return (
-        <div className="dashboard-content db-page" style={{ overflowY: 'auto', height: '100%', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="dashboard-content db-page dsh-21">
 
             {/* ── Top bar ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
-                    <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.45)', fontWeight:400 }}>
+            <div className="dsh-22">
+                <div className="dsh-23">
+                    <span className="dsh-24">
                         {greeting},{' '}
-                        <strong style={{ color:'white', fontWeight:700 }}>{firstName}</strong>
+                        <strong className="dsh-25">{firstName}</strong>
                     </span>
-                    <h1 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'white' }}>
+                    <h1 className="dsh-26">
                         {t('dashboard.metrics.title')}{' '}
-                        <span style={{ color:'var(--color-text-3)', fontWeight:400, fontSize:'0.9rem' }}>{rangeText}</span>
+                        <span className="dsh-27">{rangeText}</span>
                     </h1>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div className="dsh-28">
                     {/* Date range pills + custom picker */}
                     <div style={{ position:'relative' }} ref={pickerRef}>
-                        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3, gap: 2 }}>
+                        <div className="dsh-29">
                             {[['today', t('dashboard.periods.today')], ['sem', t('dashboard.periods.sem')], ['mes', t('dashboard.periods.mes')], ['anual', t('dashboard.periods.anual')]].map(([r,lbl]) => (
-                                <button key={r} onClick={() => { setDateRange(r); setPickerOpen(false); }} style={{
-                                    padding: '5px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                    fontSize: '0.77rem', fontWeight: 600, transition: 'all 0.15s',
-                                    background: dateRange === r ? 'rgba(255,255,255,0.13)' : 'transparent',
-                                    color: dateRange === r ? 'white' : 'var(--color-text-3)',
-                                }}>{lbl}</button>
+                                <button className="dsh-30" key={r} onClick={() => { setDateRange(r); setPickerOpen(false); }} style={{ background: dateRange === r ? 'rgba(255,255,255,0.13)' : 'transparent', color: dateRange === r ? 'white' : 'var(--color-text-3)' }}>{lbl}</button>
                             ))}
-                            <button onClick={() => setPickerOpen(v => !v)} style={{
-                                padding: '5px 11px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                fontSize: '0.77rem', fontWeight: 600, transition: 'all 0.15s', display:'flex', alignItems:'center', gap:4,
-                                background: dateRange === 'custom' ? 'rgba(255,255,255,0.13)' : 'transparent',
-                                color: dateRange === 'custom' ? 'white' : 'var(--color-text-3)',
-                            }}>
-                                <i className="fas fa-calendar-alt" style={{ fontSize:'0.7rem' }} />
+                            <button className="dsh-31" type="button" onClick={() => setPickerOpen(v => !v)} aria-label={t('dashboard.picker.custom')} aria-expanded={pickerOpen} style={{ background: dateRange === 'custom' ? 'rgba(255,255,255,0.13)' : 'transparent', color: dateRange === 'custom' ? 'white' : 'var(--color-text-3)' }}>
+                                <i className="fas fa-calendar-alt dsh-32" />
                                 {dateRange === 'custom' ? 'Custom' : ''}
                             </button>
                         </div>
                         {pickerOpen && (
-                            <div style={{
-                                position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:200,
-                                background:'rgba(12,12,24,0.98)', border:'1px solid rgba(255,255,255,0.12)',
-                                borderRadius:12, padding:'16px 18px', minWidth:260,
-                                backdropFilter:'blur(12px)', boxShadow:'0 12px 40px rgba(0,0,0,0.6)',
-                            }}>
-                                <p style={{ margin:'0 0 12px', fontSize:'0.8rem', fontWeight:700, color:'white' }}></p>
-                                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                                    <label style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.5)' }}>
+                            <div className="dsh-33">
+                                <p className="dsh-34"></p>
+                                <div className="dsh-35">
+                                    <label className="dsh-36">
                                         {t('dashboard.picker.from')}
-                                        <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                                            style={{ display:'block', width:'100%', marginTop:4, padding:'6px 10px', boxSizing:'border-box',
-                                                background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)',
-                                                borderRadius:8, color:'white', fontSize:'0.82rem', outline:'none' }} />
+                                        <input className="dsh-37" type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} />
                                     </label>
-                                    <label style={{ fontSize:'0.73rem', color:'rgba(255,255,255,0.5)' }}>
+                                    <label className="dsh-36">
                                         {t('dashboard.picker.to')}
-                                        <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                                            style={{ display:'block', width:'100%', marginTop:4, padding:'6px 10px', boxSizing:'border-box',
-                                                background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)',
-                                                borderRadius:8, color:'white', fontSize:'0.82rem', outline:'none' }} />
+                                        <input className="dsh-37" type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} />
                                     </label>
                                 </div>
-                                <button
+                                <button className="dsh-38"
                                     disabled={!customFrom}
                                     onClick={() => { setDateRange('custom'); setPickerOpen(false); }}
-                                    style={{
-                                        marginTop:14, width:'100%', padding:'8px', borderRadius:8, border:'none',
-                                        cursor: customFrom ? 'pointer' : 'not-allowed',
-                                        background: customFrom ? '#10b981' : 'rgba(255,255,255,0.1)',
-                                        color: customFrom ? 'white' : 'var(--color-text-3)',
-                                        fontSize:'0.82rem', fontWeight:600, transition:'all 0.15s',
-                                    }}>
+                                    style={{ cursor: customFrom ? 'pointer' : 'not-allowed', background: customFrom ? '#10b981' : 'rgba(255,255,255,0.1)', color: customFrom ? 'white' : 'var(--color-text-3)' }}>
                                     {t('dashboard.picker.apply')}
                                 </button>
                             </div>
@@ -609,21 +590,29 @@ export default function Dashboard() {
                                 const a = document.createElement('a');
                                 a.href = url; a.download = 'reporte.xlsx'; a.click();
                                 URL.revokeObjectURL(url);
-                            } catch { toast('Error', 'Error al descargar el reporte.', '#ef4444'); }
+                            } catch { toast(t('common.errorTitle'), t('dashboard.errReport'), '#ef4444'); }
                         }}>
                         <i className="fa-solid fa-file-arrow-down" />
                         <span className="texto-btn">{t('dashboard.report')}</span>
                     </button>
 
-                    <button type="button" className="hdr-owner-btn" title="Mi perfil" onClick={() => navigate('/perfil')}>
+                    <button type="button" className="hdr-owner-btn" title={t('dashboard.myProfile')} onClick={() => navigate('/perfil')}>
                         {usuarioActual?.fotoUrl
-                            ? <img src={usuarioActual.fotoUrl} alt="perfil" className="hdr-owner-img" />
+                            ? <img src={usuarioActual.fotoUrl} alt={t('dashboard.profileAlt')} className="hdr-owner-img" />
                             : <span className="hdr-owner-placeholder">
                                 {(usuarioActual?.nombreCompleto || usuarioActual?.username || '?').slice(0,2).toUpperCase()}
                               </span>}
                     </button>
                 </div>
             </div>
+
+            <OnboardingChecklist
+                username={usuarioActual?.username}
+                hasChannel={data.whatsappConectado || data.telegramConnected}
+                hasStages={etapasStats.length > 0}
+                teamSize={data.equipo?.length || 0}
+                isAdmin={['ADMIN', 'OWNER'].includes(data.rol)}
+            />
 
             {/* ── KPI Row: 4 gradient cards ── */}
             <div className="db-grid db-grid--kpi">
@@ -642,39 +631,35 @@ export default function Dashboard() {
                     sparkData={sparkMsgs} gradId="sg2"
                 />
                 {/* Finance card: neto = ingresos − egresos */}
-                <div style={{
-                    background: 'linear-gradient(135deg,#4a1d96 0%,#6d28d9 45%,#7c3aed 100%)',
-                    borderRadius: 16, padding: '20px 22px 0', overflow: 'hidden',
-                    display: 'flex', flexDirection: 'column', minHeight: 155,
-                }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                        <div style={{ background:'rgba(255,255,255,0.18)', borderRadius:10, width:38, height:38, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                            <i className="fas fa-coins" style={{ color:'white', fontSize:'0.95rem' }} />
+                <div className="dsh-39">
+                    <div className="dsh-2">
+                        <div className="dsh-3">
+                            <i className="fas fa-coins dsh-4" />
                         </div>
                         {neto !== 0 && (
-                            <span style={{ fontSize:'0.72rem', fontWeight:700, padding:'3px 9px', borderRadius:20, background:'rgba(255,255,255,0.2)', color:'white' }}>
-                                <i className={`fas fa-arrow-${neto > 0 ? 'up' : 'down'}`} style={{ fontSize:'0.6rem', marginRight:3 }} />
+                            <span className="dsh-5">
+                                <i className={`fas fa-arrow-${neto > 0 ? 'up' : 'down'} dsh-6`} />
                                 {neto > 0 ? '+' : '-'}{fmtMoney(neto)}
                             </span>
                         )}
                     </div>
-                    <div style={{ marginTop:12, flex:1 }}>
-                        <div style={{ fontSize:'1.65rem', fontWeight:800, color: neto < 0 ? '#fca5a5' : 'white', lineHeight:1 }}>
+                    <div className="dsh-40">
+                        <div className="dsh-41" style={{ color: neto < 0 ? '#fca5a5' : 'white' }}>
                             {neto > 0 ? '+' : neto < 0 ? '-' : ''}{fmtMoney(neto)}
                         </div>
-                        <div style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.65)', marginTop:4 }}>{t('dashboard.kpi.netCompany')}</div>
-                        <div style={{ display:'flex', gap:14, marginTop:8 }}>
-                            <span style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.6)', display:'flex', alignItems:'center', gap:4 }}>
-                                <i className="fas fa-arrow-up" style={{ color:'#86efac', fontSize:'0.58rem' }} />
+                        <div className="dsh-42">{t('dashboard.kpi.netCompany')}</div>
+                        <div className="dsh-43">
+                            <span className="dsh-44">
+                                <i className="fas fa-arrow-up dsh-45" />
                                 {fmtMoney(data.totalCarga)}
                             </span>
-                            <span style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.6)', display:'flex', alignItems:'center', gap:4 }}>
-                                <i className="fas fa-arrow-down" style={{ color:'#fca5a5', fontSize:'0.58rem' }} />
+                            <span className="dsh-44">
+                                <i className="fas fa-arrow-down dsh-46" />
                                 {fmtMoney(data.totalRetiro)}
                             </span>
                         </div>
                     </div>
-                    <div style={{ marginLeft:-22, marginRight:-22, marginTop:8 }}>
+                    <div className="dsh-10">
                         <ResponsiveContainer width="100%" height={44}>
                             <AreaChart data={sparkCarga} margin={{ top:4, right:0, left:0, bottom:0 }}>
                                 <defs>
@@ -722,7 +707,7 @@ export default function Dashboard() {
             {/* ── Row 2: Weekly chart + Lead origin ── */}
             <div className="db-grid db-grid--60">
                 <div style={card}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <div className="dsh-47">
                         <div>
                             <p style={secTitle}>
                                 {dateRange === 'today' ? t('dashboard.chart.perfDay')
@@ -781,10 +766,10 @@ export default function Dashboard() {
                             <Area yAxisId="right" type="monotone" dataKey="ingresos" stroke="#ec4899" strokeWidth={1.5} fill="url(#wg3)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#ec4899', stroke: '#0a0a14' }} name="Ingresos" />
                         </AreaChart>
                     </ResponsiveContainer>
-                    <div style={{ display:'flex', gap:18, marginTop:6 }}>
+                    <div className="dsh-48">
                         {[['#10b981', t('dashboard.chart.leads')],['#818cf8', t('dashboard.chart.messages')],['#ec4899', t('dashboard.chart.income')]].map(([c,n]) => (
-                            <span key={n} style={{ display:'flex', alignItems:'center', gap:5, fontSize:'0.75rem', color:'rgba(255,255,255,0.45)' }}>
-                                <span style={{ width:8, height:8, borderRadius:'50%', background:c }} />{n}
+                            <span className="dsh-49" key={n}>
+                                <span className="dsh-50" style={{ background:c }} />{n}
                             </span>
                         ))}
                     </div>
@@ -792,11 +777,11 @@ export default function Dashboard() {
 
                 {/* Lead origin donut */}
                 <div style={card}>
-                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                    <div className="dsh-51">
                         <p style={secTitle}>{t('dashboard.chart.leadOrigin')}</p>
-                        <span style={{ fontSize:'0.7rem', color:'var(--color-text-3)' }}>{originLabel}</span>
+                        <span className="dsh-52">{originLabel}</span>
                     </div>
-                    <div style={{ display:'flex', justifyContent:'center', position:'relative', marginTop:8 }}>
+                    <div className="dsh-53">
                         <PieChart width={175} height={175}>
                             <Pie
                                 data={leadOrigin.length ? leadOrigin : [{ name:'Sin datos', value:1, color:'rgba(255,255,255,0.08)' }]}
@@ -814,17 +799,17 @@ export default function Dashboard() {
                                 wrapperStyle={{ outline: 'none' }}
                             />
                         </PieChart>
-                        <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', textAlign:'center', pointerEvents:'none' }}>
-                            <div style={{ fontSize:'1.45rem', fontWeight:800, color:'white' }}>{(data.waLeads + data.tgLeads).toLocaleString()}</div>
-                            <div style={{ fontSize:'0.65rem', color:'var(--color-text-3)', textTransform:'uppercase', letterSpacing:1 }}>LEADS</div>
+                        <div className="dsh-54">
+                            <div className="dsh-55">{(data.waLeads + data.tgLeads).toLocaleString()}</div>
+                            <div className="dsh-56">LEADS</div>
                         </div>
                     </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 14px', marginTop:10 }}>
+                    <div className="dsh-57">
                         {leadOrigin.map(item => (
-                            <div key={item.name} style={{ display:'flex', alignItems:'center', gap:6, fontSize:'0.77rem' }}>
-                                <span style={{ width:8, height:8, borderRadius:'50%', background:item.color, flexShrink:0 }} />
-                                <span style={{ color:'rgba(255,255,255,0.55)' }}>{item.name}</span>
-                                <span style={{ color:'white', fontWeight:700, marginLeft:'auto' }}>{item.value}</span>
+                            <div className="dsh-58" key={item.name}>
+                                <span className="dsh-59" style={{ background:item.color }} />
+                                <span className="dsh-60">{item.name}</span>
+                                <span className="dsh-61">{item.value}</span>
                             </div>
                         ))}
                     </div>
@@ -839,29 +824,29 @@ export default function Dashboard() {
                         const totalClientes = etapasStats.reduce((s, e) => s + e.cantidadClientes, 0);
                         return (
                             <>
-                                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+                                <div className="dsh-62">
                                     <p style={secTitle}>{t('dashboard.funnel.title')}</p>
-                                    <span style={{ fontSize:'0.7rem', color:'var(--color-text-3)' }}>
+                                    <span className="dsh-52">
                                         {etapasStats.length} {t('dashboard.funnel.stages')} · {totalClientes} {t('dashboard.funnel.contacts')}
                                     </span>
                                 </div>
                                 {etapasStats.length === 0 ? (
-                                    <p style={{ color:'var(--color-text-3)', fontSize:'0.82rem' }}>{t('dashboard.funnel.noStages')}</p>
+                                    <p className="dsh-63">{t('dashboard.funnel.noStages')}</p>
                                 ) : (
-                                    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                                    <div className="dsh-64">
                                         {etapasStats.map(etapa => {
                                             const barW = Math.round((etapa.cantidadClientes / maxClientes) * 100);
                                             return (
                                                 <div key={etapa.id}>
-                                                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                                                        <span style={{ fontSize:'0.82rem', color:'rgba(255,255,255,0.72)', fontWeight:500 }}>{etapa.nombre}</span>
-                                                        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-                                                            <span style={{ fontSize:'0.72rem', color:'var(--color-text-3)' }}>{etapa.pctMensajes}% msgs</span>
-                                                            <span style={{ fontSize:'0.85rem', fontWeight:700, color:'white' }}>{etapa.cantidadClientes.toLocaleString()}</span>
+                                                    <div className="dsh-65">
+                                                        <span className="dsh-66">{etapa.nombre}</span>
+                                                        <div className="dsh-67">
+                                                            <span className="dsh-68">{etapa.pctMensajes}% msgs</span>
+                                                            <span className="dsh-69">{etapa.cantidadClientes.toLocaleString()}</span>
                                                         </div>
                                                     </div>
-                                                    <div style={{ height:6, background:'rgba(255,255,255,0.07)', borderRadius:4, overflow:'hidden' }}>
-                                                        <div style={{ height:'100%', width:`${barW}%`, background: etapa.color || '#6366f1', borderRadius:4, transition:'width 0.7s ease' }} />
+                                                    <div className="dsh-70">
+                                                        <div className="dsh-71" style={{ width:`${barW}%`, background: etapa.color || '#6366f1' }} />
                                                     </div>
                                                 </div>
                                             );
@@ -875,16 +860,11 @@ export default function Dashboard() {
 
                 {/* Top Clientes / Top Agentes toggle card */}
                 <div style={{ ...card, display:'flex', flexDirection:'column' }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                    <div className="dsh-72">
                         <p style={secTitle}>{t('dashboard.ranking.title')}</p>
-                        <div style={{ display:'flex', background:'rgba(255,255,255,0.06)', borderRadius:8, padding:3, gap:2 }}>
+                        <div className="dsh-73">
                             {[['agentes', t('dashboard.ranking.agents')], ['clientes', t('dashboard.ranking.clients')]].map(([v,lbl]) => (
-                                <button key={v} onClick={() => setTopView(v)} style={{
-                                    padding:'4px 12px', borderRadius:6, border:'none', cursor:'pointer',
-                                    fontSize:'0.74rem', fontWeight:600, transition:'all 0.15s',
-                                    background: topView === v ? 'rgba(255,255,255,0.13)' : 'transparent',
-                                    color: topView === v ? 'white' : 'var(--color-text-3)',
-                                }}>{lbl}</button>
+                                <button className="dsh-74" key={v} onClick={() => setTopView(v)} style={{ background: topView === v ? 'rgba(255,255,255,0.13)' : 'transparent', color: topView === v ? 'white' : 'var(--color-text-3)' }}>{lbl}</button>
                             ))}
                         </div>
                     </div>
@@ -892,41 +872,36 @@ export default function Dashboard() {
                         const list = (topView === 'agentes' ? topStats.topAgentes : topStats.topClientes).slice(0, 5);
                         const maxTotal = Math.max(1, ...list.map(r => r.total || 0));
                         if (!list.length) return (
-                            <p style={{ color:'var(--color-text-3)', fontSize:'0.82rem' }}>
+                            <p className="dsh-63">
                                 {topView === 'agentes' ? t('dashboard.ranking.noSales') : t('dashboard.ranking.noLoads')}
                             </p>
                         );
                         return (
-                            <div style={{ display:'flex', flexDirection:'column', gap:14, flex:1, justifyContent:'space-around' }}>
+                            <div className="dsh-75">
                                 {list.map((row, idx) => (
-                                    <div key={row.id || idx} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                                        <span style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--color-text-3)', width:20, textAlign:'center', flexShrink:0 }}>#{idx+1}</span>
+                                    <div className="dsh-76" key={row.id || idx}>
+                                        <span className="dsh-77">#{idx+1}</span>
                                         {row.fotoUrl
-                                            ? <img src={row.fotoUrl} alt={row.nombre} style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover', flexShrink:0, border:`2px solid ${AGENT_COLORS[idx % 4]}` }} />
-                                            : <div style={{
-                                                width:32, height:32, borderRadius:'50%', flexShrink:0,
-                                                background: AGENT_COLORS[idx % 4] + '22',
-                                                border: `2px solid ${AGENT_COLORS[idx % 4]}`,
-                                                display:'flex', alignItems:'center', justifyContent:'center',
-                                            }}>
-                                                <span style={{ fontSize:'0.68rem', fontWeight:700, color: AGENT_COLORS[idx % 4] }}>
+                                            ? <img className="dsh-101" src={row.fotoUrl} alt={row.nombre} style={{ borderRadius: '50%', border:`2px solid ${AGENT_COLORS[idx % 4]}` }} />
+                                            : <div className="dsh-102" style={{ borderRadius: '50%', background: AGENT_COLORS[idx % 4] + '22', border: `2px solid ${AGENT_COLORS[idx % 4]}` }}>
+                                                <span className="dsh-80" style={{ color: AGENT_COLORS[idx % 4] }}>
                                                     {(row.nombre || '?').slice(0,2).toUpperCase()}
                                                 </span>
                                               </div>
                                         }
-                                        <div style={{ flex:1, minWidth:0 }}>
-                                            <div style={{ fontSize:'0.82rem', fontWeight:600, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                        <div className="dsh-81">
+                                            <div className="dsh-82">
                                                 {row.nombre}
                                             </div>
-                                            <div style={{ height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, marginTop:4, overflow:'hidden' }}>
-                                                <div style={{ height:'100%', width:`${Math.round((row.total / maxTotal) * 100)}%`, background: AGENT_COLORS[idx % 4], borderRadius:2, transition:'width 0.7s ease' }} />
+                                            <div className="dsh-83">
+                                                <div className="dsh-84" style={{ width:`${Math.round((row.total / maxTotal) * 100)}%`, background: AGENT_COLORS[idx % 4] }} />
                                             </div>
                                         </div>
-                                        <div style={{ textAlign:'right', flexShrink:0 }}>
-                                            <div style={{ fontSize:'0.8rem', fontWeight:700, color:'white' }}>
+                                        <div className="dsh-85">
+                                            <div className="dsh-86">
                                                 ${row.total >= 1000 ? (row.total / 1000).toFixed(1) + 'K' : row.total?.toFixed(0)}
                                             </div>
-                                            <div style={{ fontSize:'0.65rem', color:'var(--color-text-3)' }}>
+                                            <div className="dsh-87">
                                                 {topView === 'agentes' ? t('dashboard.ranking.inSales') : t('dashboard.ranking.inLoads')}
                                             </div>
                                         </div>
@@ -945,38 +920,32 @@ export default function Dashboard() {
                     { label:'Telegram', icon:'fa-telegram', connected:data.telegramConnected, path:'/telegram-vincular', brandColor:'#229ED9' },
                 ].map(ch => (
                     <div key={ch.label} {...clickable(() => navigate(ch.path), { label: ch.label })} style={{ ...card, display:'flex', alignItems:'center', gap:14, cursor:'pointer' }}>
-                        <div style={{
-                            width:42, height:42, borderRadius:12, flexShrink:0,
-                            background: ch.brandColor + '22',
-                            border:`1px solid ${ch.brandColor}55`,
-                            display:'flex', alignItems:'center', justifyContent:'center',
-                        }}>
-                            <i className={`fab ${ch.icon}`} style={{ color: ch.brandColor, fontSize:'1.2rem' }} />
+                        <div className="dsh-103" style={{ borderRadius: '12px', background: ch.brandColor + '22', border:`1px solid ${ch.brandColor}55` }}>
+                            <i className={`fab ${ch.icon} dsh-89`} style={{ color: ch.brandColor }} />
                         </div>
-                        <div style={{ flex:1 }}>
-                            <div style={{ fontSize:'0.92rem', fontWeight:600, color:'white' }}>{ch.label}</div>
-                            <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:3 }}>
-                                <span style={{ width:7, height:7, borderRadius:'50%', background: ch.connected ? ch.brandColor : '#6b7280' }} />
-                                <span style={{ fontSize:'0.75rem', color: ch.connected ? ch.brandColor : 'var(--color-text-3)' }}>
+                        <div className="dsh-90">
+                            <div className="dsh-91">{ch.label}</div>
+                            <div className="dsh-92">
+                                <span className="dsh-93" style={{ background: ch.connected ? ch.brandColor : '#6b7280' }} />
+                                <span className="dsh-94" style={{ color: ch.connected ? ch.brandColor : 'var(--color-text-3)' }}>
                                     {ch.connected ? t('dashboard.channels.connected') : t('dashboard.channels.disconnected')}
                                 </span>
                             </div>
                         </div>
-                        <i className="fas fa-chevron-right" style={{ color:'rgba(255,255,255,0.2)', fontSize:'0.75rem' }} />
+                        <i className="fas fa-chevron-right dsh-95" />
                     </div>
                 ))}
             </div>
 
             {/* Modal abandonar equipo */}
             {modalAbandonar && (
-                <div onClick={e => { if (e.target===e.currentTarget) setModalAbandonar(false); }}
-                    style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', backdropFilter:'blur(4px)', zIndex:99999, display:'flex', justifyContent:'center', alignItems:'center' }}>
-                    <div style={{ background:'var(--bg-card)', padding:'2rem', borderRadius:14, maxWidth:400, width:'90%', border:'1px solid var(--border-glass)' }}>
-                        <h3 style={{ marginTop:0, color:'#fff' }}>{t('dashboard.leaveTeam.title')}</h3>
-                        <p style={{ color:'#9ca3af', fontSize:'0.92rem', lineHeight:1.6, marginBottom:24 }}>
+                <div className="dsh-96" onClick={e => { if (e.target===e.currentTarget) setModalAbandonar(false); }}>
+                    <div className="dsh-97" {...leaveDialog}>
+                        <h3 className="dsh-98">{t('dashboard.leaveTeam.title')}</h3>
+                        <p className="dsh-99">
                             {t('dashboard.leaveTeam.message')}
                         </p>
-                        <div style={{ display:'flex', gap:12, justifyContent:'flex-end' }}>
+                        <div className="dsh-100">
                             <button onClick={() => setModalAbandonar(false)} className="btn-secondary">{t('common.cancel')}</button>
                             <button onClick={abandonarEquipo} className="btn-danger">{t('common.leaveTeam')}</button>
                         </div>

@@ -11,6 +11,7 @@ import nebulosaPlaneta from '../assets/landing/nebulosa-planeta.webp';
 import nebulosaNube from '../assets/landing/nebulosa-nube.webp';
 import nebulosaBurbujas from '../assets/landing/nebulosa-burbujas.webp';
 import LineIcon from '../components/landing/LineIcon';
+import ChatDemo from '../components/landing/ChatDemo';
 import { useLanguage } from '../context/LangContext';
 
 const COMPANY_EMAIL = 'otempresa@otempresa.com';
@@ -166,6 +167,15 @@ export default function Landing() {
             </div>
           </nav>
 
+          <div className="lx-notif" aria-hidden="true">
+            <div className="lx-notif__head">
+              <span><i className="fab fa-whatsapp" /> {t('landing.x.notif.from')}</span>
+              <span>{t('landing.x.notif.now')}</span>
+            </div>
+            <p className="lx-notif__msg">{t('landing.x.notif.msg')}</p>
+            <p className="lx-notif__event"><i className="fa-solid fa-arrow-right" /> {t('landing.x.notif.event')}</p>
+          </div>
+
           <div className="lx-hero__content">
             <span className="lx-pill lx-reveal" style={{ '--i': 0 }}>
               <span className="lx-pill__dot" aria-hidden="true" />
@@ -238,6 +248,11 @@ export default function Landing() {
               <img src={nebulosaPlaneta} alt={t('landing.x.manifestoAlt')} loading="lazy" decoding="async" />
             </div>
           </div>
+        </section>
+
+        {/* ════════ 3b · DEMO: del primer mensaje a la venta ════════ */}
+        <section id="demo" className="lx-section lx-container" aria-labelledby="lx-demo-title">
+          <ChatDemo />
         </section>
 
         {/* ════════ 4 · FUNCIONALIDADES (servicios) ════════ */}

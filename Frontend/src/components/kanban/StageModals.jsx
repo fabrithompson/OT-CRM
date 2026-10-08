@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import api from '../../utils/api';
+import useDialog from '../../hooks/useDialog';
+import '../../assets/css/pages/StageModals.css';
+import { useLanguage } from '../../context/LangContext';
 
 // ─── Modal base ─────────────────────────────────────────────────────────────
 function Overlay({ show, onClose, children }) {
+    const dialog = useDialog(show, onClose);
     if (!show) return null;
-    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
     return (
-        <div
-            role="dialog"
-            aria-modal="true"
-            tabIndex={-1}
-            onKeyDown={handleKeyDown}
+        <div className="stg-1"
+            {...dialog}
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1060, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
         >
             {children}
         </div>
@@ -28,7 +27,7 @@ Overlay.propTypes = {
 
 function ModalBox({ children }) {
     return (
-        <div style={{ background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 30, width: '90%', maxWidth: 400, boxShadow: '0 25px 50px rgba(0,0,0,0.7)' }}>
+        <div className="stg-2">
             {children}
         </div>
     );
@@ -40,6 +39,7 @@ ModalBox.propTypes = {
 
 // ─── Create Stage Modal ──────────────────────────────────────────────────────
 export function CreateStageModal({ show, onClose, agenciaId }) {
+    const { t } = useLanguage();
     const [nombre, setNombre]   = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -57,20 +57,19 @@ export function CreateStageModal({ show, onClose, agenciaId }) {
     return (
         <Overlay show={show} onClose={onClose}>
             <ModalBox>
-                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Nueva Etapa</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20 }}>Crea una nueva columna en tu embudo</p>
-                <input
+                <h3 className="stg-3">{t('kanban.newStage')}</h3>
+                <p className="stg-4">{t('kanban.stageCreateSub')}</p>
+                <input aria-label={t('kanban.stageNamePh')}
                     id="create-stage-nombre"
-                    className="clean-input"
+                    className="clean-input stg-5"
                     autoFocus
-                    style={{ width: '100%', marginBottom: 20 }}
-                    placeholder="Nombre de la etapa..."
+                    placeholder={t('kanban.stageNamePh')}
                     value={nombre}
                     onChange={e => setNombre(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCreate()}
                 />
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={onClose}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm" onClick={handleCreate} disabled={loading}>
                         {loading ? <i className="fas fa-spinner fa-spin"></i> : 'Crear'}
                     </button>
@@ -92,6 +91,7 @@ CreateStageModal.defaultProps = { agenciaId: null };
 // desmonte/monte cuando cambia la etapa editada — así el initial state del
 // useState refleja siempre la etapa actual sin necesidad de useEffect+setState.
 export function EditStageModal({ show, onClose, stage }) {
+    const { t } = useLanguage();
     const [nombre, setNombre]   = useState(stage?.nombre || '');
     const [loading, setLoading] = useState(false);
 
@@ -108,19 +108,19 @@ export function EditStageModal({ show, onClose, stage }) {
     return (
         <Overlay show={show} onClose={onClose}>
             <ModalBox>
-                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Editar Etapa</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20 }}>Cambia el nombre de esta etapa</p>
+                <h3 className="stg-3">{t('kanban.stageEditTitle')}</h3>
+                <p className="stg-4">{t('kanban.stageEditSub')}</p>
                 <input
+                    aria-label={t('kanban.stageName')}
                     id="edit-stage-nombre"
-                    className="clean-input"
+                    className="clean-input stg-5"
                     autoFocus
-                    style={{ width: '100%', marginBottom: 20 }}
                     value={nombre}
                     onChange={e => setNombre(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSave()}
                 />
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={onClose}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm" onClick={handleSave} disabled={loading}>
                         {loading ? <i className="fas fa-spinner fa-spin"></i> : 'Guardar'}
                     </button>
@@ -139,6 +139,7 @@ EditStageModal.defaultProps = { stage: null };
 
 // ─── Delete Stage Modal ──────────────────────────────────────────────────────
 export function DeleteStageModal({ show, onClose, stage }) {
+    const { t } = useLanguage();
     const [loading, setLoading] = useState(false);
 
     const handleDelete = async () => {
@@ -154,17 +155,17 @@ export function DeleteStageModal({ show, onClose, stage }) {
     return (
         <Overlay show={show} onClose={onClose}>
             <ModalBox>
-                <div style={{ textAlign: 'center' }}>
-                    <div className="icon-trash-bg" style={{ margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#ef4444' }}>
+                <div className="stg-6">
+                    <div className="icon-trash-bg stg-7">
                         <i className="fas fa-trash-alt"></i>
                     </div>
-                    <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>¿Eliminar etapa?</h3>
-                    <p style={{ color: '#94a3b8', marginBottom: 20 }}>
-                        Estás por eliminar <strong style={{ color: '#fff' }}>{stage?.nombre}</strong>. Los clientes que estén en esta etapa no serán eliminados.
+                    <h3 className="stg-8">{t('kanban.stageDeleteTitle')}</h3>
+                    <p className="stg-9">
+                        {t('kanban.stageDeleteA')} <strong className="stg-10">{stage?.nombre}</strong>{t('kanban.stageDeleteB')}
                     </p>
                 </div>
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={onClose}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm-danger" onClick={handleDelete} disabled={loading}>
                         {loading ? <i className="fas fa-spinner fa-spin"></i> : 'Eliminar'}
                     </button>

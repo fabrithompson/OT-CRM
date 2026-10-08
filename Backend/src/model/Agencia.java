@@ -4,6 +4,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.CascadeType;
@@ -50,6 +51,7 @@ public class Agencia {
     @JsonIgnoreProperties("agencia")
     @ToString.Exclude
     private List<Cliente> clientes = new ArrayList<>();
+    @JsonIgnore
     private String whatsappToken;
     private String whatsappPhoneId;
     private String whatsappWabaId;

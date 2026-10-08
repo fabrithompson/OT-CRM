@@ -1,0 +1,12 @@
+/* Estilos extraídos de los style={{}} estáticos de KanbanColumn.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.kcol-1) { position: relative !important; overflow: visible !important; }
+:where(.kcol-2) { display: flex !important; align-items: center !important; gap: 8px !important; }
+:where(.kcol-3) { font-size: 0.75rem !important; color: var(--color-text-3) !important; background: rgba(255,255,255,0.08) !important; border-radius: 10px !important; padding: 1px 7px !important; }
+:where(.kcol-4) { overflow: visible !important; position: relative !important; }
+:where(.kcol-5) { border: none !important; cursor: pointer !important; padding: 0 !important; }
+:where(.kcol-6) { position: absolute !important; top: calc(100% + 6px) !important; left: 50% !important; transform: translateX(-50%) !important; display: flex !important; gap: 8px !important; padding: 8px 12px !important; z-index: 9999 !important; border-radius: 12px !important; background: #1e2a33 !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important; white-space: nowrap !important; min-width: 150px !important; }
+:where(.kcol-7) { min-height: 50px !important; transition: background 0.2s !important; }

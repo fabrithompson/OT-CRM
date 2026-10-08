@@ -1,0 +1,72 @@
+/* Estilos extraídos de los style={{}} estáticos de Perfil.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.prf-1) { padding: 2rem !important; color: white !important; display: flex !important; justify-content: center !important; }
+:where(.prf-2) { height: 100% !important; overflow-y: auto !important; padding: 1.25rem 1.5rem !important; box-sizing: border-box !important; display: flex !important; justify-content: center !important; align-items: flex-start !important; }
+:where(.prf-3) { width: 100% !important; max-width: 1400px !important; display: flex !important; flex-direction: column !important; gap: 14px !important; }
+:where(.prf-4) { margin: 0 !important; font-size: 1.55rem !important; font-weight: 800 !important; color: #fff !important; }
+:where(.prf-5) { padding: 15px !important; border-radius: 10px !important; margin-bottom: 20px !important; display: flex !important; align-items: center !important; gap: 10px !important; }
+:where(.prf-6) { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)) !important; gap: 14px !important; align-items: start !important; }
+:where(.prf-7) { background: var(--bg-card) !important; border: 1px solid var(--border-glass) !important; border-radius: 16px !important; padding: 22px !important; }
+:where(.prf-8) { display: flex !important; flex-direction: column !important; gap: 16px !important; }
+:where(.prf-9) { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 10px !important; padding-bottom: 14px !important; border-bottom: 1px solid var(--border-glass) !important; }
+:where(.prf-10) { width: 96px !important; height: 96px !important; border-radius: 50% !important; object-fit: cover !important; border: 3px solid white !important; box-shadow: 0 0 20px rgba(255,255,255,0.2) !important; }
+:where(.prf-11) { width: 96px !important; height: 96px !important; font-size: 2.5rem !important; border: 3px solid white !important; display: flex !important; justify-content: center !important; align-items: center !important; border-radius: 50% !important; background: #333 !important; color: #fff !important; }
+:where(.prf-12) { cursor: pointer !important; display: flex !important; gap: 8px !important; align-items: center !important; padding: 10px 20px !important; border-radius: 8px !important; background: rgba(255,255,255,0.1) !important; color: #fff !important; border: none !important; }
+:where(.prf-13) { display: none !important; }
+:where(.prf-14) { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px !important; }
+:where(.prf-15) { font-weight: bold !important; display: block !important; margin-bottom: 8px !important; color: #9ca3af !important; }
+:where(.prf-16) { width: 100% !important; padding: 12px !important; background: rgba(0,0,0,0.2) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; border-radius: 8px !important; outline: none !important; }
+:where(.prf-17) { font-weight: normal !important; opacity: 0.6 !important; }
+:where(.prf-18) { position: relative !important; }
+:where(.prf-19) { width: 100% !important; padding: 12px !important; padding-right: 45px !important; background: rgba(0,0,0,0.2) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; border-radius: 8px !important; outline: none !important; }
+:where(.prf-20) { position: absolute !important; top: 50% !important; right: 15px !important; transform: translateY(-50%) !important; background: none !important; border: none !important; cursor: pointer !important; color: var(--color-text-3) !important; font-size: 1.1rem !important; }
+:where(.prf-21) { padding: 15px !important; margin: 0 auto !important; width: 100% !important; max-width: 250px !important; background: #2563eb !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; display: flex !important; justify-content: center !important; align-items: center !important; }
+:where(.prf-22) { display: flex !important; flex-direction: column !important; gap: 14px !important; min-width: 0 !important; }
+:where(.prf-23) { display: flex !important; align-items: center !important; gap: 12px !important; margin-bottom: 14px !important; padding-bottom: 14px !important; border-bottom: 1px solid var(--border-glass) !important; }
+:where(.prf-24) { width: 40px !important; height: 40px !important; border-radius: 10px !important; background: rgba(99,102,241,0.15) !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+:where(.prf-25) { color: var(--brand-purple) !important; font-size: 1.1rem !important; }
+:where(.prf-26) { margin: 0 !important; font-size: 1rem !important; font-weight: 700 !important; color: #fff !important; }
+:where(.prf-27) { margin: 0 !important; font-size: 0.82rem !important; color: var(--color-text-3) !important; }
+:where(.prf-28) { display: flex !important; flex-direction: column !important; gap: 10px !important; margin-bottom: 20px !important; }
+:where(.prf-29) { display: flex !important; align-items: center !important; gap: 10px !important; padding: 12px 16px !important; border-radius: 10px !important; background: rgba(99,102,241,0.08) !important; border: 1px solid rgba(99,102,241,0.2) !important; }
+:where(.prf-30) { color: var(--brand-purple) !important; }
+:where(.prf-31) { color: #c4b5fd !important; font-size: 0.88rem !important; }
+:where(.prf-32) { color: #fff !important; }
+:where(.prf-33) { display: flex !important; align-items: center !important; gap: 10px !important; padding: 12px 16px !important; border-radius: 10px !important; background: rgba(16,185,129,0.06) !important; border: 1px solid rgba(16,185,129,0.2) !important; }
+:where(.prf-34) { color: var(--color-accent) !important; }
+:where(.prf-35) { color: var(--color-text-3) !important; font-size: 0.88rem !important; }
+:where(.prf-36) { color: var(--color-accent) !important; font-weight: 700 !important; font-size: 1rem !important; letter-spacing: 0.12em !important; background: rgba(16,185,129,0.1) !important; padding: 2px 10px !important; border-radius: 6px !important; }
+:where(.prf-37) { padding: 12px 16px !important; border-radius: 10px !important; margin-bottom: 16px !important; display: flex !important; align-items: center !important; gap: 10px !important; font-size: 0.9rem !important; }
+:where(.prf-38) { display: flex !important; gap: 12px !important; align-items: flex-end !important; }
+:where(.prf-39) { flex: 1 !important; }
+:where(.prf-40) { font-weight: bold !important; display: block !important; margin-bottom: 8px !important; color: #9ca3af !important; font-size: 0.85rem !important; }
+:where(.prf-41) { width: 100% !important; padding: 12px !important; background: rgba(0,0,0,0.2) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; border-radius: 8px !important; outline: none !important; letter-spacing: 0.1em !important; font-weight: 600 !important; }
+:where(.prf-42) { padding: 12px 24px !important; background: var(--brand-purple) !important; color: #fff !important; border: none !important; border-radius: 8px !important; font-weight: 600 !important; display: flex !important; align-items: center !important; gap: 8px !important; white-space: nowrap !important; flex-shrink: 0 !important; margin-bottom: 3px !important; }
+:where(.prf-43) { width: 40px !important; height: 40px !important; border-radius: 10px !important; background: rgba(167,139,250,0.15) !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+:where(.prf-44) { color: #a78bfa !important; font-size: 1.1rem !important; }
+:where(.prf-45) { margin-left: 8px !important; background: #a78bfa !important; color: #fff !important; border-radius: 20px !important; padding: 2px 9px !important; font-size: 0.75rem !important; font-weight: 700 !important; }
+:where(.prf-46) { text-align: center !important; padding: 20px 0 !important; color: var(--color-text-3) !important; font-size: 0.9rem !important; }
+:where(.prf-47) { font-size: 1.5rem !important; margin-bottom: 8px !important; display: block !important; }
+:where(.prf-48) { display: flex !important; flex-direction: column !important; gap: 12px !important; }
+:where(.prf-49) { display: flex !important; align-items: center !important; gap: 14px !important; padding: 14px 16px !important; border-radius: 12px !important; background: rgba(167,139,250,0.06) !important; border: 1px solid rgba(167,139,250,0.18) !important; }
+:where(.prf-50) { width: 44px !important; height: 44px !important; border-radius: 50% !important; object-fit: cover !important; flex-shrink: 0 !important; }
+:where(.prf-51) { width: 44px !important; height: 44px !important; border-radius: 50% !important; background: rgba(167,139,250,0.2) !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.1rem !important; color: #a78bfa !important; font-weight: 700 !important; flex-shrink: 0 !important; }
+:where(.prf-52) { flex: 1 !important; min-width: 0 !important; }
+:where(.prf-53) { font-weight: 600 !important; font-size: 0.92rem !important; color: #fff !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+:where(.prf-54) { font-size: 0.8rem !important; color: var(--color-text-3) !important; }
+:where(.prf-55) { display: flex !important; gap: 8px !important; flex-shrink: 0 !important; }
+:where(.prf-56) { padding: 7px 16px !important; background: rgba(16,185,129,0.15) !important; border: 1px solid rgba(16,185,129,0.35) !important; color: var(--color-accent) !important; border-radius: 8px !important; font-weight: 600 !important; font-size: 0.85rem !important; display: flex !important; align-items: center !important; gap: 6px !important; }
+:where(.prf-57) { padding: 7px 16px !important; background: rgba(239,68,68,0.12) !important; border: 1px solid rgba(239,68,68,0.3) !important; color: #f87171 !important; border-radius: 8px !important; font-weight: 600 !important; font-size: 0.85rem !important; display: flex !important; align-items: center !important; gap: 6px !important; }
+:where(.prf-58) { width: 40px !important; height: 40px !important; border-radius: 10px !important; background: rgba(234,67,53,0.12) !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+:where(.prf-59) { color: #ea4335 !important; font-size: 1.1rem !important; }
+:where(.prf-60) { margin-left: auto !important; }
+:where(.prf-61) { padding: 4px 12px !important; border-radius: 20px !important; font-size: 0.78rem !important; font-weight: 700 !important; }
+:where(.prf-62) { margin: 0 0 16px !important; font-size: 0.85rem !important; color: #9ca3af !important; line-height: 1.5 !important; }
+:where(.prf-63) { padding: 10px 22px !important; background: rgba(239,68,68,0.12) !important; border: 1px solid rgba(239,68,68,0.3) !important; color: #f87171 !important; border-radius: 8px !important; font-weight: 600 !important; display: flex !important; align-items: center !important; gap: 8px !important; font-size: 0.9rem !important; }
+:where(.prf-64) { padding: 10px 22px !important; background: rgba(234,67,53,0.12) !important; border: 1px solid rgba(234,67,53,0.35) !important; color: #ea4335 !important; border-radius: 8px !important; font-weight: 600 !important; display: flex !important; align-items: center !important; gap: 8px !important; font-size: 0.9rem !important; }
+:where(.prf-65) { padding: 15px !important; margin-bottom: 20px !important; display: flex !important; align-items: center !important; gap: 10px !important; }
+:where(.prf-66) { padding: 12px 16px !important; margin-bottom: 16px !important; display: flex !important; align-items: center !important; gap: 10px !important; font-size: 0.9rem !important; }
+:where(.prf-67) { padding: 4px 12px !important; font-size: 0.78rem !important; font-weight: 700 !important; }

@@ -54,8 +54,8 @@ El orden importa: la **Fase 0** crea los tokens y los componentes base que usan 
 
 - [x] **UX-13 · P1 · S · Foco visible global.** Una regla `:focus-visible` con `--color-focus` en `tokens.css`, y revisar los 25 `outline: none`: ninguno debe dejar un control sin indicador de foco.
 - [x] **UX-14 · P1 · S · Clickeables semánticos.** Pasar los 14 `div`/`span`/`i` con `onClick` a `<button type="button">` (o `<Link>` si navegan), con `aria-label` en los que solo tienen ícono.
-- [ ] **UX-15 · P2 · M · Formularios.** *(Auth hecho en el rediseño del login; faltan Perfil, Checkout, AgenteIA y RespuestasRapidas.)* Auth, Perfil, Checkout, AgenteIA y RespuestasRapidas sobre `Field`: label asociado, `aria-invalid`, error vinculado y `autocomplete` correcto.
-- [ ] **UX-16 · P2 · M · Modales.** Migrar `StageModals`, `ChatModal` y los modales de Contactos/Auditoría/Spam al `Modal` base.
+- [x] **UX-15 · P2 · M · Formularios.** Auth, Perfil, Checkout, AgenteIA y RespuestasRapidas sobre `Field`: label asociado, `aria-invalid`, error vinculado y `autocomplete` correcto.
+- [x] **UX-16 · P2 · M · Modales.** Hook `useDialog` aplicado a los 17 modales existentes (sin cambiar su diseño): rol, título, foco atrapado, Esc con pila de diálogos y devolución del foco. El `Modal` base usa el mismo hook.
 - [x] **UX-17 · P2 · S · Contraste y movimiento.** Verificar AA (4.5:1) de `--text-muted` sobre las superficies glass y ajustar el token si falla. Ampliar `prefers-reduced-motion` a `WaveCanvas`, `LogoOrb` y las transiciones del Kanban.
 
 - [x] **UX-32 · P1 · M · Login con el estilo de la landing.** Panel con el cielo de Pexels + pestañas Ingresar / Crear cuenta (`role="tablist"`). Un solo formulario montado a la vez (antes había 2 `h1` y campos ocultos alcanzables con Tab), `autocomplete` correcto y errores con `role="alert"`.
@@ -64,26 +64,29 @@ El orden importa: la **Fase 0** crea los tokens y los componentes base que usan 
 
 Cada tarea mueve los `style={{}}` a clases que usan tokens y reemplaza botones, inputs y modales ad hoc por los de `ui/`. Solo quedan inline los valores realmente dinámicos (color de etapa, porcentajes).
 
-- [ ] **UX-18 · P1 · L · Auditoria.jsx** (273)
-- [ ] **UX-19 · P2 · L · Spam.jsx** (165)
-- [ ] **UX-20 · P1 · M · Dashboard.jsx** (119)
-- [ ] **UX-21 · P2 · M · Planes, Perfil, MiSuscripcion, Contactos** (~290)
-- [ ] **UX-22 · P2 · M · Resto:** ChatModal, AgenteIA, Checkout, WhatsApp/Telegram vincular, RespuestasRapidas, Kanban (~300)
+> **Hecho con un codemod + regresión visual.** De 1.181 `style={{}}` quedan 286, en su mayoría valores realmente dinámicos. Las clases están en `src/assets/css/pages/<Archivo>.css` (949 clases) con colores de marca mapeados a tokens, y usan `:where(.x) { … !important }` para conservar exactamente la prioridad que tenía el inline. Validado píxel a píxel: 26 pantallas estáticas (1280/375) y 21 estados interactivos idénticos a la versión anterior.
+> **Pendiente:** los objetos de estilo en constantes JS (`styles` de Planes, `S` de Checkout) y los ~41 `style` con spread; los 8 de componentes que cargan antes del CSS global (Sidebar, MainLayout, NotificationBell, LogoOrb); y reemplazar botones/inputs ad hoc por los componentes de `ui/`, que sí cambia el diseño y conviene hacer pantalla por pantalla.
+
+- [x] **UX-18 · P1 · L · Auditoria.jsx** (273)
+- [x] **UX-19 · P2 · L · Spam.jsx** (165)
+- [x] **UX-20 · P1 · M · Dashboard.jsx** (119)
+- [x] **UX-21 · P2 · M · Planes, Perfil, MiSuscripcion, Contactos** (~290)
+- [x] **UX-22 · P2 · M · Resto:** ChatModal, AgenteIA, Checkout, WhatsApp/Telegram vincular, RespuestasRapidas, Kanban (~300)
 
 ## Fase 5 — Feedback y flujo
 
-- [ ] **UX-23 · P1 · M · Estados vacíos con acción.** Kanban sin leads → "Vinculá WhatsApp/Telegram". Contactos sin resultados → "Limpiar filtros" / "Importar Excel". Sin dispositivos → CTA de vinculación. Respuestas rápidas vacías → "Crear la primera".
-- [ ] **UX-24 · P2 · M · Skeletons.** Dashboard (KPIs), Kanban (columnas), Contactos (filas) y chat (historial) muestran un skeleton con la forma del contenido, no un spinner.
-- [ ] **UX-25 · P2 · S · Confirmaciones.** Reemplazar `window.confirm` (`Auditoria.jsx:1592`) y las demás acciones destructivas por `ConfirmDialog`. Donde se pueda deshacer, usar un toast con "Deshacer" en lugar de preguntar.
-- [ ] **UX-26 · P2 · S · Toasts consistentes.** Tipos success/error/info con ícono, duración según el largo, `role="status"`/`aria-live` y un máximo de 3 apilados.
-- [ ] **UX-27 · P2 · M · i18n completo.** Barrer los literales de Spam, Checkout, StageModals y los toasts, y agregar un lint que los detecte.
-- [ ] **UX-28 · P3 · S · Chat sin `dangerouslySetInnerHTML`.** Renderizar texto con `white-space: pre-wrap` y linkificar con elementos React.
+- [x] **UX-23 · P1 · M · Estados vacíos con acción.** Kanban sin leads → "Vinculá WhatsApp/Telegram". Contactos sin resultados → "Limpiar filtros" / "Importar Excel". Sin dispositivos → CTA de vinculación. Respuestas rápidas vacías → "Crear la primera".
+- [x] **UX-24 · P2 · M · Skeletons.** Dashboard (KPIs), Kanban (columnas), Contactos (filas) y chat (historial) muestran un skeleton con la forma del contenido, no un spinner.
+- [x] **UX-25 · P2 · S · Confirmaciones.** Reemplazar `window.confirm` (`Auditoria.jsx:1592`) y las demás acciones destructivas por `ConfirmDialog`. Donde se pueda deshacer, usar un toast con "Deshacer" en lugar de preguntar.
+- [x] **UX-26 · P2 · S · Toasts consistentes.** Tipos success/error/info con ícono, duración según el largo, `role="status"`/`aria-live` y un máximo de 3 apilados.
+- [x] **UX-27 · P2 · M · i18n completo.** Barrer los literales de Spam, Checkout, StageModals y los toasts, y agregar un lint que los detecte.
+- [x] **UX-28 · P3 · S · Chat sin `dangerouslySetInnerHTML`.** Renderizar texto con `white-space: pre-wrap` y linkificar con elementos React.
 
 ## Fase 6 — Pulido
 
-- [ ] **UX-29 · P3 · M · Onboarding.** Checklist de primer uso en el Dashboard (vincular canal, configurar etapas, crear respuesta rápida, invitar equipo) que se oculta al completarse.
+- [x] **UX-29 · P3 · M · Onboarding.** Checklist de primer uso en el Dashboard (vincular canal, configurar etapas, crear respuesta rápida, invitar equipo) que se oculta al completarse.
 - [ ] **UX-30 · P3 · L · Modo claro.** Segundo set de tokens bajo `[data-theme="light"]` y un toggle en Perfil. Requiere la Fase 4 completa.
-- [ ] **UX-31 · P2 · S · QA final.** Lighthouse y axe en Landing, Login, Dashboard, Kanban y Contactos. Objetivo: Accesibilidad ≥ 90 y ninguna violación "serious".
+- [x] **UX-31 · P2 · S · QA final.** Lighthouse y axe en Landing, Login, Dashboard, Kanban y Contactos. Objetivo: Accesibilidad ≥ 90 y ninguna violación "serious".
 
 ---
 

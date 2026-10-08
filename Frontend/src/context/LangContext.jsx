@@ -1,10 +1,13 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { TRANSLATIONS } from '../i18n/translations';
 
 const LangContext = createContext(null);
 
 export function LangProvider({ children }) {
     const [lang, setLang] = useState(() => localStorage.getItem('crm_lang') || 'es');
+
+    // <html lang> sigue al idioma elegido: los lectores de pantalla pronuncian según este atributo
+    useEffect(() => { document.documentElement.lang = lang; }, [lang]);
 
     const toggleLang = useCallback(() => {
         setLang(prev => {

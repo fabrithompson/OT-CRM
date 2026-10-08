@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import EmptyState from '../components/ui/EmptyState';
 import { useLanguage } from '../context/LangContext';
 import api from '../utils/api';
 import useWebSocket from '../hooks/useWebSocket';
@@ -10,6 +11,7 @@ import { CreateStageModal, EditStageModal, DeleteStageModal } from '../component
 import NotificationBell from '../components/kanban/NotificationBell';
 import { useUser } from '../context/UserContext';
 import { getDisplayName } from '../utils/userUtils';
+import '../assets/css/pages/Kanban.css';
 const PAGE_SIZE = 40;
 // Referencia estable para las etapas sin clientes: devolver un [] nuevo en cada
 // render haría que KanbanColumn vea una prop distinta y re-renderice de gusto.
@@ -77,11 +79,11 @@ export default function Kanban() {
                 setEtiquetas([...tagMap.values()]);
             }
         } catch {
-            toast('Error', 'No se pudo cargar el tablero', '#ef4444');
+            toast(t('common.errorTitle'), t('kanban.errLoad'), '#ef4444');
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     // Recarga el tablero al cambiar el filtro de etiquetas.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -214,10 +216,10 @@ export default function Kanban() {
         try {
             await api.patch(`/clientes/${id}/etapa?nuevaEtapaId=${nuevaEtapaId}`);
         } catch {
-            toast('Error', 'No se pudo mover', '#ef4444');
+            toast(t('common.errorTitle'), t('kanban.errMove'), '#ef4444');
             loadBoard(filterEtiquetaId);
         }
-    }, [toast, loadBoard, filterEtiquetaId]);
+    }, [toast, loadBoard, filterEtiquetaId, t]);
 
     const handleDropColumn = useCallback(async (srcColId, targetColId) => {
         const srcId = Number.parseInt(srcColId, 10);
@@ -313,20 +315,20 @@ export default function Kanban() {
         if (loading) return (
             <>
                 {[1,2,3,4].map(i => (
-                    <div key={i} className="kanban-column skeleton-col" style={{ minWidth: 300, flexShrink: 0, opacity: 0.5 }}>
-                        <div className="skeleton-pulse" style={{ height: 28, width: '60%', borderRadius: 6, marginBottom: 16 }}></div>
+                    <div key={i} className="kanban-column skeleton-col kbn-1">
+                        <div className="skeleton-pulse kbn-2"></div>
                         {[1,2,3].map(j => (
-                            <div key={j} className="skeleton-pulse" style={{ height: 72, borderRadius: 10, marginBottom: 10 }}></div>
+                            <div key={j} className="skeleton-pulse kbn-3"></div>
                         ))}
                     </div>
                 ))}
             </>
         );
         if (etapas.length === 0) return (
-            <button className="ghost-column-placeholder" onClick={() => setCreateOpen(true)} style={{ width: 320 }}>
+            <button className="ghost-column-placeholder kbn-4" onClick={() => setCreateOpen(true)}>
                 <div className="ghost-icon-circle"><i className="fas fa-plus"></i></div>
                 <span className="ghost-text">{t('kanban.newStage')}</span>
-                <span style={{ fontSize: '0.9rem', opacity: 0.7, marginTop: 5, fontWeight: 'normal' }}>Crea tu primera etapa para comenzar</span>
+                <span className="kbn-5">{t('kanban.firstStage')}</span>
             </button>
         );
         return (
@@ -348,7 +350,7 @@ export default function Kanban() {
                         onColorChange={(id, color) => setEtapas(prev => prev.map(e => e.id === id ? { ...e, color } : e))}
                     />
                 ))}
-                <button className="ghost-column-placeholder" onClick={() => setCreateOpen(true)} style={{ marginTop: 0, minWidth: 250, flexShrink: 0 }}>
+                <button className="ghost-column-placeholder kbn-6" onClick={() => setCreateOpen(true)}>
                     <div className="ghost-icon-circle"><i className="fas fa-plus"></i></div>
                     <span className="ghost-text">{t('kanban.newStage')}</span>
                 </button>
@@ -357,49 +359,26 @@ export default function Kanban() {
     };
 
     return (
-        <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div className="header-top kanban-head" style={{ justifyContent: 'space-between', borderBottom: '1px solid var(--border-glass)', padding: '0 25px' }}>
-                <div className="kanban-head__left" style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                    <div className="kanban-head__title" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <i className="fa-solid fa-filter" style={{ color: 'var(--brand-green)' }}></i> {t('kanban.title')}
+        <div className="page-wrapper kbn-7">
+            <div className="header-top kanban-head kbn-8">
+                <div className="kanban-head__left kbn-9">
+                    <div className="kanban-head__title kbn-10">
+                        <i className="fa-solid fa-filter kbn-11"></i> {t('kanban.title')}
                     </div>
 
                     <div className="kanban-head__filters">
                     {/* FIX: filter dropdown with inline styles so it shows correctly without CSS class dependency */}
                     <div className="filter-dd-wrapper" ref={filterRef} style={{ position: 'relative' }}>
                         <button
-                            className="filter-dd-btn"
+                            className="filter-dd-btn kbn-12"
                             onClick={() => setShowFilterMenu(p => !p)}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: 8,
-                                background: 'rgba(255,255,255,0.06)',
-                                border: '1px solid rgba(255,255,255,0.15)',
-                                borderRadius: 8,
-                                padding: '6px 12px',
-                                color: '#fff',
-                                cursor: 'pointer',
-                                fontSize: '0.85rem',
-                                fontWeight: 500,
-                                transition: 'all 0.2s',
-                            }}
                         >
                             <span>{filterLabel || t('kanban.allLabels')}</span>
-                            <i className="fas fa-chevron-down" style={{ fontSize: '0.7rem', color: '#a6b3bd', transition: 'transform 0.2s', transform: showFilterMenu ? 'rotate(180deg)' : 'none' }}></i>
+                            <i className="fas fa-chevron-down kbn-13" style={{ transform: showFilterMenu ? 'rotate(180deg)' : 'none' }}></i>
                         </button>
                         {showFilterMenu && (
                             <div
-                                className="filter-dd-menu show"
-                                style={{
-                                    position: 'absolute', top: 'calc(100% + 8px)', left: 0,
-                                    background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: 10,
-                                    minWidth: 200,
-                                    zIndex: 999,
-                                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                                    overflow: 'hidden',
-                                    padding: '4px 0',
-                                }}
+                                className="filter-dd-menu show kbn-14"
                             >
                                 <button
                                     className="filter-item"
@@ -408,9 +387,9 @@ export default function Kanban() {
                                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                 >
-                                    <i className="fas fa-layer-group" style={{ color: '#a6b3bd', fontSize: '0.8rem' }}></i> {t('kanban.allLabels')}
+                                    <i className="fas fa-layer-group kbn-15"></i> {t('kanban.allLabels')}
                                 </button>
-                                {etiquetas.length > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '4px 0' }}></div>}
+                                {etiquetas.length > 0 && <div className="kbn-16"></div>}
                                 {etiquetas.map(t => (
                                     <button
                                         key={t.id}
@@ -420,7 +399,7 @@ export default function Kanban() {
                                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                                         onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                     >
-                                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.color || '#10b981', display: 'inline-block', flexShrink: 0 }}></span>
+                                        <span className="kbn-17" style={{ background: t.color || '#10b981' }}></span>
                                         {t.nombre}
                                     </button>
                                 ))}
@@ -430,22 +409,37 @@ export default function Kanban() {
 
                     <div className="search-wrapper">
                         <i className="fas fa-search"></i>
-                        <input placeholder={t('kanban.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                        <input aria-label={t('kanban.search')} placeholder={t('kanban.search')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                     </div>
                     </div>
                 </div>
 
                 {/* FIX: NotificationBell removed from here — now globally in MainLayout */}
-                <div className="kanban-head__right" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                    <span className="kanban-head__user" style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }} title={connectionStatus === 'connected' ? 'Conectado' : connectionStatus === 'reconnecting' ? 'Reconectando...' : connectionStatus === 'connecting' ? 'Conectando...' : 'Desconectado'}>
+                <div className="kanban-head__right kbn-18">
+                    <span className="kanban-head__user kbn-19" title={connectionStatus === 'connected' ? 'Conectado' : connectionStatus === 'reconnecting' ? 'Reconectando...' : connectionStatus === 'connecting' ? 'Conectando...' : 'Desconectado'}>
                         <span className={`ws-status-dot ${connectionStatus}`}></span>
-                        <i className="fas fa-user" style={{ opacity: 0.6 }}></i> <span className="kanban-head__username">{usuario}</span>
+                        <i className="fas fa-user kbn-20"></i> <span className="kanban-head__username">{usuario}</span>
                     </span>
                     <NotificationBell />
                 </div>
             </div>
 
-            <div id="tablero" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'scroll', overflowY: 'hidden', gap: 20, padding: '20px 25px 60px', width: '100%', flex: 1, minHeight: 0, alignItems: 'flex-start', scrollBehavior: 'smooth' }}>
+            {!loading && etapas.length > 0 && clientes.length === 0 && !searchQuery && !filterEtiquetaId && (
+                <div className="kanban-empty">
+                    <EmptyState
+                        icon="fas fa-comments"
+                        title={t('kanban.empty.title')}
+                        description={t('kanban.empty.desc')}
+                        action={(
+                            <div className="ui-actions">
+                                <Link className="ui-btn ui-btn--primary" to="/whatsapp-vincular"><i className="fab fa-whatsapp" aria-hidden="true" /> {t('kanban.empty.wa')}</Link>
+                                <Link className="ui-btn ui-btn--secondary" to="/telegram-vincular"><i className="fab fa-telegram-plane" aria-hidden="true" /> {t('kanban.empty.tg')}</Link>
+                            </div>
+                        )}
+                    />
+                </div>
+            )}
+            <div className="kbn-21" id="tablero">
                 {renderBoard()}
             </div>
 

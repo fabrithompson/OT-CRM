@@ -4,8 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
 import { clickable } from '../utils/a11y';
+import useDialog from '../hooks/useDialog';
 import { useUser } from '../context/UserContext';
 import useWebSocket from '../hooks/useWebSocket';
+import '../assets/css/pages/Spam.css';
+import { useLanguage } from '../context/LangContext';
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
 const C_AMBER      = '#f59e0b';
@@ -83,6 +86,7 @@ const rowStyle = {
 
 // ─── AddDeviceModal ───────────────────────────────────────────────────────────
 function AddDeviceModal({ active, onClose, onCreated }) {
+    const { t } = useLanguage();
     const [alias, setAlias]       = useState('');
     const [creating, setCreating] = useState(false);
     const [qr, setQr]             = useState(null);
@@ -102,7 +106,7 @@ function AddDeviceModal({ active, onClose, onCreated }) {
     /* eslint-enable react-hooks/set-state-in-effect */
 
     const crear = async () => {
-        if (!alias.trim()) { toast('Aviso', 'Poné un alias', C_AMBER); return; }
+        if (!alias.trim()) { toast(t('common.notice'), t('spam.errAlias'), C_AMBER); return; }
         setCreating(true);
         try {
             const { data } = await api.post('/campania/devices', { alias: alias.trim() });
@@ -122,36 +126,34 @@ function AddDeviceModal({ active, onClose, onCreated }) {
                 if (data.qr) { setQr(data.qr); setStatusMsg('Escaneá el QR con WhatsApp'); }
                 if (data.status === 'CONNECTED') {
                     clearInterval(pollRef.current); pollRef.current = null;
-                    toast('Vinculado', 'Número conectado', C_GREEN);
+                    toast(t('spam.linked'), t('spam.numberConnected'), C_GREEN);
                     onCreated?.(); onClose();
                 }
             } catch { /* sigue */ }
         }, 2500);
     };
 
+    const dialog = useDialog(active, onClose);
     if (!active) return null;
     return (
-        <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+        <div className="custom-modal-overlay active"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="custom-modal" style={{ maxWidth: 420 }}>
-                <h3 style={{ margin: '0 0 6px', fontSize: '1.3rem',
-                    background: 'linear-gradient(to right, #fff, #aebac1)',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    Agregar número de campaña
+            <div className="custom-modal spm-1" {...dialog}>
+                <h3 className="spm-2">
+                    {t('spam.addTitle')}
                 </h3>
                 {!device && (
                     <>
-                        <p style={{ color: C_MUTED, fontSize: '0.85rem', marginBottom: 18 }}>
-                            Usá un <strong style={{ color: C_MUTED2 }}>chip aparte</strong>, no el número principal del negocio.
+                        <p className="spm-3" style={{ color: C_MUTED }}>
+                            {t('spam.useA')} <strong style={{ color: C_MUTED2 }}>{t('spam.useB')}</strong>{t('spam.useC')}
                         </p>
-                        <input className="clean-input" autoFocus
-                            style={{ width: '100%', marginBottom: 20 }}
-                            placeholder="Alias (ej: Burner-01)"
+                        <input aria-label={t('spam.aliasPh')} className="clean-input spm-4" autoFocus
+                            placeholder={t('spam.aliasPh')}
                             value={alias} autoComplete="off"
                             onChange={e => setAlias(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && crear()} />
                         <div className="modal-actions">
-                            <button className="btn-modal btn-cancel" onClick={onClose} disabled={creating}>Cancelar</button>
+                            <button className="btn-modal btn-cancel" onClick={onClose} disabled={creating}>{t('common.cancel')}</button>
                             <button className="btn-modal btn-confirm" onClick={crear} disabled={creating}>
                                 {creating ? <i className="fas fa-spinner fa-spin" /> : 'Crear'}
                             </button>
@@ -159,13 +161,13 @@ function AddDeviceModal({ active, onClose, onCreated }) {
                     </>
                 )}
                 {device && (
-                    <div style={{ textAlign: 'center' }}>
-                        <p style={{ color: C_MUTED, marginBottom: 14 }}>{statusMsg}</p>
+                    <div className="spm-5">
+                        <p className="spm-6" style={{ color: C_MUTED }}>{statusMsg}</p>
                         {qr
-                            ? <img src={qr} alt="QR" style={{ width: 260, height: 260, borderRadius: 12, border: '4px solid white', margin: '0 auto', display: 'block' }} />
-                            : <div className="spinner" style={{ margin: '20px auto' }} />}
-                        <div className="modal-actions" style={{ marginTop: 20 }}>
-                            <button className="btn-modal btn-cancel" onClick={onClose}>Cerrar</button>
+                            ? <img className="spm-7" src={qr} alt="QR" />
+                            : <div className="spinner spm-8" />}
+                        <div className="modal-actions spm-9">
+                            <button className="btn-modal btn-cancel" onClick={onClose}>{t('ui.close')}</button>
                         </div>
                     </div>
                 )}
@@ -179,6 +181,7 @@ AddDeviceModal.propTypes = {
 
 // ─── ContactosPanel ───────────────────────────────────────────────────────────
 function ContactosPanel({ deviceId, contactos, onReload }) {
+    const { t } = useLanguage();
     const [seleccionados, setSeleccionados] = useState(new Set());
     const [plantilla, setPlantilla]         = useState('Hola {nombre}, te escribo de…');
     const [enviando, setEnviando]           = useState(false);
@@ -206,9 +209,9 @@ function ContactosPanel({ deviceId, contactos, onReload }) {
     const toggleTodos  = () => setSeleccionados(seleccionados.size === contactos.length ? new Set() : new Set(contactos.map(c => c.id)));
 
     const enviar = async () => {
-        if (!deviceId)              { toast('Aviso', 'Seleccioná un número', C_AMBER); return; }
-        if (seleccionados.size === 0) { toast('Aviso', 'Seleccioná al menos un contacto', C_AMBER); return; }
-        if (!plantilla.trim())       { toast('Aviso', 'La plantilla está vacía', C_AMBER); return; }
+        if (!deviceId)              { toast(t('common.notice'), t('spam.errSelectNumber'), C_AMBER); return; }
+        if (seleccionados.size === 0) { toast(t('common.notice'), t('spam.errSelectContact'), C_AMBER); return; }
+        if (!plantilla.trim())       { toast(t('common.notice'), t('spam.errEmptyTemplate'), C_AMBER); return; }
         setEnviando(true);
         try {
             const { data } = await api.post('/campania/enviar', {
@@ -223,56 +226,54 @@ function ContactosPanel({ deviceId, contactos, onReload }) {
     return (
         <div style={{ ...card(), flex: 1, minHeight: 0 }}>
             <div style={{ ...cardTitle, justifyContent: 'space-between' }}>
-                <span><i className="fas fa-users" style={{ color: C_AMBER }} /> Contactos</span>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <span><i className="fas fa-users" style={{ color: C_AMBER }} /> {t('spam.contacts')}</span>
+                <div className="spm-10">
                     <input ref={fileRef} type="file" accept=".xlsx,.xls" hidden onChange={importar} />
                     <button onClick={() => fileRef.current?.click()} style={btnGhost} disabled={!deviceId}>
-                        <i className="fas fa-file-upload" /> Importar
+                        <i className="fas fa-file-upload" /> {t('spam.import')}
                     </button>
                 </div>
             </div>
 
-            <div style={{ padding: '7px 14px', borderBottom: `1px solid ${C_BDR_SOFT}` }}>
-                <label style={{ color: C_MUTED, fontSize: '0.78rem', cursor: 'pointer', userSelect: 'none' }}>
-                    <input type="checkbox"
+            <div className="spm-11" style={{ borderBottom: `1px solid ${C_BDR_SOFT}` }}>
+                <label className="spm-12" style={{ color: C_MUTED }}>
+                    <input className="spm-13" type="checkbox"
                         checked={contactos.length > 0 && seleccionados.size === contactos.length}
-                        onChange={toggleTodos} style={{ marginRight: 8 }} />
-                    Todos ({seleccionados.size}/{contactos.length})
+                        onChange={toggleTodos} />
+                    {t('spam.all')} ({seleccionados.size}/{contactos.length})
                 </label>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            <div className="spm-14">
                 {contactos.length === 0 && (
-                    <p style={{ padding: 20, color: C_MUTED, textAlign: 'center', fontSize: '0.82rem' }}>
-                        Sin contactos. Importá un Excel con columnas <strong>Nombre</strong> y <strong>Teléfono</strong>.
+                    <p className="spm-15" style={{ color: C_MUTED }}>
+                        {t('spam.noContactsA')} <strong>{t('spam.colName')}</strong> {t('spam.and')} <strong>{t('spam.colPhone')}</strong>.
                     </p>
                 )}
                 {contactos.map(c => (
                     <div key={c.id} onClick={() => toggleUno(c.id)}
                         style={{ ...rowStyle, background: seleccionados.has(c.id) ? C_AMBER_SOFT : 'transparent' }}>
-                        <input type="checkbox" checked={seleccionados.has(c.id)} onChange={() => toggleUno(c.id)}
-                            aria-label={c.nombre || c.telefono}
-                            style={{ marginRight: 10 }} onClick={e => e.stopPropagation()} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ color: C_TEXT, fontSize: '0.85rem' }}>{c.nombre}</div>
-                            <div style={{ color: C_MUTED, fontSize: '0.75rem', fontFamily: 'monospace' }}>{c.telefono}</div>
+                        <input className="spm-16" type="checkbox" checked={seleccionados.has(c.id)} onChange={() => toggleUno(c.id)}
+                            aria-label={c.nombre || c.telefono} onClick={e => e.stopPropagation()} />
+                        <div className="spm-17">
+                            <div className="spm-18" style={{ color: C_TEXT }}>{c.nombre}</div>
+                            <div className="spm-19" style={{ color: C_MUTED }}>{c.telefono}</div>
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div style={{ padding: '10px 14px', borderTop: `1px solid ${C_BDR_SOFT}` }}>
-                <div style={{ fontSize: '0.72rem', color: C_MUTED, marginBottom: 5 }}>
-                    Mensaje — usá <code style={{ color: C_AMBER }}>{'{nombre}'}</code> para personalizar
+            <div className="spm-20" style={{ borderTop: `1px solid ${C_BDR_SOFT}` }}>
+                <div className="spm-21" style={{ color: C_MUTED }}>
+                    {t('spam.msgA')} <code style={{ color: C_AMBER }}>{'{nombre}'}</code> {t('spam.msgB')}
                 </div>
-                <textarea value={plantilla} onChange={e => setPlantilla(e.target.value)}
-                    rows={3} className="clean-input no-resize"
-                    style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.85rem' }} />
+                <textarea aria-label={t('spam.campaignMsg')} value={plantilla} onChange={e => setPlantilla(e.target.value)}
+                    rows={3} className="clean-input no-resize spm-22" />
                 <button onClick={enviar} disabled={enviando || seleccionados.size === 0 || !deviceId}
                     style={{ ...btnPrimary, width: '100%', marginTop: 8, justifyContent: 'center' }}>
                     {enviando
-                        ? <><i className="fas fa-spinner fa-spin" /> Encolando…</>
-                        : <><i className="fas fa-paper-plane" /> Enviar campaña ({seleccionados.size})</>}
+                        ? <><i className="fas fa-spinner fa-spin" /> {t('spam.queueing')}</>
+                        : <><i className="fas fa-paper-plane" /> {t('spam.sendCampaign')} ({seleccionados.size})</>}
                 </button>
             </div>
         </div>
@@ -284,6 +285,7 @@ ContactosPanel.propTypes = {
 
 // ─── ChatPanel ────────────────────────────────────────────────────────────────
 function ChatPanel({ bandeja, contactoActivo, mensajes, onSelectContacto, onResponder }) {
+    const { t } = useLanguage();
     const [borrador, setBorrador] = useState('');
     const [enviando, setEnviando] = useState(false);
     const msgEndRef = useRef(null);
@@ -301,76 +303,65 @@ function ChatPanel({ bandeja, contactoActivo, mensajes, onSelectContacto, onResp
 
     return (
         <div style={{ ...card(), flex: 1.4, minHeight: 0 }}>
-            <div className="spam-chat-split" style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+            <div className="spam-chat-split spm-23">
                 {/* Bandeja */}
-                <div className="spam-chat-bandeja" style={{ width: 240, borderRight: `1px solid ${C_BDR}`, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                    <div style={cardTitle}><i className="fas fa-inbox" style={{ color: C_AMBER }} /> Bandeja</div>
-                    <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                <div className="spam-chat-bandeja spm-24" style={{ borderRight: `1px solid ${C_BDR}` }}>
+                    <div style={cardTitle}><i className="fas fa-inbox" style={{ color: C_AMBER }} /> {t('spam.inbox')}</div>
+                    <div className="spm-14">
                         {bandeja.length === 0 && (
-                            <p style={{ padding: 14, color: C_MUTED, fontSize: '0.80rem', textAlign: 'center', marginTop: 20 }}>
-                                Las respuestas a campañas aparecen acá.
+                            <p className="spm-25" style={{ color: C_MUTED }}>
+                                {t('spam.inboxEmpty')}
                             </p>
                         )}
                         {bandeja.map(item => (
-                            <div key={item.contactoId} {...clickable(() => onSelectContacto(item))}
+                            <div className="spm-26" key={item.contactoId} {...clickable(() => onSelectContacto(item))}
                                 aria-current={contactoActivo?.contactoId === item.contactoId ? 'true' : undefined}
-                                style={{
-                                padding: '9px 13px', cursor: 'pointer',
-                                background: contactoActivo?.contactoId === item.contactoId ? C_AMBER_SOFT : 'transparent',
-                                borderLeft: `3px solid ${contactoActivo?.contactoId === item.contactoId ? C_AMBER : 'transparent'}`,
-                                borderBottom: `1px solid ${C_BDR_SOFT}`,
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                                    <div style={{ color: C_TEXT, fontSize: '0.85rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                style={{ background: contactoActivo?.contactoId === item.contactoId ? C_AMBER_SOFT : 'transparent', borderLeft: `3px solid ${contactoActivo?.contactoId === item.contactoId ? C_AMBER : 'transparent'}`, borderBottom: `1px solid ${C_BDR_SOFT}` }}>
+                                <div className="spm-27">
+                                    <div className="spm-28" style={{ color: C_TEXT }}>
                                         {item.nombre}
                                     </div>
                                     {item.noLeidos > 0 && (
-                                        <span style={{ background: C_GREEN, color: '#000', fontSize: '0.68rem', fontWeight: 700, padding: '2px 7px', borderRadius: 10, flexShrink: 0 }}>
+                                        <span className="spm-29" style={{ background: C_GREEN }}>
                                             {item.noLeidos}
                                         </span>
                                     )}
                                 </div>
-                                <div style={{ color: C_MUTED, fontSize: '0.72rem', fontFamily: 'monospace', marginTop: 2 }}>{item.telefono}</div>
+                                <div className="spm-30" style={{ color: C_MUTED }}>{item.telefono}</div>
                             </div>
                         ))}
                     </div>
                 </div>
 
                 {/* Conversación */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <div className="spm-31">
                     {!contactoActivo
-                        ? <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: C_MUTED }}>
-                            <i className="fas fa-comments" style={{ fontSize: 44, opacity: 0.15 }} />
-                            <p style={{ marginTop: 12, fontSize: '0.85rem' }}>Seleccioná un chat</p>
+                        ? <div className="spm-32" style={{ color: C_MUTED }}>
+                            <i className="fas fa-comments spm-33" />
+                            <p className="spm-34">{t('spam.selectChat')}</p>
                           </div>
                         : <>
                             <div style={{ ...cardTitle, padding: '10px 14px' }}>
                                 <div>
-                                    <div style={{ color: C_TEXT, fontSize: '0.88rem', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>{contactoActivo.nombre}</div>
-                                    <div style={{ color: C_MUTED, fontSize: '0.72rem', fontFamily: 'monospace', marginTop: 1 }}>{contactoActivo.telefono}</div>
+                                    <div className="spm-35" style={{ color: C_TEXT }}>{contactoActivo.nombre}</div>
+                                    <div className="spm-36" style={{ color: C_MUTED }}>{contactoActivo.telefono}</div>
                                 </div>
                             </div>
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div className="spm-37">
                                 {mensajes.map(m => (
-                                    <div key={m.id} style={{ display: 'flex', justifyContent: m.direccion === 'OUT' ? 'flex-end' : 'flex-start' }}>
-                                        <div style={{
-                                            maxWidth: '72%', padding: '8px 12px', borderRadius: 12,
-                                            background: m.direccion === 'OUT' ? C_GREEN_SOFT : 'rgba(255,255,255,0.05)',
-                                            border: `1px solid ${m.direccion === 'OUT' ? 'rgba(16,185,129,0.25)' : C_BDR}`,
-                                            color: C_TEXT, fontSize: '0.85rem', wordBreak: 'break-word', whiteSpace: 'pre-wrap',
-                                        }}>
+                                    <div className="spm-38" key={m.id} style={{ justifyContent: m.direccion === 'OUT' ? 'flex-end' : 'flex-start' }}>
+                                        <div className="spm-123" style={{ borderRadius: '12px', background: m.direccion === 'OUT' ? C_GREEN_SOFT : 'rgba(255,255,255,0.05)', border: `1px solid ${m.direccion === 'OUT' ? 'rgba(16,185,129,0.25)' : C_BDR}`, color: C_TEXT }}>
                                             {m.texto}
-                                            <div style={{ fontSize: '0.68rem', opacity: 0.45, textAlign: 'right', marginTop: 4 }}>{formatHora(m.fecha)}</div>
+                                            <div className="spm-40">{formatHora(m.fecha)}</div>
                                         </div>
                                     </div>
                                 ))}
                                 <div ref={msgEndRef} />
                             </div>
-                            <div style={{ padding: '9px 12px', borderTop: `1px solid ${C_BDR}`, display: 'flex', gap: 8 }}>
-                                <input type="text" value={borrador} onChange={e => setBorrador(e.target.value)}
+                            <div className="spm-41" style={{ borderTop: `1px solid ${C_BDR}` }}>
+                                <input type="text" aria-label={t('spam.writeMsg')} value={borrador} onChange={e => setBorrador(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
-                                    placeholder="Escribí un mensaje…" className="clean-input"
-                                    style={{ flex: 1, borderRadius: 20 }} />
+                                    placeholder={t('spam.writeMsgPh')} className="clean-input spm-42" />
                                 <button onClick={enviar} disabled={enviando || !borrador.trim()} style={btnPrimary}>
                                     {enviando ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
                                 </button>
@@ -389,6 +380,7 @@ ChatPanel.propTypes = {
 
 // ─── CrearPlanModal ───────────────────────────────────────────────────────────
 function CrearPlanModal({ active, onClose, onCreated, devices }) {
+    const { t } = useLanguage();
     const [nombre, setNombre]           = useState('');
     const [selDevices, setSelDevices]   = useState(new Set());
     const [mensajesPorDia, setMsgs]     = useState(10);
@@ -409,57 +401,53 @@ function CrearPlanModal({ active, onClose, onCreated, devices }) {
     const quitarTexto  = (i) => setTextos(p => p.filter((_, j) => j !== i));
 
     const crear = async () => {
-        if (!nombre.trim())       { toast('Aviso', 'Poné un nombre al plan', C_AMBER); return; }
-        if (selDevices.size < 2)  { toast('Aviso', 'Seleccioná al menos 2 líneas', C_AMBER); return; }
-        if (textos.length === 0)  { toast('Aviso', 'Agregá al menos un mensaje al pool', C_AMBER); return; }
+        if (!nombre.trim())       { toast(t('common.notice'), t('spam.errPlanName'), C_AMBER); return; }
+        if (selDevices.size < 2)  { toast(t('common.notice'), t('spam.errTwoLines'), C_AMBER); return; }
+        if (textos.length === 0)  { toast(t('common.notice'), t('spam.errPool'), C_AMBER); return; }
         setSaving(true);
         try {
             await api.post('/calentamiento/planes', {
                 nombre: nombre.trim(), dispositivoIds: Array.from(selDevices),
                 mensajesPorParPorDia: mensajesPorDia, textos,
             });
-            toast('Plan creado', 'El calentamiento comenzará en segundos', C_GREEN);
+            toast(t('spam.planCreated'), t('spam.planCreatedMsg'), C_GREEN);
             onCreated?.(); onClose();
         } catch (err) { toast('Error', err.response?.data?.error || 'Error creando plan', C_RED);
         } finally { setSaving(false); }
     };
 
+    const dialog = useDialog(active, onClose, { canClose: !saving });
     if (!active) return null;
     const connected = devices.filter(d => d.estado === 'CONNECTED');
 
     return (
-        <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+        <div className="custom-modal-overlay active"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="custom-modal" style={{ maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
-                <h3 style={{ margin: '0 0 18px', fontSize: '1.2rem', color: C_TEXT }}>
-                    <i className="fas fa-fire" style={{ color: C_AMBER, marginRight: 8 }} />
-                    Nuevo plan de calentamiento
+            <div className="custom-modal spm-43" {...dialog}>
+                <h3 className="spm-44" style={{ color: C_TEXT }}>
+                    <i className="fas fa-fire spm-13" style={{ color: C_AMBER }} />
+                    {t('spam.newWarmup')}
                 </h3>
 
                 {/* Nombre */}
-                <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 16 }}>
-                    <label style={{ color: C_MUTED, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
-                        Nombre del plan
+                <div className="spm-45">
+                    <label className="spm-46" style={{ color: C_MUTED }}>
+                        {t('spam.planName')}
                     </label>
-                    <input className="clean-input" placeholder="ej: Warming Enero"
+                    <input aria-label={t('spam.planName')} className="clean-input" placeholder={t('spam.planNamePh')}
                         value={nombre} onChange={e => setNombre(e.target.value)} />
                 </div>
 
                 {/* Líneas */}
-                <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 16 }}>
-                    <label style={{ color: C_MUTED, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
-                        Líneas a incluir <span style={{ color: C_MUTED, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(mínimo 2 conectadas)</span>
+                <div className="spm-45">
+                    <label className="spm-47" style={{ color: C_MUTED }}>
+                        {t('spam.linesToInclude')} <span className="spm-48" style={{ color: C_MUTED }}>{t('spam.min2')}</span>
                     </label>
                     {connected.length === 0
-                        ? <p style={{ color: C_RED, fontSize: '0.80rem', margin: 0 }}>No hay líneas CONECTADAS. Conectá al menos 2 antes de crear el plan.</p>
-                        : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                        ? <p className="spm-49" style={{ color: C_RED }}>{t('spam.noConnected')}</p>
+                        : <div className="spm-50">
                             {connected.map(d => (
-                                <div key={d.id} {...clickable(() => toggleDevice(d.id), { role: 'checkbox', checked: selDevices.has(d.id) })} style={{
-                                    padding: '5px 12px', borderRadius: 20, cursor: 'pointer', fontSize: '0.82rem',
-                                    border: `1px solid ${selDevices.has(d.id) ? C_AMBER_BDR : C_BDR}`,
-                                    background: selDevices.has(d.id) ? C_AMBER_SOFT : 'rgba(255,255,255,0.04)',
-                                    color: selDevices.has(d.id) ? C_AMBER : C_MUTED2,
-                                }}>
+                                <div className="spm-124" key={d.id} {...clickable(() => toggleDevice(d.id), { role: 'checkbox', checked: selDevices.has(d.id) })} style={{ borderRadius: '20px', border: `1px solid ${selDevices.has(d.id) ? C_AMBER_BDR : C_BDR}`, background: selDevices.has(d.id) ? C_AMBER_SOFT : 'rgba(255,255,255,0.04)', color: selDevices.has(d.id) ? C_AMBER : C_MUTED2 }}>
                                     {d.alias}{d.numeroTelefono ? ` (${d.numeroTelefono})` : ''}
                                 </div>
                             ))}
@@ -468,37 +456,33 @@ function CrearPlanModal({ active, onClose, onCreated, devices }) {
                 </div>
 
                 {/* Mensajes por día */}
-                <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 16 }}>
-                    <label style={{ color: C_MUTED, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
-                        Mensajes por par de líneas por día
+                <div className="spm-45">
+                    <label className="spm-46" style={{ color: C_MUTED }}>
+                        {t('spam.msgsPerPair')}
                     </label>
-                    <input type="number" className="clean-input" style={{ width: 110 }}
+                    <input aria-label={t('spam.msgsPerPair')} type="number" className="clean-input spm-52"
                         min={1} max={200} value={mensajesPorDia}
                         onChange={e => setMsgs(Number(e.target.value))} />
                 </div>
 
                 {/* Pool de mensajes */}
-                <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 18 }}>
-                    <label style={{ color: C_MUTED, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
-                        Pool de mensajes <span style={{ color: C_MUTED, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(se elige uno al azar)</span>
+                <div className="spm-53">
+                    <label className="spm-47" style={{ color: C_MUTED }}>
+                        {t('spam.pool')} <span className="spm-48" style={{ color: C_MUTED }}>{t('spam.poolHint')}</span>
                     </label>
-                    <div style={{ display: 'flex', gap: 7, marginBottom: 8 }}>
-                        <input className="clean-input" style={{ flex: 1 }}
-                            placeholder="ej: Hola! cómo andás?"
+                    <div className="spm-54">
+                        <input aria-label={t('spam.poolPh')} className="clean-input spm-55"
+                            placeholder={t('spam.poolPh')}
                             value={textoActual} onChange={e => setTextoActual(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && agregarTexto()} />
                         <button onClick={agregarTexto} style={btnGhost}><i className="fas fa-plus" /></button>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        {textos.length === 0 && <p style={{ color: C_MUTED, fontSize: '0.78rem', margin: 0 }}>Sin mensajes aún.</p>}
+                    <div className="spm-56">
+                        {textos.length === 0 && <p className="spm-57" style={{ color: C_MUTED }}>{t('spam.noMsgs')}</p>}
                         {textos.map((t, i) => (
-                            <div key={i} style={{
-                                display: 'flex', alignItems: 'center', gap: 8,
-                                background: 'rgba(255,255,255,0.04)', border: `1px solid ${C_BDR}`,
-                                borderRadius: 8, padding: '6px 10px', fontSize: '0.83rem', color: C_TEXT,
-                            }}>
-                                <span style={{ flex: 1 }}>{t}</span>
-                                <button onClick={() => quitarTexto(i)} style={{ background: 'none', border: 'none', color: C_RED, cursor: 'pointer', padding: 2 }}>
+                            <div className="spm-125" key={i} style={{ borderRadius: '8px', border: `1px solid ${C_BDR}`, color: C_TEXT }}>
+                                <span className="spm-55">{t}</span>
+                                <button className="spm-59" onClick={() => quitarTexto(i)} style={{ color: C_RED }}>
                                     <i className="fas fa-times" />
                                 </button>
                             </div>
@@ -507,7 +491,7 @@ function CrearPlanModal({ active, onClose, onCreated, devices }) {
                 </div>
 
                 <div className="modal-actions">
-                    <button className="btn-modal btn-cancel" onClick={onClose} disabled={saving}>Cancelar</button>
+                    <button className="btn-modal btn-cancel" onClick={onClose} disabled={saving}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm" onClick={crear} disabled={saving}>
                         {saving ? <i className="fas fa-spinner fa-spin" /> : 'Crear plan'}
                     </button>
@@ -523,17 +507,19 @@ CrearPlanModal.propTypes = {
 
 // ─── CalentamientoPanel ───────────────────────────────────────────────────────
 function CalentamientoPanel({ devices, showModal, onCloseModal }) {
+    const { t } = useLanguage();
     const [planes, setPlanes]               = useState([]);
     const [historial, setHistorial]         = useState(null);
     const [loadingHistorial, setLoadingH]   = useState(false);
     const [planAEliminar, setPlanAEliminar] = useState(null); // { id, nombre } | null
     const [eliminando, setEliminando]       = useState(false);
+    const planDialog = useDialog(!!planAEliminar, () => setPlanAEliminar(null), { canClose: !eliminando });
     const toast = useToast();
 
     const loadPlanes = useCallback(async () => {
         try { const { data } = await api.get('/calentamiento/planes'); setPlanes(data || []);
-        } catch { toast('Error', 'No se pudieron cargar los planes', C_RED); }
-    }, [toast]);
+        } catch { toast(t('common.errorTitle'), t('spam.errLoadPlans'), C_RED); }
+    }, [toast, t]);
 
     // Fetch on mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -547,7 +533,7 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
         setEliminando(true);
         try {
             await api.delete(`/calentamiento/planes/${planAEliminar.id}`);
-            toast('Eliminado', '', C_GREEN);
+            toast(t('spam.deleted'), '', C_GREEN);
             if (historial?.planId === planAEliminar.id) setHistorial(null);
             setPlanAEliminar(null);
             loadPlanes();
@@ -566,68 +552,54 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
     };
 
     return (
-        <div style={{ flex: 1, display: 'flex', gap: 12, minHeight: 0 }}>
+        <div className="spm-60">
             {/* Lista de planes */}
             <div style={{ ...card(), flex: 1, minHeight: 0 }}>
                 <div style={{ ...cardTitle, justifyContent: 'space-between' }}>
-                    <span><i className="fas fa-list" style={{ color: C_AMBER }} /> Planes activos</span>
-                    <button onClick={loadPlanes} style={btnGhost} title="Refrescar">
+                    <span><i className="fas fa-list" style={{ color: C_AMBER }} /> {t('spam.activePlans')}</span>
+                    <button onClick={loadPlanes} style={btnGhost} title={t('spam.refresh')}>
                         <i className="fas fa-sync-alt" />
                     </button>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="spm-61">
                     {planes.length === 0 && (
-                        <div style={{ textAlign: 'center', color: C_MUTED, marginTop: 50 }}>
-                            <i className="fas fa-fire" style={{ fontSize: 38, opacity: 0.15, color: C_AMBER }} />
-                            <p style={{ marginTop: 12, fontSize: '0.85rem' }}>Sin planes de calentamiento.</p>
-                            <p style={{ fontSize: '0.78rem', opacity: 0.7 }}>Creá uno para que tus líneas se calienten antes de una campaña.</p>
+                        <div className="spm-62" style={{ color: C_MUTED }}>
+                            <i className="fas fa-fire spm-63" style={{ color: C_AMBER }} />
+                            <p className="spm-34">{t('spam.noPlans')}</p>
+                            <p className="spm-64">{t('spam.noPlansHint')}</p>
                         </div>
                     )}
                     {planes.map(plan => (
-                        <div key={plan.id} style={{
-                            background: 'rgba(255,255,255,0.03)', borderRadius: 12,
-                            border: `1px solid ${plan.estado === 'ACTIVO' ? C_AMBER_BDR : C_BDR}`,
-                            padding: 14,
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                        <span style={{ color: C_TEXT, fontWeight: 600, fontSize: '0.90rem' }}>{plan.nombre}</span>
-                                        <span style={{
-                                            fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                                            background: plan.estado === 'ACTIVO' ? C_AMBER_SOFT : 'rgba(255,255,255,0.05)',
-                                            color: plan.estado === 'ACTIVO' ? C_AMBER : C_MUTED,
-                                            border: `1px solid ${plan.estado === 'ACTIVO' ? C_AMBER_BDR : C_BDR}`,
-                                        }}>
+                        <div className="spm-126" key={plan.id} style={{ borderRadius: '12px', border: `1px solid ${plan.estado === 'ACTIVO' ? C_AMBER_BDR : C_BDR}` }}>
+                            <div className="spm-66">
+                                <div className="spm-17">
+                                    <div className="spm-67">
+                                        <span className="spm-68" style={{ color: C_TEXT }}>{plan.nombre}</span>
+                                        <span className="spm-127" style={{ borderRadius: '10px', background: plan.estado === 'ACTIVO' ? C_AMBER_SOFT : 'rgba(255,255,255,0.05)', color: plan.estado === 'ACTIVO' ? C_AMBER : C_MUTED, border: `1px solid ${plan.estado === 'ACTIVO' ? C_AMBER_BDR : C_BDR}` }}>
                                             {plan.estado}
                                         </span>
                                     </div>
-                                    <div style={{ color: C_MUTED, fontSize: '0.75rem', marginBottom: 7 }}>
-                                        {plan.mensajesPorParPorDia} msg/par/día · {plan.dispositivos?.length || 0} líneas · {plan.textos?.length || 0} en pool
+                                    <div className="spm-70" style={{ color: C_MUTED }}>
+                                        {plan.mensajesPorParPorDia} {t('spam.perPairDay')} · {plan.dispositivos?.length || 0} {t('spam.lines')} · {plan.textos?.length || 0} {t('spam.inPool')}
                                     </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                    <div className="spm-71">
                                         {(plan.dispositivos || []).map(d => (
-                                            <span key={d.id} style={{
-                                                fontSize: '0.70rem', padding: '2px 8px', borderRadius: 10,
-                                                background: d.estado === 'CONNECTED' ? C_GREEN_SOFT : 'rgba(255,255,255,0.04)',
-                                                color: d.estado === 'CONNECTED' ? C_GREEN : C_MUTED,
-                                                border: `1px solid ${d.estado === 'CONNECTED' ? 'rgba(16,185,129,0.25)' : C_BDR}`,
-                                            }}>
+                                            <span className="spm-128" key={d.id} style={{ borderRadius: '10px', background: d.estado === 'CONNECTED' ? C_GREEN_SOFT : 'rgba(255,255,255,0.04)', color: d.estado === 'CONNECTED' ? C_GREEN : C_MUTED, border: `1px solid ${d.estado === 'CONNECTED' ? 'rgba(16,185,129,0.25)' : C_BDR}` }}>
                                                 {d.alias}
                                             </span>
                                         ))}
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                                    <button onClick={() => verHistorial(plan.id)} title="Ver historial"
+                                <div className="spm-73">
+                                    <button onClick={() => verHistorial(plan.id)} title={t('spam.viewHistory')}
                                         style={{ ...btnGhost, color: historial?.planId === plan.id ? C_AMBER : undefined }}>
                                         <i className="fas fa-history" />
                                     </button>
                                     {plan.estado === 'ACTIVO'
-                                        ? <button onClick={() => pausar(plan.id)} style={btnGhost} title="Pausar"><i className="fas fa-pause" /></button>
-                                        : <button onClick={() => reanudar(plan.id)} style={{ ...btnGhost, color: C_GREEN }} title="Reanudar"><i className="fas fa-play" /></button>
+                                        ? <button onClick={() => pausar(plan.id)} style={btnGhost} title={t('spam.pause')}><i className="fas fa-pause" /></button>
+                                        : <button onClick={() => reanudar(plan.id)} style={{ ...btnGhost, color: C_GREEN }} title={t('spam.resume')}><i className="fas fa-play" /></button>
                                     }
-                                    <button onClick={() => pedirEliminar(plan)} style={btnDanger} title="Eliminar"><i className="fas fa-trash-alt" /></button>
+                                    <button onClick={() => pedirEliminar(plan)} style={btnDanger} title={t('common.delete')}><i className="fas fa-trash-alt" /></button>
                                 </div>
                             </div>
                         </div>
@@ -639,33 +611,29 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
             {(historial || loadingHistorial) && (
                 <div style={{ ...card(), flex: 1, minHeight: 0 }}>
                     <div style={{ ...cardTitle, justifyContent: 'space-between' }}>
-                        <span><i className="fas fa-history" style={{ color: C_AMBER }} /> Historial de envíos</span>
+                        <span><i className="fas fa-history" style={{ color: C_AMBER }} /> {t('spam.history')}</span>
                         <button onClick={() => setHistorial(null)} style={btnGhost}><i className="fas fa-times" /></button>
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '0 14px 14px' }}>
-                        {loadingHistorial && <div style={{ textAlign: 'center', marginTop: 40 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>}
+                    <div className="spm-74">
+                        {loadingHistorial && <div className="spm-75"><div className="spinner spm-76" /></div>}
                         {!loadingHistorial && (historial?.items?.length === 0) && (
-                            <p style={{ color: C_MUTED, textAlign: 'center', marginTop: 40, fontSize: '0.82rem' }}>Sin envíos todavía.</p>
+                            <p className="spm-77" style={{ color: C_MUTED }}>{t('spam.noSends')}</p>
                         )}
                         {!loadingHistorial && (historial?.items || []).map(item => (
-                            <div key={item.id} style={{ padding: '9px 0', borderBottom: `1px solid ${C_BDR_SOFT}` }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                                    <span style={{ fontSize: '0.78rem', color: C_MUTED }}>
+                            <div className="spm-78" key={item.id} style={{ borderBottom: `1px solid ${C_BDR_SOFT}` }}>
+                                <div className="spm-79">
+                                    <span className="spm-80" style={{ color: C_MUTED }}>
                                         <strong style={{ color: C_TEXT }}>{item.origen}</strong>
-                                        <i className="fas fa-arrow-right" style={{ margin: '0 6px', opacity: 0.3 }} />
+                                        <i className="fas fa-arrow-right spm-81" />
                                         <strong style={{ color: C_TEXT }}>{item.destino}</strong>
                                     </span>
-                                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                                        {item.respondido && <span style={{ fontSize: '0.68rem', color: C_GREEN }}><i className="fas fa-reply" /> resp.</span>}
-                                        <span style={{
-                                            fontSize: '0.68rem', padding: '1px 7px', borderRadius: 8,
-                                            background: item.estado === 'SENT' ? C_GREEN_SOFT : item.estado === 'FAILED' ? 'rgba(239,68,68,0.10)' : 'rgba(255,255,255,0.05)',
-                                            color: item.estado === 'SENT' ? C_GREEN : item.estado === 'FAILED' ? C_RED : C_MUTED,
-                                        }}>{item.estado}</span>
+                                    <div className="spm-82">
+                                        {item.respondido && <span className="spm-83" style={{ color: C_GREEN }}><i className="fas fa-reply" /> {t('spam.respShort')}</span>}
+                                        <span className="spm-84" style={{ background: item.estado === 'SENT' ? C_GREEN_SOFT : item.estado === 'FAILED' ? 'rgba(239,68,68,0.10)' : 'rgba(255,255,255,0.05)', color: item.estado === 'SENT' ? C_GREEN : item.estado === 'FAILED' ? C_RED : C_MUTED }}>{item.estado}</span>
                                     </div>
                                 </div>
-                                <div style={{ color: C_TEXT, fontSize: '0.83rem' }}>{item.texto}</div>
-                                <div style={{ color: C_MUTED, fontSize: '0.70rem', marginTop: 3 }}>
+                                <div className="spm-85" style={{ color: C_TEXT }}>{item.texto}</div>
+                                <div className="spm-86" style={{ color: C_MUTED }}>
                                     {item.fechaEnviado ? new Date(item.fechaEnviado).toLocaleString() : 'Pendiente'}
                                 </div>
                             </div>
@@ -678,21 +646,20 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
 
             {/* Confirmación de eliminación de plan */}
             {planAEliminar && (
-                <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+                <div className="custom-modal-overlay active"
                     onClick={(e) => { if (e.target === e.currentTarget && !eliminando) setPlanAEliminar(null); }}>
-                    <div className="custom-modal" style={{ maxWidth: 420 }}>
-                        <h3 style={{ margin: '0 0 14px', fontSize: '1.1rem', color: C_TEXT }}>
-                            <i className="fas fa-exclamation-triangle" style={{ color: C_RED, marginRight: 8 }} />
-                            Eliminar plan
+                    <div className="custom-modal spm-1" {...planDialog}>
+                        <h3 className="spm-87" style={{ color: C_TEXT }}>
+                            <i className="fas fa-exclamation-triangle spm-13" style={{ color: C_RED }} />
+                            {t('spam.deletePlan')}
                         </h3>
-                        <p style={{ color: C_MUTED2, fontSize: '0.88rem', lineHeight: 1.55, margin: '0 0 18px' }}>
-                            ¿Seguro que querés eliminar <strong style={{ color: C_TEXT }}>{planAEliminar.nombre}</strong>?
-                            Se borrarán todos los envíos asociados. Esta acción no se puede deshacer.
+                        <p className="spm-88" style={{ color: C_MUTED2 }}>
+                            {t('spam.confirmDeleteA')} <strong style={{ color: C_TEXT }}>{planAEliminar.nombre}</strong>{t('spam.confirmDeletePlanB')}
                         </p>
                         <div className="modal-actions">
                             <button className="btn-modal btn-cancel"
                                 onClick={() => setPlanAEliminar(null)} disabled={eliminando}>
-                                Cancelar
+                                {t('common.cancel')}
                             </button>
                             <button className="btn-modal btn-confirm"
                                 style={{ background: C_RED }}
@@ -712,6 +679,7 @@ CalentamientoPanel.propTypes = {
 
 // ─── UpgradeWall: bloqueo para plan FREE ─────────────────────────────────────
 function UpgradeWall() {
+    const { t } = useLanguage();
     const navigate = useNavigate();
 
     const features = [
@@ -722,66 +690,36 @@ function UpgradeWall() {
     ];
 
     return (
-        <div style={{
-            height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'transparent', fontFamily: "'Montserrat', sans-serif", padding: 24,
-        }}>
-            <div style={{
-                background: 'rgba(24,18,38,0.80)',
-                backdropFilter: BLUR, WebkitBackdropFilter: BLUR,
-                border: '1px solid rgba(245,158,11,0.22)',
-                borderRadius: 22, padding: '48px 52px',
-                maxWidth: 500, width: '100%', textAlign: 'center',
-                position: 'relative', overflow: 'hidden',
-            }}>
+        <div className="spm-89">
+            <div className="spm-90" style={{ backdropFilter: BLUR, WebkitBackdropFilter: BLUR }}>
                 {/* Glow decorativo */}
-                <div style={{
-                    position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)',
-                    width: 280, height: 180, borderRadius: '50%',
-                    background: 'radial-gradient(ellipse, rgba(245,158,11,0.12) 0%, transparent 70%)',
-                    pointerEvents: 'none',
-                }} />
+                <div className="spm-91" />
 
                 {/* Ícono */}
-                <div style={{
-                    width: 68, height: 68, borderRadius: 18, margin: '0 auto 22px',
-                    background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                    <i className="fas fa-lock" style={{ color: C_AMBER, fontSize: '1.6rem' }} />
+                <div className="spm-129" style={{ borderRadius: '18px', background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}` }}>
+                    <i className="fas fa-lock spm-93" style={{ color: C_AMBER }} />
                 </div>
 
                 {/* Badge de plan */}
-                <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`,
-                    borderRadius: 20, padding: '4px 14px', marginBottom: 16,
-                    fontSize: '0.72rem', fontWeight: 700, color: C_AMBER,
-                    textTransform: 'uppercase', letterSpacing: '0.08em',
-                }}>
-                    <i className="fas fa-bolt" style={{ fontSize: '0.65rem' }} /> Disponible desde Plan PRO
+                <div className="spm-130" style={{ borderRadius: '20px', background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`, color: C_AMBER }}>
+                    <i className="fas fa-bolt spm-95" /> {t('spam.fromPro')}
                 </div>
 
-                <h2 style={{ color: C_TEXT, fontSize: '1.4rem', fontWeight: 800, margin: '0 0 10px', lineHeight: 1.3 }}>
-                    Campañas masivas
+                <h2 className="spm-96" style={{ color: C_TEXT }}>
+                    {t('spam.massTitle')}
                 </h2>
-                <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.85rem', margin: '0 0 28px', lineHeight: 1.6 }}>
-                    Enviá mensajes a miles de contactos, calentá tus líneas automáticamente
-                    y gestioná las respuestas desde un solo lugar.
+                <p className="spm-97">
+                    {t('spam.wallDesc')}
                 </p>
 
                 {/* Features */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32, textAlign: 'left' }}>
+                <div className="spm-98">
                     {features.map((f, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{
-                                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                                background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                                <i className={`fas ${f.icon}`} style={{ color: C_AMBER, fontSize: '0.75rem' }} />
+                        <div className="spm-99" key={i}>
+                            <div className="spm-131" style={{ borderRadius: '8px', background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}` }}>
+                                <i className={`fas ${f.icon} spm-101`} style={{ color: C_AMBER }} />
                             </div>
-                            <span style={{ color: 'rgba(255,255,255,0.70)', fontSize: '0.85rem' }}>{f.text}</span>
+                            <span className="spm-102">{f.text}</span>
                         </div>
                     ))}
                 </div>
@@ -801,11 +739,11 @@ function UpgradeWall() {
                     onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 28px rgba(245,158,11,0.45)'; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 20px rgba(245,158,11,0.30)'; }}
                 >
-                    <i className="fas fa-arrow-up" /> Ver planes y mejorar
+                    <i className="fas fa-arrow-up" /> {t('spam.seePlans')}
                 </button>
 
-                <p style={{ color: 'rgba(255,255,255,0.22)', fontSize: '0.75rem', marginTop: 14 }}>
-                    Podés empezar desde <strong style={{ color: 'var(--color-text-3)' }}>Plan PRO</strong> · Cancelás cuando quieras
+                <p className="spm-103">
+                    {t('spam.startFrom')} <strong className="spm-104">{t('spam.planPro')}</strong> {t('spam.cancelAnytime')}
                 </p>
             </div>
         </div>
@@ -814,6 +752,7 @@ function UpgradeWall() {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function Spam() {
+    const { t } = useLanguage();
     const toast               = useToast();
     const { agenciaId, usuario, loading: loadingUser } = useUser();
 
@@ -839,8 +778,8 @@ export default function Spam() {
 
     const loadDevices  = useCallback(async () => {
         try { const { data } = await api.get('/campania/devices'); setDevices(data || []); setDevActivo(prev => prev || (data?.[0]?.id ?? null));
-        } catch { toast('Error', 'No se pudieron cargar los números', C_RED); }
-    }, [toast]);
+        } catch { toast(t('common.errorTitle'), t('spam.errLoadNumbers'), C_RED); }
+    }, [toast, t]);
 
     const loadContactos = useCallback(async (id) => {
         if (!id) { setContactos([]); return; }
@@ -957,13 +896,14 @@ export default function Spam() {
 
     const [deviceAEliminar, setDeviceAEliminar] = useState(null); // { id, alias } | null
     const [eliminandoDevice, setEliminandoDevice] = useState(false);
+    const deviceDialog = useDialog(!!deviceAEliminar, () => setDeviceAEliminar(null), { canClose: !eliminandoDevice });
     const pedirEliminarDevice = (d) => setDeviceAEliminar({ id: d.id, alias: d.alias || d.numeroTelefono || `#${d.id}` });
     const confirmarEliminarDevice = async () => {
         if (!deviceAEliminar) return;
         setEliminandoDevice(true);
         try {
             await api.delete(`/campania/devices/${deviceAEliminar.id}`);
-            toast('Eliminado', 'Número y sus chats borrados', C_GREEN);
+            toast(t('spam.deleted'), t('spam.numberDeleted'), C_GREEN);
             if (deviceActivoId === deviceAEliminar.id) { setDevActivo(null); setContactos([]); setBandeja([]); setCtActivo(null); setMensajes([]); }
             setDeviceAEliminar(null);
             loadDevices();
@@ -984,7 +924,7 @@ export default function Spam() {
     // ── Gates (después de todos los hooks para no romper Rules of Hooks) ──────
     if (loadingUser) {
         return (
-            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+            <div className="spm-105">
                 <div className="spinner" />
             </div>
         );
@@ -993,64 +933,44 @@ export default function Spam() {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 16, gap: 12, background: 'transparent', fontFamily: "'Montserrat', sans-serif" }}>
+        <div className="spm-106">
 
             {/* ── Header estático (nunca cambia de tamaño) ── */}
-            <div className="spam-head" style={{
-                background: 'rgba(22,16,36,0.85)', backdropFilter: BLUR, WebkitBackdropFilter: BLUR,
-                border: `1px solid ${C_BDR}`, borderRadius: 16,
-                padding: '11px 18px', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap',
-            }}>
+            <div className="spam-head spm-132" style={{ borderRadius: '16px', backdropFilter: BLUR, WebkitBackdropFilter: BLUR, border: `1px solid ${C_BDR}` }}>
                 {/* Izquierda: ícono + título */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 220px', minWidth: 0 }}>
-                    <div style={{
-                        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                        background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                        <i className="fas fa-bullhorn" style={{ color: C_AMBER, fontSize: '0.95rem' }} />
+                <div className="spm-108">
+                    <div className="spm-133" style={{ borderRadius: '10px', background: C_AMBER_SOFT, border: `1px solid ${C_AMBER_BDR}` }}>
+                        <i className="fas fa-bullhorn spm-110" style={{ color: C_AMBER }} />
                     </div>
                     <div>
-                        <div style={{ color: C_TEXT, fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.2 }}>Campañas</div>
-                        <div style={{ color: C_MUTED, fontSize: '0.72rem', fontWeight: 500, marginTop: 1 }}>
-                            Sector aislado del embudo principal. Usá un chip aparte.
+                        <div className="spm-111" style={{ color: C_TEXT }}>{t('spam.title')}</div>
+                        <div className="spm-112" style={{ color: C_MUTED }}>
+                            {t('spam.subtitle')}
                         </div>
                     </div>
                 </div>
 
                 {/* Derecha: tabs + controles */}
-                <div className="spam-head__right" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div className="spam-head__right spm-113">
                     {/* Tab switcher — estilo dashboard */}
-                    <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3, gap: 2 }}>
+                    <div className="spm-114">
                         {[
-                            { key: 'campanas',      label: 'Campañas masivas', icon: 'fa-paper-plane' },
-                            { key: 'calentamiento', label: 'Mensajes de Línea', icon: 'fa-fire' },
+                            { key: 'campanas',      label: t('spam.massTitle'), icon: 'fa-paper-plane' },
+                            { key: 'calentamiento', label: t('spam.lineMsgs'), icon: 'fa-fire' },
                         ].map(t => (
-                            <button key={t.key} onClick={() => setTab(t.key)} style={{
-                                padding: '5px 13px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                                background: tab === t.key ? 'rgba(255,255,255,0.13)' : 'transparent',
-                                color: tab === t.key ? C_TEXT : C_MUTED,
-                                fontWeight: tab === t.key ? 700 : 500,
-                                fontSize: '0.77rem', display: 'inline-flex', alignItems: 'center', gap: 6,
-                                transition: 'all 0.15s',
-                            }}>
-                                <i className={`fas ${t.icon}`} style={{ color: tab === t.key ? C_AMBER : undefined, fontSize: '0.70rem' }} />
+                            <button className="spm-115" key={t.key} onClick={() => setTab(t.key)} style={{ background: tab === t.key ? 'rgba(255,255,255,0.13)' : 'transparent', color: tab === t.key ? C_TEXT : C_MUTED, fontWeight: tab === t.key ? 700 : 500 }}>
+                                <i className={`fas ${t.icon} spm-116`} style={{ color: tab === t.key ? C_AMBER : undefined }} />
                                 {t.label}
                             </button>
                         ))}
                     </div>
 
                     {/* Controles de campañas masivas — siempre en DOM, ocultos con display none */}
-                    <div style={{ display: tab === 'campanas' ? 'flex' : 'none', alignItems: 'center', gap: 8 }}>
+                    <div className="spm-117" style={{ display: tab === 'campanas' ? 'flex' : 'none' }}>
                         {devices.length > 0 && (
-                            <select value={deviceActivoId || ''}
+                            <select className="spm-134" aria-label={t('spam.activeNumber')} value={deviceActivoId || ''}
                                 onChange={e => setDevActivo(Number(e.target.value))}
-                                style={{
-                                    padding: '6px 11px', borderRadius: 9, fontSize: '0.78rem',
-                                    background: 'rgba(255,255,255,0.07)', color: C_TEXT,
-                                    border: `1px solid ${C_BDR}`, cursor: 'pointer', maxWidth: 240,
-                                }}>
+                                style={{ borderRadius: '9px', color: C_TEXT, border: `1px solid ${C_BDR}` }}>
                                 {devices.map(d => (
                                     <option key={d.id} value={d.id}>
                                         {d.alias}{d.numeroTelefono ? ` (${d.numeroTelefono})` : ' (sin vincular)'} — {d.estado}
@@ -1059,26 +979,26 @@ export default function Spam() {
                             </select>
                         )}
                         {deviceActivoId && (
-                            <button onClick={() => pedirEliminarDevice(devices.find(d => d.id === deviceActivoId) || { id: deviceActivoId })} style={btnDanger} title="Eliminar número activo">
+                            <button onClick={() => pedirEliminarDevice(devices.find(d => d.id === deviceActivoId) || { id: deviceActivoId })} style={btnDanger} title={t('spam.deleteActive')}>
                                 <i className="fas fa-trash-alt" />
                             </button>
                         )}
                         <button onClick={() => setShowAdd(true)} style={btnPrimary}>
-                            <i className="fas fa-plus" /> Agregar número
+                            <i className="fas fa-plus" /> {t('spam.addNumber')}
                         </button>
                     </div>
 
                     {/* Controles de calentamiento — siempre en DOM, ocultos con display none */}
-                    <div style={{ display: tab === 'calentamiento' ? 'flex' : 'none', alignItems: 'center', gap: 8 }}>
+                    <div className="spm-117" style={{ display: tab === 'calentamiento' ? 'flex' : 'none' }}>
                         <button onClick={() => setShowPlan(true)} style={btnPrimary}>
-                            <i className="fas fa-plus" /> Nuevo plan
+                            <i className="fas fa-plus" /> {t('spam.newPlan')}
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* ── Contenido (siempre flex: 1, nunca cambia de tamaño) ── */}
-            <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+            <div className="spm-119">
                 {tab === 'calentamiento'
                     ? <CalentamientoPanel devices={devices} showModal={showPlanModal} onCloseModal={() => setShowPlan(false)} />
                     : devices.length === 0
@@ -1086,17 +1006,16 @@ export default function Spam() {
                             ...card(), flex: 1, alignItems: 'center', justifyContent: 'center',
                             border: `1px dashed rgba(245,158,11,0.20)`,
                           }}>
-                            <i className="fas fa-bullhorn" style={{ fontSize: 50, opacity: 0.15, color: C_AMBER }} />
-                            <h3 style={{ color: C_TEXT, marginTop: 18, fontWeight: 700 }}>Sin números de campaña</h3>
-                            <p style={{ maxWidth: 360, textAlign: 'center', fontSize: '0.85rem', color: C_MUTED, margin: '8px 0 20px' }}>
-                                Agregá un número aparte (no el principal del negocio) para mandar campañas masivas.
-                                Cuando alguien responda podés chatear acá.
+                            <i className="fas fa-bullhorn spm-120" style={{ color: C_AMBER }} />
+                            <h3 className="spm-121" style={{ color: C_TEXT }}>{t('spam.noNumbers')}</h3>
+                            <p className="spm-122" style={{ color: C_MUTED }}>
+                                {t('spam.noNumbersDesc')}
                             </p>
                             <button onClick={() => setShowAdd(true)} style={btnPrimary}>
-                                <i className="fas fa-plus" /> Agregar primer número
+                                <i className="fas fa-plus" /> {t('spam.addFirst')}
                             </button>
                           </div>
-                        : <div className="spam-body" style={{ flex: 1, display: 'flex', gap: 12, minHeight: 0 }}>
+                        : <div className="spam-body spm-60">
                             <ContactosPanel deviceId={deviceActivoId} contactos={contactos} onReload={() => loadContactos(deviceActivoId)} />
                             <ChatPanel bandeja={bandeja} contactoActivo={contactoActivo} mensajes={mensajes}
                                 onSelectContacto={seleccionarContacto} onResponder={responder} />
@@ -1108,21 +1027,20 @@ export default function Spam() {
 
             {/* Confirmación de eliminación de dispositivo */}
             {deviceAEliminar && (
-                <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+                <div className="custom-modal-overlay active"
                     onClick={(e) => { if (e.target === e.currentTarget && !eliminandoDevice) setDeviceAEliminar(null); }}>
-                    <div className="custom-modal" style={{ maxWidth: 420 }}>
-                        <h3 style={{ margin: '0 0 14px', fontSize: '1.1rem', color: C_TEXT }}>
-                            <i className="fas fa-exclamation-triangle" style={{ color: C_RED, marginRight: 8 }} />
-                            Eliminar número
+                    <div className="custom-modal spm-1" {...deviceDialog}>
+                        <h3 className="spm-87" style={{ color: C_TEXT }}>
+                            <i className="fas fa-exclamation-triangle spm-13" style={{ color: C_RED }} />
+                            {t('spam.deleteNumber')}
                         </h3>
-                        <p style={{ color: C_MUTED2, fontSize: '0.88rem', lineHeight: 1.55, margin: '0 0 18px' }}>
-                            ¿Seguro que querés eliminar <strong style={{ color: C_TEXT }}>{deviceAEliminar.alias}</strong>?
-                            Se borran sus contactos, chats y plantillas. Esta acción no se puede deshacer.
+                        <p className="spm-88" style={{ color: C_MUTED2 }}>
+                            {t('spam.confirmDeleteA')} <strong style={{ color: C_TEXT }}>{deviceAEliminar.alias}</strong>{t('spam.confirmDeleteNumberB')}
                         </p>
                         <div className="modal-actions">
                             <button className="btn-modal btn-cancel"
                                 onClick={() => setDeviceAEliminar(null)} disabled={eliminandoDevice}>
-                                Cancelar
+                                {t('common.cancel')}
                             </button>
                             <button className="btn-modal btn-confirm"
                                 style={{ background: C_RED }}

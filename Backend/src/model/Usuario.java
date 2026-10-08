@@ -3,6 +3,7 @@ package model;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
@@ -33,6 +34,9 @@ public class Usuario {
 
     private String nombreCompleto;
 
+    // Nunca se serializa: varios endpoints devuelven la entidad (o entidades que la
+    // referencian, como RespuestaRapida) y exponían el hash bcrypt.
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 
@@ -41,13 +45,16 @@ public class Usuario {
     @Column(unique = true)
     private String email;
 
+    @JsonIgnore
     private String codigoVerificacion;
 
+    @JsonIgnore
     private LocalDateTime codigoExpiracion;
 
     // Intentos fallidos consumidos contra codigoVerificacion desde que se
     // emitió (ver V13__codigo_intentos.sql). Se resetea al generar un código
     // nuevo; al llegar al máximo se invalida el código.
+    @JsonIgnore
     @Column(nullable = false)
     private int codigoIntentos = 0;
 
@@ -77,9 +84,11 @@ public class Usuario {
     @Column(name = "plan_vencimiento")
     private LocalDate planVencimiento;
 
+    @JsonIgnore
     @Column(name = "google_access_token", columnDefinition = "TEXT")
     private String googleAccessToken;
 
+    @JsonIgnore
     @Column(name = "google_refresh_token", columnDefinition = "TEXT")
     private String googleRefreshToken;
 

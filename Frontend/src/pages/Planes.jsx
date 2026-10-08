@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useLanguage } from '../context/LangContext';
+import useDialog from '../hooks/useDialog';
+import '../assets/css/pages/Planes.css';
 
 
 const PLAN_CONFIG = {
@@ -145,33 +147,33 @@ export default function Planes() {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <div className="pln-1">
                 <div className="spinner"></div>
             </div>
         );
     }
 
     return (
-        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <section className="page-wrapper pln-2">
 
-            <div className="dashboard-content custom-scrollbar" style={{ overflowY: 'auto', flex: 1, padding: '2rem 2rem 3rem' }}>
+            <div className="dashboard-content custom-scrollbar pln-3">
 
                 {showExito && (
                     <div style={styles.alertaBase('#10b981', 'rgba(16,185,129,0.12)')}>
-                        <i className="fas fa-check-circle" style={{ fontSize: '1.3rem', color: '#10b981' }}></i>
+                        <i className="fas fa-check-circle pln-4"></i>
                         <div>
-                            <strong style={{ color: '#10b981' }}>{t('planes.paySuccess')}</strong>
-                            <span style={{ color: '#d1d5db', marginLeft: 8 }}>{t('planes.paySuccessDesc')}</span>
+                            <strong className="pln-5">{t('planes.paySuccess')}</strong>
+                            <span className="pln-6">{t('planes.paySuccessDesc')}</span>
                         </div>
                         <button onClick={() => setShowExito(false)} style={styles.closeBtn}>×</button>
                     </div>
                 )}
                 {showFallido && (
                     <div style={styles.alertaBase('#ef4444', 'rgba(239,68,68,0.12)')}>
-                        <i className="fas fa-times-circle" style={{ fontSize: '1.3rem', color: '#ef4444' }}></i>
+                        <i className="fas fa-times-circle pln-7"></i>
                         <div>
-                            <strong style={{ color: '#ef4444' }}>{t('planes.payFailed')}</strong>
-                            <span style={{ color: '#d1d5db', marginLeft: 8 }}>{t('planes.payFailedDesc')}</span>
+                            <strong className="pln-8">{t('planes.payFailed')}</strong>
+                            <span className="pln-6">{t('planes.payFailedDesc')}</span>
                         </div>
                         <button onClick={() => setShowFallido(false)} style={styles.closeBtn}>×</button>
                     </div>
@@ -180,26 +182,26 @@ export default function Planes() {
                 {/* FIX: visible error state */}
                 {loadError && (
                     <div style={{ ...styles.alertaBase('#ef4444', 'rgba(239,68,68,0.1)'), marginBottom: '1.5rem' }}>
-                        <i className="fas fa-exclamation-triangle" style={{ color: '#ef4444', fontSize: '1.3rem' }}></i>
-                        <div style={{ flex: 1 }}>
-                            <strong style={{ color: '#ef4444' }}>Error al cargar los planes</strong>
-                            <p style={{ color: '#fca5a5', margin: '4px 0 0', fontSize: '0.85rem' }}>{loadError}</p>
+                        <i className="fas fa-exclamation-triangle pln-9"></i>
+                        <div className="pln-10">
+                            <strong className="pln-8">{t('planes.errLoad')}</strong>
+                            <p className="pln-11">{loadError}</p>
                         </div>
-                        <button onClick={fetchData} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
-                            <i className="fas fa-redo"></i> Reintentar
+                        <button className="pln-12" onClick={fetchData}>
+                            <i className="fas fa-redo"></i> {t('errors.retry')}
                         </button>
                     </div>
                 )}
 
-                <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                    <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>
+                <div className="pln-13">
+                    <h1 className="pln-14">
                         {t('planes.title')}
                     </h1>
-                    <p style={{ color: '#9ca3af', fontSize: '1rem' }}>
+                    <p className="pln-15">
                         {t('planes.subtitle')}
                     </p>
                     {vencimiento && vencimiento !== 'Sin vencimiento' && (
-                        <div style={{ marginTop: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', padding: '6px 14px', color: '#f59e0b', fontSize: '0.85rem' }}>
+                        <div className="pln-16">
                             <i className="fas fa-calendar-alt"></i>
                             {t('planes.validUntil')} {new Date(vencimiento).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </div>
@@ -208,10 +210,10 @@ export default function Planes() {
 
 
                 {planes.length === 0 && !loadError ? (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--color-text-3)' }}>
-                        <i className="fas fa-box-open" style={{ fontSize: '3rem', marginBottom: 16, opacity: 0.4 }}></i>
-                        <p style={{ fontSize: '1rem' }}>{t('planes.noPlanAvail')}</p>
-                        <button onClick={fetchData} style={{ marginTop: 12, background: '#10b981', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                    <div className="pln-17">
+                        <i className="fas fa-box-open pln-18"></i>
+                        <p className="pln-19">{t('planes.noPlanAvail')}</p>
+                        <button className="pln-20" onClick={fetchData}>
                             <i className="fas fa-sync-alt"></i> {t('planes.reload')}
                         </button>
                     </div>
@@ -238,13 +240,13 @@ export default function Planes() {
                 )}
 
 
-                <div style={{ textAlign: 'center', marginTop: '2rem', color: 'var(--color-text-3)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div className="pln-21">
                     <span>
-                        <i className="fas fa-shield-alt" style={{ color: '#10b981', marginRight: '6px' }}></i>
+                        <i className="fas fa-shield-alt pln-22"></i>
                         {t('planes.secureFooter')}
                     </span>
                     <Link to="/mi-suscripcion" style={{ color: '#10b981', fontWeight: 700, textDecoration: 'underline' }}>
-                        Mi suscripción
+                        {t('planes.mySub')}
                     </Link>
                 </div>
             </div>
@@ -279,9 +281,9 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
     const [hovered, setHovered] = useState(false);
     const colores = {
         free:       { accent: '#6b7280', glow: 'rgba(107,114,128,0.18)', glowStrong: 'rgba(107,114,128,0.35)' },
-        pro:        { accent: '#3b82f6', glow: 'rgba(59,130,246,0.18)',  glowStrong: 'rgba(59,130,246,0.4)'  },
-        business:   { accent: '#8b5cf6', glow: 'rgba(139,92,246,0.18)', glowStrong: 'rgba(139,92,246,0.4)'  },
-        enterprise: { accent: '#f59e0b', glow: 'rgba(245,158,11,0.18)', glowStrong: 'rgba(245,158,11,0.4)'  },
+        pro:        { btn: '#2563eb', accent: '#3b82f6', glow: 'rgba(59,130,246,0.18)',  glowStrong: 'rgba(59,130,246,0.4)'  },
+        business:   { btn: '#7c3aed', accent: '#8b5cf6', glow: 'rgba(139,92,246,0.18)', glowStrong: 'rgba(139,92,246,0.4)'  },
+        enterprise: { btnText: '#1a1205', accent: '#f59e0b', glow: 'rgba(245,158,11,0.18)', glowStrong: 'rgba(245,158,11,0.4)'  },
     };
     const col = colores[cfg.clase] || colores.free;
 
@@ -308,7 +310,7 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
                     : 'var(--bg-card)',
             }}>
             {esActual && (
-                <div style={styles.badgeActual(col.accent)}>{t('planes.currentPlan')}</div>
+                <div style={styles.badgeActual(col.accent, col.btnText)}>{t('planes.currentPlan')}</div>
             )}
             {!esActual && cfg.badge === 'popular' && (
                 <div style={styles.badgePopular}>{t('planes.mostPopular')}</div>
@@ -331,18 +333,18 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
 
             <div style={styles.precioContainer}>
                 {esGratis ? (
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <div className="pln-23">
                         <span style={styles.precioMoneda}>$</span>
                         <span style={{ ...styles.precioMonto, color: col.accent }}>0</span>
-                        <span style={styles.precioPeriodo}>/mes</span>
+                        <span style={styles.precioPeriodo}>{t('planes.perMonthShort')}</span>
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
+                    <div className="pln-24">
                         <span style={styles.precioMoneda}>$</span>
                         <span style={{ ...styles.precioMonto, color: col.accent }}>
                             {formatPrecio(plan.precioMensual)}
                         </span>
-                        <span style={styles.precioPeriodo}>ARS/mes</span>
+                        <span style={styles.precioPeriodo}>{t('checkout.perMonthArs')}</span>
                     </div>
                 )}
             </div>
@@ -367,7 +369,7 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
                             color: isFirst ? (isGolden ? '#f59e0b' : '#fff') : '#9ca3af',
                             fontWeight: isFirst ? 600 : 400,
                         }}>
-                            <i className={`fas ${cfg.benIconos[idx]}`} style={{ color: isGolden ? '#f59e0b' : col.accent, fontSize: '0.8rem', flexShrink: 0 }}></i>
+                            <i className={`fas ${cfg.benIconos[idx]} pln-25`} style={{ color: isGolden ? '#f59e0b' : col.accent }}></i>
                             {t(`planes.${cfg.clase}.${key}`)}
                         </li>
                     );
@@ -383,7 +385,7 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
                     {t('planes.useFree')}
                 </button>
             ) : (
-                <button onClick={onSuscribirse} style={{ ...styles.btnPlan, background: col.accent, color: '#fff', border: 'none' }}>
+                <button onClick={onSuscribirse} style={{ ...styles.btnPlan, background: col.btn || col.accent, color: col.btnText || '#fff', border: 'none' }}>
                     {t('planes.subscribeBtn')} {plan.nombre.charAt(0) + plan.nombre.slice(1).toLowerCase()}
                 </button>
             )}
@@ -393,6 +395,7 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
 
 
 function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose }) {
+    const dialog = useDialog(true, onClose, { canClose: !procesando });
     const { t } = useLanguage();
     const [selected, setSelected] = useState(null);
     const planLabel = plan.nombre.charAt(0) + plan.nombre.slice(1).toLowerCase();
@@ -423,114 +426,78 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
 
     return (
         <div style={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div style={{ ...styles.modal, maxWidth: '520px', padding: 0, overflow: 'hidden' }}>
+            <div style={{ ...styles.modal, maxWidth: '520px', padding: 0, overflow: 'hidden' }} {...dialog}>
 
                 {/* Header with plan summary */}
-                <div style={{ padding: '28px 32px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="pln-26">
+                    <div className="pln-27">
                         <div>
-                            <h3 style={{ color: '#fff', margin: 0, fontSize: '1.35rem', fontWeight: 800 }}>
+                            <h3 className="pln-28">
                                 {t('planes.checkoutTitle')}
                             </h3>
-                            <p style={{ color: '#9ca3af', margin: '6px 0 0', fontSize: '0.88rem' }}>
+                            <p className="pln-29">
                                 {t('planes.checkoutSubtitle')}
                             </p>
                         </div>
-                        <button
+                        <button className="pln-30"
                             onClick={onClose}
-                            style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: '#9ca3af', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}
                         >
                             <i className="fas fa-times" />
                         </button>
                     </div>
 
                     {/* Order summary */}
-                    <div style={{ marginTop: 20, background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(59,130,246,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <i className={`fas ${(PLAN_CONFIG[plan.nombre] || PLAN_CONFIG.FREE).icon}`} style={{ color: '#3b82f6', fontSize: '1rem' }} />
+                    <div className="pln-31">
+                        <div className="pln-32">
+                            <div className="pln-33">
+                                <div className="pln-34">
+                                    <i className={`fas ${(PLAN_CONFIG[plan.nombre] || PLAN_CONFIG.FREE).icon} pln-35`} />
                                 </div>
                                 <div>
-                                    <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>Plan {planLabel}</div>
-                                    <div style={{ color: 'var(--color-text-3)', fontSize: '0.78rem' }}>{t('planes.subscriptionLabel')}</div>
+                                    <div className="pln-36">Plan {planLabel}</div>
+                                    <div className="pln-37">{t('planes.subscriptionLabel')}</div>
                                 </div>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.15rem' }}>${formatPrecio(plan.precioMensual)}</div>
-                                <div style={{ color: 'var(--color-text-3)', fontSize: '0.72rem' }}>ARS/mes</div>
+                            <div className="pln-38">
+                                <div className="pln-39">${formatPrecio(plan.precioMensual)}</div>
+                                <div className="pln-40">{t('checkout.perMonthArs')}</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Payment methods */}
-                <div style={{ padding: '20px 32px 24px' }}>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+                <div className="pln-41">
+                    <div className="pln-42">
                         {t('planes.payMethod')}
                     </div>
 
                     {errorPago && (
-                        <div style={{
-                            background: 'rgba(239,68,68,0.08)',
-                            border: '1px solid rgba(239,68,68,0.25)',
-                            borderRadius: 10,
-                            padding: '12px 16px',
-                            color: '#fca5a5',
-                            fontSize: '0.85rem',
-                            marginBottom: 16,
-                            display: 'flex',
-                            gap: 10,
-                            alignItems: 'flex-start',
-                            lineHeight: 1.4,
-                        }}>
-                            <i className="fas fa-exclamation-circle" style={{ color: '#ef4444', marginTop: 2, flexShrink: 0 }} />
+                        <div className="pln-43">
+                            <i className="fas fa-exclamation-circle pln-44" />
                             <span>{errorPago}</span>
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div className="pln-45">
                         {metodos.map(m => {
                             const isSelected = selected === m.id;
                             const isLoading = procesando === m.id;
                             return (
-                                <button
+                                <button className="pln-63"
                                     key={m.id}
                                     type="button"
                                     onClick={() => !procesando && setSelected(m.id)}
                                     disabled={!!procesando && !isLoading}
-                                    style={{
-                                        width: '100%',
-                                        padding: '16px 18px',
-                                        background: isSelected ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
-                                        border: isSelected ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)',
-                                        borderRadius: 14,
-                                        color: '#fff',
-                                        cursor: procesando ? 'wait' : 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 14,
-                                        transition: 'all 0.15s ease',
-                                        opacity: (!!procesando && !isLoading) ? 0.5 : 1,
-                                    }}
+                                    style={{ borderRadius: '14px', background: isSelected ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)', border: isSelected ? '2px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)', cursor: procesando ? 'wait' : 'pointer', opacity: (!!procesando && !isLoading) ? 0.5 : 1 }}
                                 >
                                     {/* Radio circle */}
-                                    <div style={{
-                                        width: 20, height: 20, borderRadius: '50%',
-                                        border: isSelected ? '2px solid #3b82f6' : '2px solid rgba(255,255,255,0.2)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                        transition: 'border-color 0.15s',
-                                    }}>
-                                        {isSelected && <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#3b82f6' }} />}
+                                    <div className="pln-64" style={{ borderRadius: '50%', border: isSelected ? '2px solid #3b82f6' : '2px solid rgba(255,255,255,0.2)' }}>
+                                        {isSelected && <div className="pln-48" />}
                                     </div>
 
                                     {/* Icon */}
-                                    <div style={{
-                                        width: 44, height: 44, borderRadius: 10,
-                                        background: m.iconBg,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '1.15rem', color: '#fff', flexShrink: 0,
-                                    }}>
+                                    <div className="pln-49" style={{ background: m.iconBg }}>
                                         {isLoading
                                             ? <i className="fas fa-spinner fa-spin" />
                                             : <i className={m.icon.startsWith('fab') ? m.icon : `fas ${m.icon}`} />
@@ -538,9 +505,9 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                                     </div>
 
                                     {/* Text */}
-                                    <div style={{ flex: 1, textAlign: 'left' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{m.nombre}</div>
-                                        <div style={{ color: 'var(--color-text-3)', fontSize: '0.8rem', marginTop: 2 }}>{m.desc}</div>
+                                    <div className="pln-50">
+                                        <div className="pln-51">{m.nombre}</div>
+                                        <div className="pln-52">{m.desc}</div>
                                     </div>
                                 </button>
                             );
@@ -548,26 +515,10 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                     </div>
 
                     {/* Confirm button */}
-                    <button
+                    <button className="pln-53"
                         onClick={handleConfirm}
                         disabled={!selected || !!procesando}
-                        style={{
-                            width: '100%',
-                            marginTop: 20,
-                            padding: '15px',
-                            background: selected ? '#3b82f6' : 'rgba(255,255,255,0.06)',
-                            border: 'none',
-                            borderRadius: 12,
-                            color: selected ? '#fff' : 'var(--color-text-3)',
-                            fontSize: '0.95rem',
-                            fontWeight: 700,
-                            cursor: (!selected || !!procesando) ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8,
-                        }}
+                        style={{ background: selected ? '#3b82f6' : 'rgba(255,255,255,0.06)', color: selected ? '#fff' : 'var(--color-text-3)', cursor: (!selected || !!procesando) ? 'not-allowed' : 'pointer' }}
                     >
                         {procesando ? (
                             <>
@@ -576,15 +527,15 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
                             </>
                         ) : (
                             <>
-                                <i className="fas fa-lock" style={{ fontSize: '0.8rem' }} />
+                                <i className="fas fa-lock pln-54" />
                                 {selected ? t('planes.continuePayment') : t('planes.selectPayMethod')}
                             </>
                         )}
                     </button>
 
                     {/* Footer */}
-                    <div style={{ textAlign: 'center', marginTop: 16, color: '#4b5563', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                        <i className="fas fa-shield-alt" style={{ fontSize: '0.7rem' }} />
+                    <div className="pln-55">
+                        <i className="fas fa-shield-alt pln-56" />
                         {t('planes.securePayment')}
                     </div>
                 </div>
@@ -596,23 +547,24 @@ function ModalCheckout({ plan, procesando, errorPago, onMP, onPayPal, onClose })
 
 function ModalConfirmarFree({ procesando, onConfirmar, onClose }) {
     const { t } = useLanguage();
+    const dialog = useDialog(true, onClose, { canClose: !procesando });
     return (
         <div style={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div style={{ ...styles.modal, maxWidth: '380px', textAlign: 'center' }}>
-                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', fontSize: '1.8rem' }}>
+            <div style={{ ...styles.modal, maxWidth: '380px', textAlign: 'center' }} {...dialog}>
+                <div className="pln-57">
                     <i className="fas fa-exclamation-triangle"></i>
                 </div>
-                <h5 style={{ color: '#fff', margin: '0 0 0.5rem', fontSize: '1.2rem', fontWeight: 700 }}>
+                <h5 className="pln-58">
                     {t('planes.backToFreeTitle')}
                 </h5>
-                <p style={{ color: '#9ca3af', margin: '0 0 1.5rem', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                <p className="pln-59">
                     {t('planes.backToFreeDesc')}
                 </p>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={onClose} style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
+                <div className="pln-60">
+                    <button className="pln-61" onClick={onClose}>
                         {t('common.cancel')}
                     </button>
-                    <button onClick={onConfirmar} disabled={procesando} style={{ flex: 1, padding: '12px', background: '#f59e0b', border: 'none', color: '#000', borderRadius: '8px', cursor: procesando ? 'not-allowed' : 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <button className="pln-62" onClick={onConfirmar} disabled={procesando} style={{ cursor: procesando ? 'not-allowed' : 'pointer' }}>
                         {procesando ? <i className="fas fa-spinner fa-spin"></i> : t('planes.confirm')}
                     </button>
                 </div>
@@ -653,9 +605,9 @@ const styles = {
     beneficioItem: { display: 'flex', alignItems: 'center', gap: '9px', fontSize: '0.85rem' },
     btnActual: { padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#9ca3af', borderRadius: '10px', fontWeight: 600, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: 'auto' },
     btnPlan: { padding: '13px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', transition: 'opacity 0.2s, filter 0.2s', marginTop: 'auto', textAlign: 'center', letterSpacing: '0.01em' },
-    badgeActual: (color) => ({ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color, color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' }),
-    badgePopular: { position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' },
-    badgeVip: { position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #f59e0b, #ef4444)', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '5px' },
+    badgeActual: (color, text = '#fff') => ({ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color, color: text, fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' }),
+    badgePopular: { position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #2563eb, #7c3aed)', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' },
+    badgeVip: { position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #f59e0b, #ef4444)', color: '#1a1205', fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '5px' },
     overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
     modal: { background: 'var(--bg-card)', borderRadius: '16px', width: '100%', padding: '28px', border: '1px solid var(--border-glass)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' },
     closeBtn: { background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.3rem', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', flexShrink: 0 },
