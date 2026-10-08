@@ -85,8 +85,10 @@ export default function NotificationBell({ onOpenChat }) {
                 type="button"
                 className="btn-header-notif"
                 onClick={toggle}
+                aria-label={unread > 0 ? `${t('notif.title')} (${unread})` : t('notif.title')}
+                aria-expanded={open}
             >
-                <i className="fas fa-bell"></i>
+                <i className="fas fa-bell" aria-hidden="true"></i>
                 {unread > 0 && (
                     <span className="badge-dot">
                         {unread > 9 ? '9+' : unread}

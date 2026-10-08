@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { formatTime } from '../../utils/api';
 import { useLanguage } from '../../context/LangContext';
+import '../../assets/css/pages/KanbanCard.css';
 
 export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
     const { t: tr } = useLanguage();
@@ -35,19 +36,15 @@ export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
     };
 
     const handleClick = (e) => { e.stopPropagation(); onOpen(cliente.id); };
-    const handleKeyDown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onOpen(cliente.id); } };
 
     return (
         <div
             id={`card-${cliente.id}`}
             className="card"
-            role="button"
-            tabIndex={0}
             data-telefono={String(cliente.telefono || '').replace(/\D/g, '')}
             draggable
             onDragStart={handleDragStart}
             onClick={handleClick}
-            onKeyDown={handleKeyDown}
         >
             {/* Avatar */}
             <div className="card-avatar">
@@ -66,18 +63,20 @@ export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
 
             {/* Info */}
             <div className="card-info">
-                <div className="card-title" style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                    <span className="name-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nombre}</span>
-                    <span className="card-time" style={{ fontSize: '0.75rem', opacity: 0.6, flexShrink: 0 }}>{time}</span>
+                <div className="card-title kcard-1">
+                    {/* El nombre es el botón real (teclado/lectores). La tarjeta entera sigue abriendo el chat con el mouse,
+                        pero no es role="button": adentro está el selector "Mover a…" y no se pueden anidar controles. */}
+                    <button type="button" className="name-text card-open" onClick={handleClick}>{nombre}</button>
+                    <span className="card-time kcard-2">{time}</span>
                 </div>
-                <div className="card-preview-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                    <div className="card-preview" style={{ flex: 1, fontSize: '0.8rem', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div className="card-preview-row kcard-3">
+                    <div className="card-preview kcard-4">
                         {resumenIcon && (
-                            <i className={`fa-solid ${resumenIcon.icon}`}
+                            <i className={`fa-solid ${resumenIcon.icon} kcard-5`}
                                title={resumenIcon.title}
-                               style={{ color: resumenIcon.color, fontSize: '0.78rem', flexShrink: 0 }} />
+                               style={{ color: resumenIcon.color }} />
                         )}
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span className="kcard-6">
                             {resumenTexto || 'Sin mensajes'}
                         </span>
                     </div>
@@ -103,9 +102,9 @@ export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
                 )}
                 {/* Tags */}
                 {cliente.etiquetas?.length > 0 && (
-                    <div style={{ display: 'flex', gap: 3, marginTop: 5 }}>
+                    <div className="kcard-7">
                         {cliente.etiquetas.slice(0, 4).map(t => (
-                            <span key={t.id} title={t.nombre} style={{ width: 8, height: 8, borderRadius: '50%', background: t.color || '#10b981', display: 'inline-block' }}></span>
+                            <span className="kcard-8" key={t.id} title={t.nombre} style={{ background: t.color || '#10b981' }}></span>
                         ))}
                     </div>
                 )}

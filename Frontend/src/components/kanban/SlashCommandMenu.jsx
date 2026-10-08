@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import api from '../../utils/api';
+import '../../assets/css/pages/SlashCommandMenu.css';
+import { useLanguage } from '../../context/LangContext';
 
 // Este archivo exporta el hook useSlashCommands + el componente SlashMenu, que están
 // acoplados por diseño (el hook produce las suggestions que el menú renderiza).
@@ -52,6 +54,8 @@ export default function useSlashCommands(msgInput, setMsgInput) {
             }
         } else if (e.key === 'Escape') {
             // Limpiar el input para que useMemo recompute suggestions = [].
+            // preventDefault: marca el Esc como usado para que useDialog no cierre el chat.
+            e.preventDefault();
             setMsgInput('');
         }
     }, [suggestions, activeIdx, apply, setMsgInput]);
@@ -60,24 +64,13 @@ export default function useSlashCommands(msgInput, setMsgInput) {
 }
 
 export function SlashMenu({ suggestions, activeIdx, onSelect }) {
+    const { t } = useLanguage();
     if (suggestions.length === 0) return null;
 
     return (
-        <div style={{
-            position: 'absolute',
-            bottom: '100%',
-            left: 0,
-            right: 0,
-            background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 10,
-            overflow: 'hidden',
-            boxShadow: '0 -8px 24px rgba(0,0,0,0.5)',
-            zIndex: 2000,
-            marginBottom: 6,
-        }}>
-            <div style={{ padding: '6px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '0.68rem', color: 'var(--color-text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                Respuestas rápidas
+        <div className="slash-1">
+            <div className="slash-2">
+                {t('slash.title')}
             </div>
             {suggestions.map((cmd, i) => (
                 <button
@@ -100,18 +93,18 @@ export function SlashMenu({ suggestions, activeIdx, onSelect }) {
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = i === activeIdx ? 'rgba(99,102,241,0.15)' : 'transparent'; }}
                 >
-                    <span style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '2px 8px', fontSize: '0.78rem', fontWeight: 700, fontFamily: 'monospace', flexShrink: 0, marginTop: 1 }}>
+                    <span className="slash-3">
                         /{cmd.atajo}
                     </span>
-                    <span style={{ color: '#9ca3af', fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                    <span className="slash-4">
                         {cmd.respuesta}
                     </span>
                 </button>
             ))}
-            <div style={{ padding: '5px 12px', fontSize: '0.68rem', color: '#4b5563', display: 'flex', gap: 12 }}>
-                <span><kbd style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 5px', fontSize: '0.7rem' }}>↑↓</kbd> navegar</span>
-                <span><kbd style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 5px', fontSize: '0.7rem' }}>Tab</kbd> aplicar</span>
-                <span><kbd style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 5px', fontSize: '0.7rem' }}>Esc</kbd> cerrar</span>
+            <div className="slash-5">
+                <span><kbd className="slash-6">↑↓</kbd> {t('slash.navigate')}</span>
+                <span><kbd className="slash-6">Tab</kbd> {t('slash.apply')}</span>
+                <span><kbd className="slash-6">Esc</kbd> {t('slash.close')}</span>
             </div>
         </div>
     );

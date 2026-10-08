@@ -1,0 +1,52 @@
+/* Estilos extraídos de los style={{}} estáticos de Contactos.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.cnt-1) { text-align: center !important; }
+:where(.cnt-2) { margin: 0 auto 15px !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.8rem !important; color: var(--color-danger) !important; }
+:where(.cnt-3) { color: #fff !important; margin: 0 0 8px !important; font-size: 1.3rem !important; }
+:where(.cnt-4) { color: var(--color-text-3) !important; margin-bottom: 20px !important; }
+:where(.cnt-5) { width: 60px !important; height: 60px !important; border-radius: 50% !important; background: rgba(59,130,246,0.1) !important; color: var(--color-info) !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 auto 15px !important; font-size: 1.8rem !important; }
+:where(.cnt-6) { color: #fff !important; }
+:where(.cnt-7) { max-width: 480px !important; max-height: 80vh !important; overflow-y: auto !important; }
+:where(.cnt-8) { word-break: break-word !important; white-space: pre-wrap !important; }
+:where(.cnt-9) { text-align: center !important; padding: 40px !important; }
+:where(.cnt-10) { text-align: center !important; padding: 40px !important; color: var(--color-text-3) !important; height: calc(100dvh - 268px) !important; vertical-align: middle !important; }
+:where(.cnt-11) { font-size: 2.5rem !important; margin-bottom: 16px !important; opacity: 0.3 !important; display: block !important; }
+:where(.cnt-12) { font-size: 1rem !important; }
+:where(.cnt-13) { text-align: left !important; }
+:where(.cnt-14) { display: flex !important; align-items: center !important; gap: 12px !important; }
+:where(.cnt-15) { font-weight: 700 !important; color: #fff !important; }
+:where(.cnt-16) { justify-content: center !important; }
+:where(.cnt-17) { text-align: center !important; font-family: monospace !important; }
+:where(.cnt-18) { margin-right: 4px !important; }
+:where(.cnt-19) { color: var(--color-text-3) !important; }
+:where(.cnt-20) { display: flex !important; gap: 4px !important; flex-wrap: wrap !important; justify-content: center !important; }
+:where(.cnt-21) { display: flex !important; align-items: center !important; gap: 6px !important; justify-content: center !important; }
+:where(.cnt-22) { max-width: 200px !important; margin: 0 auto !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; color: var(--color-text-3) !important; font-size: 0.85rem !important; }
+:where(.cnt-23) { display: flex !important; justify-content: center !important; gap: 8px !important; }
+:where(.cnt-24) { height: 100% !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+:where(.cnt-25) { flex-shrink: 0 !important; padding: 20px 30px !important; display: flex !important; justify-content: space-between !important; align-items: center !important; border-bottom: 1px solid var(--border-glass) !important; }
+:where(.cnt-26) { display: flex !important; align-items: center !important; gap: 15px !important; }
+:where(.cnt-27) { font-size: 1.4rem !important; }
+:where(.cnt-28) { font-size: 1.4rem !important; font-weight: 700 !important; color: #fff !important; margin: 0 !important; }
+:where(.cnt-29) { font-size: 0.85rem !important; }
+:where(.cnt-30) { margin: 0 !important; height: 40px !important; position: relative !important; }
+:where(.cnt-31) { position: absolute !important; left: 12px !important; top: 50% !important; transform: translateY(-50%) !important; color: #aaa !important; }
+:where(.cnt-32) { height: 100% !important; width: 240px !important; padding-left: 35px !important; background: rgba(255,255,255,0.05) !important; border: 1px solid var(--border-glass) !important; border-radius: 8px !important; color: white !important; outline: none !important; }
+:where(.cnt-33) { background-color: #1D6F42 !important; border: none !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; }
+:where(.cnt-34) { margin-left: 5px !important; }
+:where(.cnt-35) { background-color: #0061f2 !important; border: none !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+:where(.cnt-36) { flex: 1 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; }
+:where(.cnt-37) { flex: 1 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
+:where(.cnt-38) { flex: 1 !important; overflow-y: auto !important; }
+:where(.cnt-39) { width: 100% !important; border-collapse: separate !important; border-spacing: 0 !important; }
+:where(.cnt-40) { background-color: #0a0a14 !important; }
+:where(.cnt-41) { padding: 15px 20px !important; border-top: 1px solid var(--border-glass) !important; display: flex !important; justify-content: space-between !important; align-items: center !important; background: rgba(0,0,0,0.2) !important; gap: 20px !important; }
+:where(.cnt-42) { display: flex !important; align-items: center !important; gap: 10px !important; }
+:where(.cnt-43) { color: var(--color-text-3) !important; font-size: 0.85rem !important; font-weight: 500 !important; }
+:where(.cnt-44) { padding: 6px 12px !important; border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.1) !important; outline: none !important; cursor: pointer !important; background-color: #0e0e1c !important; color: white !important; }
+:where(.cnt-45) { font-size: 0.7rem !important; }
+:where(.cnt-46) { font-size: 0.8rem !important; }
+:where(.cnt-47) { color: var(--color-text-3) !important; font-size: 0.9rem !important; font-weight: 500 !important; }

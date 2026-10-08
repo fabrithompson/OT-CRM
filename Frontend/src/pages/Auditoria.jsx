@@ -19,6 +19,9 @@ import { useUser } from '../context/UserContext';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LangContext';
 import '../assets/css/dashboard.css';
+import useDialog from '../hooks/useDialog';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import '../assets/css/pages/Auditoria.css';
 
 const SEV_COLOR = { alta: '#ef4444', media: '#f59e0b', baja: '#94a3b8' };
 const SEV_BG    = { alta: 'rgba(239,68,68,0.10)', media: 'rgba(245,158,11,0.10)', baja: 'rgba(148,163,184,0.08)' };
@@ -82,10 +85,12 @@ function parseReportPayload(json) {
 
 // Modal usando las clases CSS del dashboard (backdrop blur, border-radius 18px)
 function Modal({ children, onClose }) {
+    const dialog = useDialog(true, onClose);
     return (
         <div className="db-modal-overlay" onClick={onClose} style={{ animation: 'fadeIn 0.15s ease-out' }}>
             <div
                 className="db-modal"
+                {...dialog}
                 onClick={e => e.stopPropagation()}
                 style={{ animation: 'slideUp 0.18s ease-out', maxWidth: 460, width: '100%' }}
             >
@@ -99,31 +104,15 @@ function Modal({ children, onClose }) {
 // con el mismo look que los KPI del Dashboard.
 function AuditStatCard({ icon, label, value, gradient, small }) {
     return (
-        <div style={{
-            background: gradient || STAT_GRAD.violet,
-            borderRadius: 18, padding: '18px 20px',
-            display: 'flex', flexDirection: 'column', gap: 14,
-            minHeight: 116, overflow: 'hidden',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.35)',
-        }}>
-            <div style={{
-                background: 'rgba(255,255,255,0.18)', borderRadius: 10,
-                width: 38, height: 38, flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-                <i className={`fa-solid ${icon}`} style={{ color: '#fff', fontSize: '0.95rem' }} />
+        <div className="aud-1" style={{ background: gradient || STAT_GRAD.violet }}>
+            <div className="aud-2">
+                <i className={`fa-solid ${icon} aud-3`} />
             </div>
             <div>
-                <div style={{
-                    fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase',
-                    letterSpacing: '0.08em', color: 'rgba(255,255,255,0.75)', marginBottom: 6,
-                }}>
+                <div className="aud-4">
                     {label}
                 </div>
-                <div style={{
-                    fontSize: small ? '1.05rem' : '2.2rem', fontWeight: 800,
-                    color: '#fff', lineHeight: small ? 1.25 : 1,
-                }}>
+                <div className="aud-5" style={{ fontSize: small ? '1.05rem' : '2.2rem', lineHeight: small ? 1.25 : 1 }}>
                     {value}
                 </div>
             </div>
@@ -329,8 +318,8 @@ export default function Auditoria() {
 
     if (userLoading || !usuario || !usuario.plan) {
         return (
-            <div className="db-root" style={{ alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: 'rgba(255,255,255,0.5)' }}>{t('common.loading')}</span>
+            <div className="db-root aud-6">
+                <span className="aud-7">{t('common.loading')}</span>
             </div>
         );
     }
@@ -351,15 +340,14 @@ export default function Auditoria() {
         : totalIncumplimientos <= 5 ? STAT_GRAD.amber : STAT_GRAD.red;
 
     return (
-        <div className="db-root audit-scope" style={{ '--db-accent': '#a78bfa', height: '100%', overflow: 'hidden' }}>
+        <div className="db-root audit-scope aud-8" style={{ '--db-accent': '#a78bfa' }}>
 
             {/* Topbar con tabs */}
-            <div className="db-topbar" style={{ flexShrink: 0, alignItems: 'flex-end' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
+            <div className="db-topbar aud-9">
+                <div className="aud-10">
                     <div>
-                        <div className="db-greeting" style={{ fontSize: 'clamp(1.1rem, 2vw, 1.45rem)' }}>
-                            <i className="fa-solid fa-magnifying-glass-chart"
-                               style={{ marginRight: 10, color: '#a78bfa' }} />
+                        <div className="db-greeting aud-11">
+                            <i className="fa-solid fa-magnifying-glass-chart aud-12" />
                             {t('auditor.title')}
                         </div>
                         <div className="db-subtitle">
@@ -368,7 +356,7 @@ export default function Auditoria() {
                                 : t('auditor.subtitleConfig')}
                         </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    <div className="aud-13">
                         <TabButton active={tab === 'reportes'} onClick={() => setTab('reportes')}
                                    icon="fa-list-ul" label={t('auditor.tabs.reports')} count={reports.length} />
                         <TabButton active={tab === 'config'} onClick={() => setTab('config')}
@@ -377,23 +365,18 @@ export default function Auditoria() {
                     </div>
                 </div>
                 {tab === 'reportes' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="aud-14">
                         {runError && (
-                            <span style={{ fontSize: '0.78rem', color: '#ef4444', maxWidth: 240 }}>{runError}</span>
+                            <span className="aud-15">{runError}</span>
                         )}
                         <button
                             onClick={runAudit}
                             disabled={runLoading || !cfg.auditEnabled}
                             title={!cfg.auditEnabled ? t('auditor.runDisabledTip') : ''}
-                            className="btn-primary"
-                            style={{
-                                background: 'rgba(167,139,250,0.85)', color: '#fff', whiteSpace: 'nowrap',
-                                opacity: !cfg.auditEnabled ? 0.5 : 1,
-                                cursor: !cfg.auditEnabled ? 'not-allowed' : 'pointer',
-                            }}
+                            className="btn-primary aud-16"
+                            style={{ opacity: !cfg.auditEnabled ? 0.5 : 1, cursor: !cfg.auditEnabled ? 'not-allowed' : 'pointer' }}
                         >
-                            <i className={`fa-solid ${runLoading ? 'fa-spinner fa-spin' : 'fa-microscope'}`}
-                               style={{ marginRight: 6 }} />
+                            <i className={`fa-solid ${runLoading ? 'fa-spinner fa-spin' : 'fa-microscope'} aud-17`} />
                             {runLoading ? t('auditor.analyzing') : t('auditor.runNow')}
                         </button>
                     </div>
@@ -402,13 +385,10 @@ export default function Auditoria() {
 
             {/* ── Tab Reportes ── */}
             {tab === 'reportes' && (
-                <div style={{
-                    display: 'flex', flexDirection: 'column', gap: 12,
-                    flex: 1, overflow: 'hidden', minHeight: 0,
-                }}>
+                <div className="aud-18">
                     {/* Stats row — sólo cuando ya hay datos */}
                     {!loadingList && reports.length > 0 && (
-                        <div className="db-metrics-row" style={{ flexShrink: 0, gridTemplateColumns: 'repeat(3,1fr)' }}>
+                        <div className="db-metrics-row aud-19">
                             <AuditStatCard
                                 icon="fa-file-contract"
                                 label={t('auditor.stats.total')}
@@ -423,7 +403,7 @@ export default function Auditoria() {
                             />
                             <AuditStatCard
                                 icon="fa-star-half-stroke"
-                                label="Score promedio"
+                                label={t('auditor.x.avgScore')}
                                 value={reports.length > 0
                                     ? Math.round(reports.reduce((s, r) => s + (r.score || 0), 0) / reports.length) + '%'
                                     : '—'}
@@ -434,17 +414,9 @@ export default function Auditoria() {
                     )}
 
                     {/* Split panel: lista izquierda / detalle derecha */}
-                    <div style={{
-                        display: 'flex', gap: 14, flex: 1, overflow: 'hidden', minHeight: 0,
-                        flexDirection: isMobile ? 'column' : 'row',
-                    }}>
+                    <div className="aud-206" style={{ flex: '1', flexDirection: isMobile ? 'column' : 'row' }}>
                         {/* LEFT: historial de reportes */}
-                        <div style={{
-                            width: isMobile ? '100%' : 308,
-                            flexShrink: 0, overflowY: 'auto',
-                            display: (isMobile && selected) ? 'none' : 'flex',
-                            flexDirection: 'column', gap: 6,
-                        }}>
+                        <div className="aud-21" style={{ width: isMobile ? '100%' : 308, display: (isMobile && selected) ? 'none' : 'flex' }}>
                             {loadingList ? (
                                 <ReportListSkeleton />
                             ) : reports.length === 0 ? (
@@ -465,49 +437,33 @@ export default function Auditoria() {
                         </div>
 
                         {/* RIGHT: detalle del reporte seleccionado */}
-                        <div style={{
-                            flex: 1, overflowY: 'auto', minWidth: 0,
-                            display: (isMobile && !selected) ? 'none' : 'block',
-                        }}>
+                        <div className="aud-22" style={{ display: (isMobile && !selected) ? 'none' : 'block' }}>
                             {!selected ? (
                                 <SelectPrompt t={t} />
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                <div className="aud-23">
                                     {/* Volver en mobile */}
                                     {isMobile && (
-                                        <button
+                                        <button className="aud-24"
                                             onClick={() => setSelected(null)}
-                                            style={{
-                                                alignSelf: 'flex-start', padding: '6px 12px', borderRadius: 8,
-                                                border: '1px solid rgba(255,255,255,0.12)',
-                                                background: 'rgba(255,255,255,0.04)',
-                                                color: 'rgba(255,255,255,0.65)', fontSize: '0.82rem',
-                                                cursor: 'pointer',
-                                            }}
                                         >
-                                            <i className="fa-solid fa-arrow-left" style={{ marginRight: 6 }} />
+                                            <i className="fa-solid fa-arrow-left aud-17" />
                                             {t('auditor.backToHistory')}
                                         </button>
                                     )}
 
                                     {/* ── Cabecera del reporte ── */}
-                                    <div className="db-card" style={{ gap: 12 }}>
+                                    <div className="db-card aud-25">
                                         {/* Chip de título — mismo patrón que ReportRow */}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                                        <div className="aud-26">
                                             <ReportChip r={selected} />
-                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <div className="aud-27">
                                                 {fpCount > 0 && (
-                                                    <button
+                                                    <button className="aud-28"
                                                         onClick={() => setHideFP(v => !v)}
-                                                        style={{
-                                                            fontSize: '0.73rem', padding: '4px 10px',
-                                                            borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)',
-                                                            background: hideFP ? 'rgba(255,255,255,0.05)' : 'rgba(167,139,250,0.12)',
-                                                            color: hideFP ? 'rgba(255,255,255,0.45)' : '#c4b5fd',
-                                                            cursor: 'pointer',
-                                                        }}
+                                                        style={{ background: hideFP ? 'rgba(255,255,255,0.05)' : 'rgba(167,139,250,0.12)', color: hideFP ? 'rgba(255,255,255,0.45)' : '#c4b5fd' }}
                                                     >
-                                                        <i className="fa-solid fa-eye-slash" style={{ marginRight: 4 }} />
+                                                        <i className="fa-solid fa-eye-slash aud-29" />
                                                         {hideFP
                                                             ? `${t('auditor.showFP')} ${fpCount} ${fpCount > 1 ? t('auditor.falsePositives') : t('auditor.falsePositive')}`
                                                             : t('auditor.hideFP')}
@@ -523,28 +479,18 @@ export default function Auditoria() {
                                                 )}
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-3)' }}>
+                                        <div className="aud-30">
                                             {t('auditor.period')}: {fmtPeriod(selected.periodoInicio, selected.periodoFin)}
                                             {selected.nombre && (
-                                                <span style={{ marginLeft: 10 }}>· {fmtDate(selected.createdAt)}</span>
+                                                <span className="aud-31">· {fmtDate(selected.createdAt)}</span>
                                             )}
                                         </div>
 
                                         {/* Resumen ejecutivo */}
                                         {(resumen_ejecutivo || selected.resumen) && (
-                                            <div style={{
-                                                padding: '14px 18px', borderRadius: 10,
-                                                background: 'rgba(167,139,250,0.05)',
-                                                border: '1px solid rgba(167,139,250,0.14)',
-                                                fontSize: '0.87rem', color: 'rgba(255,255,255,0.78)',
-                                                lineHeight: 1.7, whiteSpace: 'pre-wrap',
-                                            }}>
-                                                <div style={{
-                                                    fontSize: '0.70rem', color: '#c4b5fd',
-                                                    textTransform: 'uppercase', letterSpacing: '0.08em',
-                                                    marginBottom: 8, fontWeight: 700,
-                                                }}>
-                                                    <i className="fa-solid fa-clipboard-list" style={{ marginRight: 6 }} />
+                                            <div className="aud-32">
+                                                <div className="aud-33">
+                                                    <i className="fa-solid fa-clipboard-list aud-17" />
                                                     {t('auditor.executiveSummary')}
                                                 </div>
                                                 {resumen_ejecutivo || selected.resumen}
@@ -552,76 +498,44 @@ export default function Auditoria() {
                                         )}
 
                                         {selected.notas && (
-                                            <div style={{
-                                                padding: '10px 14px', borderRadius: 8,
-                                                background: 'rgba(245,158,11,0.06)',
-                                                border: '1px solid rgba(245,158,11,0.18)',
-                                                fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)',
-                                                lineHeight: 1.6, whiteSpace: 'pre-wrap',
-                                            }}>
-                                                <div style={{
-                                                    fontSize: '0.68rem', color: '#fbbf24',
-                                                    textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4,
-                                                    fontWeight: 700,
-                                                }}>
-                                                    <i className="fa-regular fa-note-sticky" style={{ marginRight: 5 }} />
+                                            <div className="aud-34">
+                                                <div className="aud-35">
+                                                    <i className="fa-regular fa-note-sticky aud-36" />
                                                     {t('auditor.notes')}
                                                 </div>
                                                 {selected.notas}
                                             </div>
                                         )}
 
-                                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.22)', textAlign: 'right' }}>
+                                        <div className="aud-37">
                                             {t('auditor.tokensUsed')}: {selected.tokensUsados?.toLocaleString('es-AR')}
                                         </div>
                                     </div>
 
                                     {/* ── Procedimientos auditados ── */}
                                     {procedimientos.length > 0 && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                            <div style={{
-                                                display: 'flex', alignItems: 'center',
-                                                justifyContent: 'space-between', padding: '0 2px',
-                                            }}>
-                                                <div style={{
-                                                    fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)',
-                                                    textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
-                                                    display: 'flex', alignItems: 'center', gap: 7,
-                                                }}>
-                                                    <i className="fa-solid fa-list-check" style={{ color: '#a78bfa' }} />
+                                        <div className="aud-38">
+                                            <div className="aud-39">
+                                                <div className="aud-40">
+                                                    <i className="fa-solid fa-list-check aud-41" />
                                                     {t('auditor.procedures')} ({procedimientos.length})
                                                 </div>
-                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                <div className="aud-42">
                                                     {counts.cumplido > 0 && (
-                                                        <span style={{
-                                                            fontSize: '0.72rem', fontWeight: 700,
-                                                            padding: '2px 8px', borderRadius: 12,
-                                                            background: 'rgba(16,185,129,0.12)',
-                                                            color: '#10b981', border: '1px solid rgba(16,185,129,0.25)',
-                                                        }}>
-                                                            <i className="fa-solid fa-circle-check" style={{ marginRight: 3 }} />
+                                                        <span className="aud-43">
+                                                            <i className="fa-solid fa-circle-check aud-44" />
                                                             {counts.cumplido}
                                                         </span>
                                                     )}
                                                     {counts.parcial > 0 && (
-                                                        <span style={{
-                                                            fontSize: '0.72rem', fontWeight: 700,
-                                                            padding: '2px 8px', borderRadius: 12,
-                                                            background: 'rgba(245,158,11,0.12)',
-                                                            color: '#f59e0b', border: '1px solid rgba(245,158,11,0.25)',
-                                                        }}>
-                                                            <i className="fa-solid fa-circle-exclamation" style={{ marginRight: 3 }} />
+                                                        <span className="aud-45">
+                                                            <i className="fa-solid fa-circle-exclamation aud-44" />
                                                             {counts.parcial}
                                                         </span>
                                                     )}
                                                     {counts.incumplido > 0 && (
-                                                        <span style={{
-                                                            fontSize: '0.72rem', fontWeight: 700,
-                                                            padding: '2px 8px', borderRadius: 12,
-                                                            background: 'rgba(239,68,68,0.12)',
-                                                            color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)',
-                                                        }}>
-                                                            <i className="fa-solid fa-circle-xmark" style={{ marginRight: 3 }} />
+                                                        <span className="aud-46">
+                                                            <i className="fa-solid fa-circle-xmark aud-44" />
                                                             {counts.incumplido}
                                                         </span>
                                                     )}
@@ -635,47 +549,27 @@ export default function Auditoria() {
                                                 return (
                                                     <div
                                                         key={i}
-                                                        className="db-card"
-                                                        style={{
-                                                            gap: 0, padding: 0, overflow: 'hidden',
-                                                            borderLeft: `3px solid ${meta.color}`,
-                                                        }}
+                                                        className="db-card aud-47"
+                                                        style={{ borderLeft: `3px solid ${meta.color}` }}
                                                     >
-                                                        <button
+                                                        <button className="aud-48"
                                                             type="button"
                                                             onClick={() => setExpandedProcs(prev => ({ ...prev, [i]: !prev[i] }))}
-                                                            style={{
-                                                                all: 'unset', cursor: 'pointer',
-                                                                padding: '13px 16px', display: 'flex',
-                                                                justifyContent: 'space-between', alignItems: 'center',
-                                                                gap: 10, width: '100%', boxSizing: 'border-box',
-                                                            }}
                                                         >
-                                                            <div style={{
-                                                                fontSize: '0.88rem', fontWeight: 700,
-                                                                color: 'rgba(255,255,255,0.88)', flex: 1,
-                                                                lineHeight: 1.4,
-                                                            }}>
+                                                            <div className="aud-49">
                                                                 {p.punto || `${t('auditor.procedures')} ${i + 1}`}
                                                             </div>
-                                                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                                                                <span style={{
-                                                                    fontSize: '0.72rem', fontWeight: 700,
-                                                                    padding: '3px 10px', borderRadius: 6,
-                                                                    background: meta.bg, color: meta.color,
-                                                                    border: `1px solid ${meta.border}`,
-                                                                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                                                                }}>
+                                                            <div className="aud-50">
+                                                                <span className="aud-207" style={{ borderRadius: '6px', background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}>
                                                                     <i className={`fa-solid ${meta.icon}`} />
                                                                     {t(`auditor.states.${p.estado}`)}
                                                                 </span>
                                                                 {evidencias.length > 0 && (
-                                                                    <span style={{ fontSize: '0.70rem', color: 'var(--color-text-3)' }}>
+                                                                    <span className="aud-52">
                                                                         {evidencias.length} {evidencias.length > 1 ? t('auditor.evidences') : t('auditor.evidence')}
                                                                     </span>
                                                                 )}
-                                                                <i className={`fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}
-                                                                   style={{ color: 'var(--color-text-3)', fontSize: '0.75rem' }} />
+                                                                <i className={`fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'} aud-53`} />
                                                             </div>
                                                         </button>
 
@@ -687,23 +581,13 @@ export default function Auditoria() {
                                                                 borderTop: '1px solid rgba(255,255,255,0.05)',
                                                             }}>
                                                                 {p.justificacion && (
-                                                                    <div style={{
-                                                                        marginTop: 12,
-                                                                        fontSize: '0.83rem', color: 'rgba(255,255,255,0.62)',
-                                                                        lineHeight: 1.6, padding: '8px 12px',
-                                                                        background: 'rgba(255,255,255,0.02)',
-                                                                        borderRadius: 6,
-                                                                        borderLeft: `2px solid ${meta.border}`,
-                                                                    }}>
+                                                                    <div className="aud-54" style={{ borderLeft: `2px solid ${meta.border}` }}>
                                                                         {p.justificacion}
                                                                     </div>
                                                                 )}
 
                                                                 {evidencias.length === 0 ? (
-                                                                    <div style={{
-                                                                        fontSize: '0.76rem', color: 'var(--color-text-3)',
-                                                                        fontStyle: 'italic', textAlign: 'center', padding: 8,
-                                                                    }}>
+                                                                    <div className="aud-55">
                                                                         {t('auditor.noEvidences')}
                                                                     </div>
                                                                 ) : evidencias.map((ev, j) => (
@@ -720,21 +604,13 @@ export default function Auditoria() {
                                     {/* ── Hallazgos individuales ── */}
                                     {hallazgos.length > 0 && (
                                         <>
-                                            <div style={{
-                                                fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)',
-                                                textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
-                                                padding: '0 2px', marginTop: 4,
-                                                display: 'flex', alignItems: 'center', gap: 7,
-                                            }}>
-                                                <i className="fa-solid fa-triangle-exclamation" style={{ color: '#f59e0b' }} />
+                                            <div className="aud-56">
+                                                <i className="fa-solid fa-triangle-exclamation aud-57" />
                                                 {t('auditor.findings')} ({visibles.length})
                                             </div>
 
                                             {visibles.length === 0 && hallazgos.length > 0 && (
-                                                <div style={{
-                                                    textAlign: 'center', padding: '20px',
-                                                    color: 'var(--color-text-3)', fontSize: '0.85rem',
-                                                }}>
+                                                <div className="aud-58">
                                                     {t('auditor.allFP')}
                                                 </div>
                                             )}
@@ -746,40 +622,19 @@ export default function Auditoria() {
                                                 return (
                                                     <div
                                                         key={realIdx}
-                                                        className="db-card"
-                                                        style={{
-                                                            gap: 10, opacity: isFP ? 0.5 : 1,
-                                                            borderLeft: `3px solid ${SEV_COLOR[sev] || '#475569'}`,
-                                                            paddingLeft: 16,
-                                                        }}
+                                                        className="db-card aud-59"
+                                                        style={{ opacity: isFP ? 0.5 : 1, borderLeft: `3px solid ${SEV_COLOR[sev] || '#475569'}` }}
                                                     >
-                                                        <div style={{
-                                                            display: 'flex', justifyContent: 'space-between',
-                                                            alignItems: 'flex-start', gap: 8,
-                                                        }}>
-                                                            <div style={{
-                                                                fontSize: '0.90rem', fontWeight: 700,
-                                                                color: 'rgba(255,255,255,0.88)', flex: 1,
-                                                            }}>
+                                                        <div className="aud-60">
+                                                            <div className="aud-61">
                                                                 {h.regla_violada || t('auditor.states.incumplido')}
                                                             </div>
-                                                            <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-                                                                <span style={{
-                                                                    fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px',
-                                                                    borderRadius: 6, background: SEV_BG[sev] || SEV_BG.baja,
-                                                                    color: SEV_COLOR[sev] || SEV_COLOR.baja,
-                                                                    border: `1px solid ${(SEV_COLOR[sev] || SEV_COLOR.baja)}40`,
-                                                                    textTransform: 'uppercase', letterSpacing: '0.05em',
-                                                                }}>
+                                                            <div className="aud-62">
+                                                                <span className="aud-208" style={{ borderRadius: '6px', background: SEV_BG[sev] || SEV_BG.baja, color: SEV_COLOR[sev] || SEV_COLOR.baja, border: `1px solid ${(SEV_COLOR[sev] || SEV_COLOR.baja)}40` }}>
                                                                     {sev}
                                                                 </span>
                                                                 {h.tipo === 'advertencia' && (
-                                                                    <span style={{
-                                                                        fontSize: '0.68rem', padding: '2px 8px',
-                                                                        borderRadius: 6, background: 'rgba(99,102,241,0.12)',
-                                                                        color: '#818cf8',
-                                                                        border: '1px solid rgba(99,102,241,0.25)',
-                                                                    }}>
+                                                                    <span className="aud-64">
                                                                         {t('auditor.warning')}
                                                                     </span>
                                                                 )}
@@ -787,64 +642,43 @@ export default function Auditoria() {
                                                         </div>
 
                                                         {h.descripcion && (
-                                                            <div style={{
-                                                                fontSize: '0.83rem', color: 'rgba(255,255,255,0.58)',
-                                                                lineHeight: 1.6,
-                                                            }}>
+                                                            <div className="aud-65">
                                                                 {h.descripcion}
                                                             </div>
                                                         )}
 
                                                         {h.cita_textual && (
-                                                            <blockquote style={{
-                                                                margin: 0, padding: '10px 14px',
-                                                                background: 'rgba(0,0,0,0.30)',
-                                                                borderLeft: '3px solid rgba(167,139,250,0.45)',
-                                                                borderRadius: '0 8px 8px 0',
-                                                                fontSize: '0.82rem', fontStyle: 'italic',
-                                                                color: 'rgba(255,255,255,0.65)', lineHeight: 1.6,
-                                                            }}>
+                                                            <blockquote className="aud-66">
                                                                 &quot;{h.cita_textual}&quot;
                                                             </blockquote>
                                                         )}
 
-                                                        <div style={{
-                                                            display: 'flex', justifyContent: 'space-between',
-                                                            alignItems: 'center', flexWrap: 'wrap', gap: 8,
-                                                        }}>
-                                                            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-3)' }}>
+                                                        <div className="aud-67">
+                                                            <div className="aud-68">
                                                                 {h.vendedor && (
                                                                     <span>
-                                                                        <i className="fa-solid fa-user" style={{ marginRight: 4, color: '#a78bfa' }} />
-                                                                        <strong style={{ color: '#c4b5fd' }}>{h.vendedor}</strong>
+                                                                        <i className="fa-solid fa-user aud-69" />
+                                                                        <strong className="aud-70">{h.vendedor}</strong>
                                                                     </span>
                                                                 )}
                                                                 {h.cuando && (
-                                                                    <span style={{ marginLeft: 10 }}>
-                                                                        <i className="fa-regular fa-clock" style={{ marginRight: 4 }} />
+                                                                    <span className="aud-31">
+                                                                        <i className="fa-regular fa-clock aud-29" />
                                                                         {h.cuando}
                                                                     </span>
                                                                 )}
-                                                                {h.confianza && <span style={{ marginLeft: 10 }}>{t('auditor.confidence')}: {h.confianza}</span>}
-                                                                {h.cliente_id && <span style={{ marginLeft: 10 }}>{t('auditor.client')} ID: {h.cliente_id}</span>}
+                                                                {h.confianza && <span className="aud-31">{t('auditor.confidence')}: {h.confianza}</span>}
+                                                                {h.cliente_id && <span className="aud-31">{t('auditor.client')} ID: {h.cliente_id}</span>}
                                                             </div>
-                                                            <button
+                                                            <button className="aud-209"
                                                                 onClick={() => toggleFP(selected.id, realIdx)}
-                                                                style={{
-                                                                    fontSize: '0.72rem', padding: '3px 10px',
-                                                                    borderRadius: 7,
-                                                                    border: isFP
+                                                                style={{ borderRadius: '7px', border: isFP
                                                                         ? '1px solid rgba(167,139,250,0.40)'
-                                                                        : '1px solid rgba(255,255,255,0.12)',
-                                                                    background: isFP
+                                                                        : '1px solid rgba(255,255,255,0.12)', background: isFP
                                                                         ? 'rgba(167,139,250,0.12)'
-                                                                        : 'rgba(255,255,255,0.04)',
-                                                                    color: isFP ? '#c4b5fd' : 'var(--color-text-3)',
-                                                                    cursor: 'pointer', transition: '0.15s',
-                                                                }}
+                                                                        : 'rgba(255,255,255,0.04)', color: isFP ? '#c4b5fd' : 'var(--color-text-3)' }}
                                                             >
-                                                                <i className={`fa-solid ${isFP ? 'fa-rotate-left' : 'fa-ban'}`}
-                                                                   style={{ marginRight: 4 }} />
+                                                                <i className={`fa-solid ${isFP ? 'fa-rotate-left' : 'fa-ban'} aud-29`} />
                                                                 {isFP ? t('auditor.restore') : t('auditor.markFP')}
                                                             </button>
                                                         </div>
@@ -859,13 +693,8 @@ export default function Auditoria() {
                                     )}
 
                                     {procedimientos.length === 0 && hallazgos.length === 0 && (
-                                        <div style={{
-                                            textAlign: 'center', padding: '32px',
-                                            color: '#10b981', fontSize: '0.92rem',
-                                            display: 'flex', flexDirection: 'column',
-                                            alignItems: 'center', gap: 10,
-                                        }}>
-                                            <i className="fa-solid fa-circle-check" style={{ fontSize: '2rem', opacity: 0.7 }} />
+                                        <div className="aud-72">
+                                            <i className="fa-solid fa-circle-check aud-73" />
                                             {t('auditor.noIncidents')}
                                         </div>
                                     )}
@@ -890,13 +719,13 @@ export default function Auditoria() {
             {/* Modal edición de metadatos */}
             {editingMeta && (
                 <Modal onClose={() => setEditingMeta(null)}>
-                    <h3 style={{ margin: '0 0 4px', fontSize: '1rem' }}>{t('auditor.modal.editTitle')}</h3>
-                    <p style={{ margin: '0 0 16px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)' }}>
+                    <h3 className="aud-74">{t('auditor.modal.editTitle')}</h3>
+                    <p className="aud-75">
                         {t('auditor.modal.editSubtitle')}
                     </p>
 
-                    <div className="db-metric-label" style={{ marginBottom: 5 }}>{t('auditor.modal.name')}</div>
-                    <input
+                    <div className="db-metric-label aud-76">{t('auditor.modal.name')}</div>
+                    <input aria-label={t('auditor.modal.name')}
                         type="text"
                         value={editingMeta.nombre}
                         onChange={e => setEditingMeta(m => ({ ...m, nombre: e.target.value }))}
@@ -904,7 +733,7 @@ export default function Auditoria() {
                         style={inputStyle}
                     />
 
-                    <div className="db-metric-label" style={{ margin: '14px 0 5px' }}>{t('auditor.modal.notes')}</div>
+                    <div className="db-metric-label aud-77">{t('auditor.modal.notes')}</div>
                     <AutoTextarea
                         value={editingMeta.notas}
                         onChange={e => setEditingMeta(m => ({ ...m, notas: e.target.value }))}
@@ -913,10 +742,10 @@ export default function Auditoria() {
                         style={inputStyle}
                     />
 
-                    <div className="db-modal-actions" style={{ marginTop: 18 }}>
+                    <div className="db-modal-actions aud-78">
                         <button onClick={() => setEditingMeta(null)} style={btnGhost}>{t('auditor.modal.cancel')}</button>
-                        <button onClick={saveMeta} className="btn-primary" style={{ background: 'rgba(167,139,250,0.85)' }}>
-                            <i className="fa-solid fa-floppy-disk" style={{ marginRight: 5 }} />
+                        <button onClick={saveMeta} className="btn-primary aud-79">
+                            <i className="fa-solid fa-floppy-disk aud-36" />
                             {t('auditor.modal.save')}
                         </button>
                     </div>
@@ -926,14 +755,14 @@ export default function Auditoria() {
             {/* Modal confirmación eliminación */}
             {deleting && (
                 <Modal onClose={() => setDeleting(null)}>
-                    <h3 style={{ margin: '0 0 10px', fontSize: '1rem' }}>
-                        <i className="fa-solid fa-triangle-exclamation" style={{ color: '#ef4444', marginRight: 8 }} />
+                    <h3 className="aud-80">
+                        <i className="fa-solid fa-triangle-exclamation aud-81" />
                         {t('auditor.modal.deleteTitle')}
                     </h3>
-                    <p style={{ fontSize: '0.85rem', lineHeight: 1.6, margin: '0 0 20px' }}>
+                    <p className="aud-82">
                         {t('auditor.modal.deleteConfirm')}
                         {deleting.nombre
-                            ? <strong style={{ color: '#fff' }}> &quot;{deleting.nombre}&quot;</strong>
+                            ? <strong className="aud-83"> &quot;{deleting.nombre}&quot;</strong>
                             : <span> {fmtDate(deleting.createdAt)}</span>}?
                         {' '}{t('auditor.modal.deleteIrreversible')}
                     </p>
@@ -943,7 +772,7 @@ export default function Auditoria() {
                             ...btnGhost, background: 'rgba(239,68,68,0.18)',
                             border: '1px solid rgba(239,68,68,0.45)', color: '#fca5a5',
                         }}>
-                            <i className="fa-solid fa-trash" style={{ marginRight: 5 }} />
+                            <i className="fa-solid fa-trash aud-36" />
                             {t('auditor.row.delete')}
                         </button>
                     </div>
@@ -987,16 +816,8 @@ function ReportChip({ r }) {
     const chipIcon  = n === 0 ? 'fa-circle-check' : n <= 3 ? 'fa-circle-exclamation' : 'fa-circle-xmark';
     const label     = r.nombre || fmtDateShort(r.createdAt);
     return (
-        <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '4px 12px 4px 9px', borderRadius: 20,
-            background: chipBg, color: chipColor,
-            border: `1px solid ${chipColor}28`,
-            fontSize: '0.82rem', fontWeight: 700,
-            maxWidth: '100%', overflow: 'hidden',
-            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-            <i className={`fa-solid ${chipIcon}`} style={{ fontSize: '0.70rem', flexShrink: 0 }} />
+        <span className="aud-210" style={{ borderRadius: '20px', background: chipBg, color: chipColor, border: `1px solid ${chipColor}28` }}>
+            <i className={`fa-solid ${chipIcon} aud-85`} />
             {label}
         </span>
     );
@@ -1007,10 +828,7 @@ function IncumplimientosBadge({ n, t }) {
     const bg    = n === 0 ? 'rgba(16,185,129,0.12)' : n <= 3 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
     const bord  = n === 0 ? 'rgba(16,185,129,0.25)' : n <= 3 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
     return (
-        <div style={{
-            fontSize: '0.78rem', fontWeight: 700, padding: '4px 12px',
-            borderRadius: 8, background: bg, color, border: `1px solid ${bord}`,
-        }}>
+        <div className="aud-211" style={{ borderRadius: '8px', background: bg, color, border: `1px solid ${bord}` }}>
             {n === 0
                 ? t('auditor.noIncidentsShort')
                 : `${n} ${n > 1 ? t('auditor.incidents') : t('auditor.incident')}`}
@@ -1020,28 +838,19 @@ function IncumplimientosBadge({ n, t }) {
 
 function EvidenciaCard({ ev, meta, t }) {
     return (
-        <div style={{
-            padding: '10px 12px', borderRadius: 8,
-            background: 'rgba(0,0,0,0.18)',
-            border: '1px solid rgba(255,255,255,0.05)',
-            display: 'flex', flexDirection: 'column', gap: 6,
-        }}>
-            <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', flexWrap: 'wrap', gap: 6,
-                fontSize: '0.77rem',
-            }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <i className="fa-solid fa-user" style={{ color: '#a78bfa' }} />
-                    <strong style={{ color: '#c4b5fd' }}>{ev.vendedor || t('auditor.vendorUnknown')}</strong>
+        <div className="aud-87">
+            <div className="aud-88">
+                <span className="aud-89">
+                    <i className="fa-solid fa-user aud-41" />
+                    <strong className="aud-70">{ev.vendedor || t('auditor.vendorUnknown')}</strong>
                     {ev.cliente_id && (
-                        <span style={{ color: 'var(--color-text-3)' }}>
+                        <span className="aud-90">
                             · {t('auditor.client')} #{ev.cliente_id}
                         </span>
                     )}
                 </span>
                 {ev.cuando && (
-                    <span style={{ color: 'rgba(255,255,255,0.45)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <span className="aud-91">
                         <i className="fa-regular fa-clock" />
                         {ev.cuando}
                     </span>
@@ -1049,11 +858,8 @@ function EvidenciaCard({ ev, meta, t }) {
             </div>
 
             {ev.como && (
-                <div style={{ fontSize: '0.80rem', color: 'rgba(255,255,255,0.58)', lineHeight: 1.55 }}>
-                    <span style={{
-                        color: 'var(--color-text-3)', fontSize: '0.72rem', marginRight: 6,
-                        textTransform: 'uppercase', letterSpacing: '0.06em',
-                    }}>
+                <div className="aud-92">
+                    <span className="aud-93">
                         {t('auditor.how')}:
                     </span>
                     {ev.como}
@@ -1061,47 +867,24 @@ function EvidenciaCard({ ev, meta, t }) {
             )}
 
             {ev.cita_textual && (
-                <blockquote style={{
-                    margin: 0, padding: '8px 12px',
-                    background: 'rgba(0,0,0,0.30)',
-                    borderLeft: `3px solid ${meta.color}80`,
-                    borderRadius: '0 6px 6px 0',
-                    fontSize: '0.80rem', fontStyle: 'italic',
-                    color: 'rgba(255,255,255,0.70)', lineHeight: 1.55,
-                }}>
+                <blockquote className="aud-94" style={{ borderLeft: `3px solid ${meta.color}80` }}>
                     &quot;{ev.cita_textual}&quot;
                 </blockquote>
             )}
 
             {(ev.esperado || ev.ocurrido) && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 2 }}>
-                    <div style={{
-                        padding: '6px 10px', borderRadius: 6,
-                        background: 'rgba(16,185,129,0.06)',
-                        border: '1px solid rgba(16,185,129,0.15)',
-                        fontSize: '0.74rem', lineHeight: 1.5,
-                    }}>
-                        <div style={{
-                            color: '#34d399', fontWeight: 700, marginBottom: 3,
-                            fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                        }}>
+                <div className="aud-95">
+                    <div className="aud-96">
+                        <div className="aud-97">
                             {t('auditor.expected')}
                         </div>
-                        <div style={{ color: 'rgba(255,255,255,0.6)' }}>{ev.esperado || '—'}</div>
+                        <div className="aud-98">{ev.esperado || '—'}</div>
                     </div>
-                    <div style={{
-                        padding: '6px 10px', borderRadius: 6,
-                        background: 'rgba(239,68,68,0.06)',
-                        border: '1px solid rgba(239,68,68,0.15)',
-                        fontSize: '0.74rem', lineHeight: 1.5,
-                    }}>
-                        <div style={{
-                            color: '#f87171', fontWeight: 700, marginBottom: 3,
-                            fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em',
-                        }}>
+                    <div className="aud-99">
+                        <div className="aud-100">
                             {t('auditor.actual')}
                         </div>
-                        <div style={{ color: 'rgba(255,255,255,0.6)' }}>{ev.ocurrido || '—'}</div>
+                        <div className="aud-98">{ev.ocurrido || '—'}</div>
                     </div>
                 </div>
             )}
@@ -1111,43 +894,24 @@ function EvidenciaCard({ ev, meta, t }) {
 
 function SelectPrompt({ t }) {
     return (
-        <div style={{
-            height: '100%', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', flexDirection: 'column', gap: 14,
-            color: 'rgba(255,255,255,0.22)',
-        }}>
-            <div style={{
-                width: 56, height: 56, borderRadius: 14,
-                background: 'rgba(167,139,250,0.08)',
-                border: '1px solid rgba(167,139,250,0.18)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.4rem', color: 'rgba(167,139,250,0.6)',
-            }}>
+        <div className="aud-101">
+            <div className="aud-102">
                 <i className="fa-solid fa-file-contract" />
             </div>
-            <span style={{ fontSize: '0.88rem' }}>{t('auditor.selectReport')}</span>
+            <span className="aud-103">{t('auditor.selectReport')}</span>
         </div>
     );
 }
 
 function EmptyHistory({ t }) {
     return (
-        <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: 10, padding: '32px 16px', textAlign: 'center',
-        }}>
-            <div style={{
-                width: 52, height: 52, borderRadius: 14,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.3rem', color: 'rgba(255,255,255,0.2)',
-            }}>
+        <div className="aud-104">
+            <div className="aud-105">
                 <i className="fa-solid fa-folder-open" />
             </div>
-            <div style={{ color: 'var(--color-text-3)', fontSize: '0.83rem', lineHeight: 1.7 }}>
+            <div className="aud-106">
                 {t('auditor.emptyState')}<br />
-                {t('auditor.emptyStateHint')} <strong style={{ color: 'rgba(255,255,255,0.5)' }}>&quot;{t('auditor.runNow')}&quot;</strong>.
+                {t('auditor.emptyStateHint')} <strong className="aud-7">&quot;{t('auditor.runNow')}&quot;</strong>.
             </div>
         </div>
     );
@@ -1157,34 +921,19 @@ function EmptyHistory({ t }) {
 
 function TabButton({ active, onClick, icon, label, count, dot }) {
     return (
-        <button
+        <button className="aud-212"
             onClick={onClick}
-            style={{
-                padding: '7px 14px', borderRadius: '8px 8px 0 0',
-                border: 'none', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600,
-                background: active ? 'rgba(167,139,250,0.14)' : 'transparent',
-                color: active ? '#c4b5fd' : 'rgba(255,255,255,0.5)',
-                borderBottom: active ? '2px solid #a78bfa' : '2px solid transparent',
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                transition: '0.15s',
-            }}
+            style={{ border: 'none', background: active ? 'rgba(167,139,250,0.14)' : 'transparent', color: active ? '#c4b5fd' : 'rgba(255,255,255,0.5)', borderBottom: active ? '2px solid #a78bfa' : '2px solid transparent' }}
         >
             <i className={`fa-solid ${icon}`} />
             {label}
             {typeof count === 'number' && (
-                <span style={{
-                    fontSize: '0.68rem', padding: '1px 6px', borderRadius: 8,
-                    background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)',
-                }}>
+                <span className="aud-108">
                     {count}
                 </span>
             )}
             {dot && (
-                <span style={{
-                    width: 6, height: 6, borderRadius: '50%',
-                    background: '#10b981', display: 'inline-block',
-                    boxShadow: '0 0 6px #10b981',
-                }} />
+                <span className="aud-109" />
             )}
         </button>
     );
@@ -1196,27 +945,16 @@ function ReportRow({ r, idx, total, selected, expanded, onSelect, onToggleExpand
     const sub = r.nombre ? fmtDate(r.createdAt) : fmtPeriod(r.periodoInicio, r.periodoFin);
 
     return (
-        <div style={{
-            borderRadius: 14,
-            background: selected ? 'rgba(167,139,250,0.16)' : 'linear-gradient(135deg, #181226 0%, #15111f 55%, #100c1a 100%)',
-            border: `1px solid ${selected ? 'rgba(167,139,250,0.38)' : 'rgba(167,139,250,0.12)'}`,
-            overflow: 'hidden', transition: 'border-color 0.15s, background 0.15s',
-            display: 'flex', flexDirection: 'column',
-        }}>
+        <div className="aud-213" style={{ borderRadius: '14px', background: selected ? 'rgba(167,139,250,0.16)' : 'linear-gradient(135deg, #181226 0%, #15111f 55%, #100c1a 100%)', border: `1px solid ${selected ? 'rgba(167,139,250,0.38)' : 'rgba(167,139,250,0.12)'}` }}>
             {/* Área principal clickeable */}
-            <button
+            <button className="aud-111"
                 type="button"
                 onClick={onSelect}
-                style={{
-                    all: 'unset', cursor: 'pointer',
-                    padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8,
-                    width: '100%', boxSizing: 'border-box',
-                }}
             >
                 <ReportChip r={r} />
 
                 {/* Fecha / período en muted */}
-                <div style={{ fontSize: '0.71rem', color: 'rgba(255,255,255,0.36)', lineHeight: 1.3 }}>
+                <div className="aud-112">
                     {sub}
                 </div>
 
@@ -1230,8 +968,8 @@ function ReportRow({ r, idx, total, selected, expanded, onSelect, onToggleExpand
                     }}>
                         {r.resumen || t('auditor.row.noSummary')}
                         {r.notas && (
-                            <div style={{ marginTop: 6, color: '#fbbf24', fontSize: '0.72rem' }}>
-                                <i className="fa-regular fa-note-sticky" style={{ marginRight: 4 }} />
+                            <div className="aud-113">
+                                <i className="fa-regular fa-note-sticky aud-29" />
                                 {r.notas}
                             </div>
                         )}
@@ -1240,18 +978,13 @@ function ReportRow({ r, idx, total, selected, expanded, onSelect, onToggleExpand
             </button>
 
             {/* Footer con acciones */}
-            <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '5px 10px',
-                borderTop: '1px solid rgba(255,255,255,0.05)',
-                background: 'rgba(0,0,0,0.20)',
-            }}>
-                <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <div className="aud-114">
+                <div className="aud-115">
                     <IconButton onClick={onMoveUp} disabled={idx === 0} icon="fa-arrow-up" title={t('auditor.row.moveUp')} />
                     <IconButton onClick={onMoveDown} disabled={idx === total - 1} icon="fa-arrow-down" title={t('auditor.row.moveDown')} />
                     {r.score > 0 && <ScoreBar score={r.score} size="sm" />}
                 </div>
-                <div style={{ display: 'flex', gap: 2 }}>
+                <div className="aud-116">
                     <IconButton onClick={onToggleExpand} icon={expanded ? 'fa-chevron-up' : 'fa-chevron-down'}
                                 title={expanded ? t('auditor.row.collapse') : t('auditor.row.expand')} />
                     <IconButton onClick={onEdit} icon="fa-pen" title={t('auditor.row.edit')} />
@@ -1289,11 +1022,8 @@ function ReportListSkeleton() {
     return (
         <>
             {[1, 2, 3, 4].map(k => (
-                <div key={k} className="db-card" style={{
-                    padding: 12, borderRadius: 14, gap: 8,
-                    borderLeft: '3px solid rgba(255,255,255,0.08)',
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div key={k} className="db-card aud-117">
+                    <div className="aud-118">
                         <div style={skel(120, 10)} />
                         <div style={skel(40, 14)} />
                     </div>
@@ -1321,7 +1051,7 @@ function AutoTextarea({ value, onChange, placeholder, style, minHeight = 130, ma
         }
     }, [value, minHeight, maxHeight]);
     return (
-        <textarea
+        <textarea aria-label={placeholder}
             ref={ref}
             value={value}
             onChange={onChange}
@@ -1350,32 +1080,23 @@ function ScoreBar({ score, size = 'md' }) {
 
     if (size === 'sm') {
         return (
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '2px 7px', borderRadius: 6,
-                background: bg, border: `1px solid ${bord}`,
-                fontSize: '0.70rem', fontWeight: 700, color,
-            }}>
-                <i className="fa-solid fa-star-half-stroke" style={{ fontSize: '0.60rem' }} />
+            <div className="aud-214" style={{ borderRadius: '6px', background: bg, border: `1px solid ${bord}`, color }}>
+                <i className="fa-solid fa-star-half-stroke aud-120" />
                 {pct}%
             </div>
         );
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 110 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <div className="aud-121">
+            <div className="aud-122">
+                <span className="aud-123">
                     Score
                 </span>
-                <span style={{ fontSize: '0.80rem', fontWeight: 800, color }}>{pct}%</span>
+                <span className="aud-124" style={{ color }}>{pct}%</span>
             </div>
-            <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                <div style={{
-                    height: '100%', width: `${pct}%`,
-                    borderRadius: 3, background: color,
-                    transition: 'width 0.4s ease',
-                }} />
+            <div className="aud-125">
+                <div className="aud-126" style={{ width: `${pct}%`, background: color }} />
             </div>
         </div>
     );
@@ -1392,34 +1113,28 @@ function tiempoScoreStyle(score) {
 // ─── TiempoRespuestaBar ──────────────────────────────────────────────────────
 
 function TiempoRespuestaBar({ score, avgMin }) {
+    const { t } = useLanguage();
     const pct   = Math.max(0, Math.min(100, score || 0));
     const { color } = tiempoScoreStyle(pct);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 140 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                <span style={{
-                    fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)',
-                    textTransform: 'uppercase', letterSpacing: '0.06em',
-                    display: 'flex', alignItems: 'center', gap: 4,
-                }}>
-                    <i className="fa-solid fa-stopwatch" style={{ color: '#a78bfa' }} />
-                    Tiempo resp.
+        <div className="aud-127">
+            <div className="aud-128">
+                <span className="aud-129">
+                    <i className="fa-solid fa-stopwatch aud-41" />
+                    {t('auditor.x.respTimeShort')}
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div className="aud-130">
                     {avgMin != null && (
-                        <span style={{ fontSize: '0.68rem', color: 'var(--color-text-3)' }}>
+                        <span className="aud-131">
                             ~{avgMin}min
                         </span>
                     )}
-                    <span style={{ fontSize: '0.80rem', fontWeight: 800, color }}>{pct}%</span>
+                    <span className="aud-124" style={{ color }}>{pct}%</span>
                 </div>
             </div>
-            <div style={{ height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                <div style={{
-                    height: '100%', width: `${pct}%`, borderRadius: 3,
-                    background: color, transition: 'width 0.4s ease',
-                }} />
+            <div className="aud-125">
+                <div className="aud-126" style={{ width: `${pct}%`, background: color }} />
             </div>
         </div>
     );
@@ -1436,26 +1151,19 @@ const ESTADO_CONV = {
 };
 
 function ConversacionesSection({ conversaciones }) {
+    const { t } = useLanguage();
     const [open, setOpen] = useState(true);
     if (!conversaciones || conversaciones.length === 0) return null;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button
+        <div className="aud-38">
+            <button className="aud-132"
                 type="button"
                 onClick={() => setOpen(v => !v)}
-                style={{
-                    all: 'unset', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '0 2px',
-                    fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)',
-                    textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700,
-                }}
             >
-                <i className="fa-solid fa-comments" style={{ color: '#a78bfa' }} />
-                Conversaciones analizadas ({conversaciones.length})
-                <i className={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'}`}
-                   style={{ color: 'var(--color-text-3)', fontSize: '0.70rem', marginLeft: 4 }} />
+                <i className="fa-solid fa-comments aud-41" />
+                {t('auditor.x.convAnalyzed')} ({conversaciones.length})
+                <i className={`fa-solid ${open ? 'fa-chevron-up' : 'fa-chevron-down'} aud-133`} />
             </button>
 
             {open && (
@@ -1464,29 +1172,21 @@ function ConversacionesSection({ conversaciones }) {
                         const estadoMeta = ESTADO_CONV[conv.estado] || { icon: 'fa-circle', color: '#94a3b8', label: conv.estado };
                         const tsStyle    = conv.tiempo_score != null ? tiempoScoreStyle(conv.tiempo_score) : null;
                         return (
-                            <div key={i} className="db-card" style={{
-                                gap: 8, padding: '12px 14px',
-                                borderLeft: `3px solid ${estadoMeta.color}`,
-                            }}>
+                            <div key={i} className="db-card aud-134" style={{ borderLeft: `3px solid ${estadoMeta.color}` }}>
                                 {/* Fila cabecera: vendedor + badges */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.83rem', fontWeight: 700, color: 'rgba(255,255,255,0.88)' }}>
-                                        <i className="fa-solid fa-user" style={{ color: '#a78bfa', fontSize: '0.75rem' }} />
+                                <div className="aud-135">
+                                    <div className="aud-136">
+                                        <i className="fa-solid fa-user aud-137" />
                                         {conv.vendedor || 'Vendedor desconocido'}
                                         {conv.cliente_id && (
-                                            <span style={{ fontSize: '0.70rem', color: 'var(--color-text-3)', fontWeight: 400 }}>
-                                                · Cliente #{conv.cliente_id}
+                                            <span className="aud-138">
+                                                · {t('auditor.client')} #{conv.cliente_id}
                                             </span>
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                                        <span style={{
-                                            fontSize: '0.70rem', fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                                            background: `${estadoMeta.color}18`, color: estadoMeta.color,
-                                            border: `1px solid ${estadoMeta.color}40`,
-                                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                                        }}>
-                                            <i className={`fa-solid ${estadoMeta.icon}`} style={{ fontSize: '0.62rem' }} />
+                                    <div className="aud-139">
+                                        <span className="aud-215" style={{ borderRadius: '6px', background: `${estadoMeta.color}18`, color: estadoMeta.color, border: `1px solid ${estadoMeta.color}40` }}>
+                                            <i className={`fa-solid ${estadoMeta.icon} aud-141`} />
                                             {estadoMeta.label}
                                         </span>
                                     </div>
@@ -1494,49 +1194,37 @@ function ConversacionesSection({ conversaciones }) {
 
                                 {/* Fila de tiempo de respuesta */}
                                 {(conv.tiempo_respuesta_minutos != null || conv.tiempo_score != null) && (
-                                    <div style={{
-                                        display: 'flex', alignItems: 'center', gap: 10,
-                                        padding: '7px 10px', borderRadius: 8,
-                                        background: 'rgba(0,0,0,0.18)',
-                                        border: '1px solid rgba(255,255,255,0.05)',
-                                        flexWrap: 'wrap',
-                                    }}>
-                                        <i className="fa-solid fa-stopwatch" style={{ color: '#a78bfa', fontSize: '0.78rem', flexShrink: 0 }} />
-                                        <span style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.50)', flexShrink: 0 }}>
-                                            Tiempo de respuesta:
+                                    <div className="aud-142">
+                                        <i className="fa-solid fa-stopwatch aud-143" />
+                                        <span className="aud-144">
+                                            {t('auditor.x.respTimeLabel')}
                                         </span>
                                         {conv.tiempo_respuesta_minutos != null ? (
-                                            <span style={{
-                                                fontSize: '0.80rem', fontWeight: 700,
-                                                color: conv.tiempo_ok ? '#10b981' : '#ef4444',
-                                            }}>
-                                                <i className="fa-regular fa-clock" style={{ marginRight: 4 }} />
+                                            <span className="aud-145" style={{ color: conv.tiempo_ok ? '#10b981' : '#ef4444' }}>
+                                                <i className="fa-regular fa-clock aud-29" />
                                                 {conv.tiempo_respuesta_minutos} min
                                                 {conv.tiempo_ok
-                                                    ? <i className="fa-solid fa-check" style={{ marginLeft: 5, fontSize: '0.70rem', color: '#10b981' }} />
-                                                    : <i className="fa-solid fa-triangle-exclamation" style={{ marginLeft: 5, fontSize: '0.70rem', color: '#ef4444' }} />
+                                                    ? <i className="fa-solid fa-check aud-146" />
+                                                    : <i className="fa-solid fa-triangle-exclamation aud-147" />
                                                 }
                                             </span>
                                         ) : (
-                                            <span style={{ fontSize: '0.74rem', color: 'var(--color-text-3)', fontStyle: 'italic' }}>
+                                            <span className="aud-148">
                                                 {conv.estado === 'sin_responder' ? 'Sin respuesta' : 'No medido'}
                                             </span>
                                         )}
                                         {tsStyle && (
-                                            <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 90 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ fontSize: '0.62rem', color: 'var(--color-text-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                                        Puntaje
+                                            <div className="aud-149">
+                                                <div className="aud-122">
+                                                    <span className="aud-150">
+                                                        {t('auditor.x.points')}
                                                     </span>
-                                                    <span style={{ fontSize: '0.76rem', fontWeight: 800, color: tsStyle.color }}>
+                                                    <span className="aud-151" style={{ color: tsStyle.color }}>
                                                         {conv.tiempo_score}%
                                                     </span>
                                                 </div>
-                                                <div style={{ height: 4, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                                                    <div style={{
-                                                        height: '100%', width: `${conv.tiempo_score}%`,
-                                                        borderRadius: 3, background: tsStyle.color, transition: 'width 0.4s ease',
-                                                    }} />
+                                                <div className="aud-152">
+                                                    <div className="aud-126" style={{ width: `${conv.tiempo_score}%`, background: tsStyle.color }} />
                                                 </div>
                                             </div>
                                         )}
@@ -1544,13 +1232,13 @@ function ConversacionesSection({ conversaciones }) {
                                 )}
 
                                 {conv.resumen && (
-                                    <div style={{ fontSize: '0.81rem', color: 'rgba(255,255,255,0.70)', lineHeight: 1.5 }}>
+                                    <div className="aud-153">
                                         {conv.resumen}
                                     </div>
                                 )}
 
                                 {conv.analisis && (
-                                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.50)', lineHeight: 1.55 }}>
+                                    <div className="aud-154">
                                         {conv.analisis}
                                     </div>
                                 )}
@@ -1566,10 +1254,14 @@ function ConversacionesSection({ conversaciones }) {
 // ─── StagesManager ────────────────────────────────────────────────────────────
 
 function StagesManager({ isMobile }) {
+    const { t } = useLanguage();
     const toast = useToast();
     const [stages, setStages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
+    // Confirmación de borrado (antes window.confirm: no accesible ni con el estilo de la app)
+    const [stageToDelete, setStageToDelete] = useState(null);
+    const [deletingStage, setDeletingStage] = useState(false);
 
     const load = useCallback(async () => {
         try {
@@ -1585,15 +1277,18 @@ function StagesManager({ isMobile }) {
         setStages(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
         try {
             await api.patch(`/agent-config/audit/stages/${id}`, patch);
-        } catch { toast('Error', 'No se pudo guardar la etapa', '#ef4444'); }
+        } catch { toast(t('common.errorTitle'), t('auditor.x.errSaveStage'), '#ef4444'); }
     };
 
-    const deleteStage = async (id) => {
-        if (!window.confirm('¿Eliminar esta etapa?')) return;
+    const confirmDeleteStage = async () => {
+        const { id } = stageToDelete;
+        setDeletingStage(true);
         try {
             await api.delete(`/agent-config/audit/stages/${id}`);
             setStages(prev => prev.filter(s => s.id !== id));
-        } catch { toast('Error', 'No se pudo eliminar', '#ef4444'); }
+            setStageToDelete(null);
+        } catch { toast(t('common.errorTitle'), t('common.errDelete'), '#ef4444'); }
+        finally { setDeletingStage(false); }
     };
 
     const addStage = async () => {
@@ -1604,7 +1299,7 @@ function StagesManager({ isMobile }) {
                 peso: 10, orden: stages.length, activa: true,
             });
             setStages(prev => [...prev, res.data]);
-        } catch { toast('Error', 'No se pudo agregar la etapa', '#ef4444'); }
+        } catch { toast(t('common.errorTitle'), t('auditor.x.errAddStage'), '#ef4444'); }
         finally { setAdding(false); }
     };
 
@@ -1618,57 +1313,45 @@ function StagesManager({ isMobile }) {
         setStages(next);
         try {
             await api.post('/agent-config/audit/stages/reorder', { orden: next.map(s => s.id) });
-        } catch { toast('Error', 'No se pudo reordenar', '#ef4444'); }
+        } catch { toast(t('common.errorTitle'), t('auditor.x.errReorder'), '#ef4444'); }
     };
 
     const pesoTotal = stages.reduce((s, st) => s + (st.activa ? st.peso : 0), 0);
 
     return (
-        <div className="db-card" style={{ gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                <div className="db-card-title" style={{ margin: 0 }}>
-                    <i className="fa-solid fa-list-check" style={{ color: '#a78bfa' }} />
-                    Etapas del proceso ({stages.length})
+        <div className="db-card aud-25">
+            <div className="aud-155">
+                <div className="db-card-title aud-156">
+                    <i className="fa-solid fa-list-check aud-41" />
+                    {t('auditor.x.processStages')} ({stages.length})
                 </div>
-                <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span>Peso total:</span>
-                    <strong style={{ color: '#c4b5fd' }}>{pesoTotal}</strong>
+                <div className="aud-157">
+                    <span>{t('auditor.x.totalWeight')}</span>
+                    <strong className="aud-70">{pesoTotal}</strong>
                 </div>
             </div>
 
-            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', lineHeight: 1.5, marginTop: -4 }}>
-                Definí las etapas del proceso de venta. Cada etapa tiene un peso relativo que
-                determina su impacto en el score. Los pesos no necesitan sumar 100.
+            <div className="aud-158">
+                {t('auditor.x.stagesIntro')}
             </div>
 
             {loading ? (
-                <div style={{ padding: 20, color: 'var(--color-text-3)', fontSize: '0.85rem', textAlign: 'center' }}>
-                    Cargando etapas...
+                <div className="aud-159">
+                    {t('auditor.x.loadingStages')}
                 </div>
             ) : stages.length === 0 ? (
-                <div style={{
-                    padding: '20px 16px', borderRadius: 10,
-                    background: 'rgba(167,139,250,0.04)',
-                    border: '1px dashed rgba(167,139,250,0.20)',
-                    fontSize: '0.83rem', color: 'rgba(255,255,255,0.45)',
-                    textAlign: 'center', lineHeight: 1.6,
-                }}>
-                    Aún no hay etapas configuradas.<br />
-                    Hacé clic en &quot;Agregar etapa&quot; para empezar.
+                <div className="aud-160">
+                    {t('auditor.x.noStages')}<br />
+                    {t('auditor.x.noStagesHint')}
                 </div>
             ) : (
-                <div className="stages-scroll" style={{
-                    display: 'flex', flexDirection: 'column', gap: 8,
-                    overflowY: 'scroll',
-                    maxHeight: isMobile ? 'none' : 380,
-                    paddingRight: 4,
-                }}>
+                <div className="stages-scroll aud-161" style={{ maxHeight: isMobile ? 'none' : 380 }}>
                     {stages.map((s, i) => (
                         <StageCard
                             key={s.id} stage={s}
                             isFirst={i === 0} isLast={i === stages.length - 1}
                             onUpdate={(patch) => updateStage(s.id, patch)}
-                            onDelete={() => deleteStage(s.id)}
+                            onDelete={() => setStageToDelete({ id: s.id, nombre: s.nombre })}
                             onMoveUp={() => moveStage(s.id, -1)}
                             onMoveDown={() => moveStage(s.id, +1)}
                         />
@@ -1676,25 +1359,30 @@ function StagesManager({ isMobile }) {
                 </div>
             )}
 
-            <button
+            <button className="aud-162"
                 onClick={addStage}
                 disabled={adding}
-                style={{
-                    width: '100%', padding: '9px 14px', borderRadius: 8,
-                    background: 'rgba(167,139,250,0.12)',
-                    border: '1px dashed rgba(167,139,250,0.40)',
-                    color: '#c4b5fd', cursor: adding ? 'not-allowed' : 'pointer',
-                    fontSize: '0.85rem', fontWeight: 600,
-                }}
+                style={{ cursor: adding ? 'not-allowed' : 'pointer' }}
             >
-                <i className={`fa-solid ${adding ? 'fa-spinner fa-spin' : 'fa-plus'}`} style={{ marginRight: 6 }} />
+                <i className={`fa-solid ${adding ? 'fa-spinner fa-spin' : 'fa-plus'} aud-17`} />
                 {adding ? 'Agregando...' : 'Agregar etapa'}
             </button>
+            <ConfirmDialog
+                open={!!stageToDelete}
+                danger
+                title={t('auditor.x.deleteStageTitle')}
+                message={`La etapa "${stageToDelete?.nombre || ''}" deja de evaluarse en las próximas auditorías.`}
+                confirmLabel={t('common.delete')}
+                loading={deletingStage}
+                onConfirm={confirmDeleteStage}
+                onCancel={() => setStageToDelete(null)}
+            />
         </div>
     );
 }
 
 function StageCard({ stage, isFirst, isLast, onUpdate, onDelete, onMoveUp, onMoveDown }) {
+    const { t } = useLanguage();
     const [expanded, setExpanded] = useState(false);
     const [localNombre, setLocalNombre] = useState(stage.nombre);
     const [localDesc, setLocalDesc] = useState(stage.descripcion || '');
@@ -1715,84 +1403,57 @@ function StageCard({ stage, isFirst, isLast, onUpdate, onDelete, onMoveUp, onMov
     };
 
     return (
-        <div style={{
-            borderRadius: 10, overflow: 'hidden',
-            flexShrink: 0,
-            background: stage.activa
+        <div className="aud-216" style={{ borderRadius: '10px', background: stage.activa
                 ? 'linear-gradient(135deg, #181226 0%, #15111f 100%)'
-                : 'rgba(255,255,255,0.02)',
-            border: `1px solid ${stage.activa ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.05)'}`,
-            opacity: stage.activa ? 1 : 0.55,
-            transition: '0.15s',
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 11px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                : 'rgba(255,255,255,0.02)', border: `1px solid ${stage.activa ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.05)'}`, opacity: stage.activa ? 1 : 0.55 }}>
+            <div className="aud-164">
+                <div className="aud-165">
                     <button onClick={onMoveUp} disabled={isFirst} style={miniBtn(isFirst)}>
-                        <i className="fa-solid fa-chevron-up" style={{ fontSize: '0.6rem' }} />
+                        <i className="fa-solid fa-chevron-up aud-166" />
                     </button>
                     <button onClick={onMoveDown} disabled={isLast} style={miniBtn(isLast)}>
-                        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.6rem' }} />
+                        <i className="fa-solid fa-chevron-down aud-166" />
                     </button>
                 </div>
-                <input
+                <input className="aud-167"
+                    aria-label={t('kanban.stageName')}
                     type="text"
                     value={localNombre}
                     onChange={e => setLocalNombre(e.target.value)}
                     onBlur={commit}
-                    style={{
-                        flex: 1, fontSize: '0.88rem', padding: '6px 10px',
-                        background: 'rgba(0,0,0,0.30)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 6, color: '#fff', outline: 'none',
-                    }}
                 />
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    padding: '4px 8px', borderRadius: 6,
-                    background: 'rgba(167,139,250,0.10)',
-                    border: '1px solid rgba(167,139,250,0.20)',
-                }}>
-                    <input
+                <div className="aud-168">
+                    <input className="aud-169"
+                        aria-label={t('auditor.x.stageWeight')}
                         type="number" min="1" max="100"
                         value={localPeso}
                         onChange={e => setLocalPeso(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
                         onBlur={commit}
-                        style={{
-                            width: 38, fontSize: '0.78rem', padding: '2px 4px',
-                            background: 'transparent', border: 'none',
-                            color: '#c4b5fd', outline: 'none', textAlign: 'center', fontWeight: 700,
-                        }}
                     />
-                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>pts</span>
+                    <span className="aud-170">pts</span>
                 </div>
                 <button onClick={() => setExpanded(v => !v)} style={miniBtn(false)}
                         title={expanded ? 'Colapsar' : 'Editar descripción'}>
-                    <i className={`fa-solid ${expanded ? 'fa-chevron-up' : 'fa-pen'}`} style={{ fontSize: '0.7rem' }} />
+                    <i className={`fa-solid ${expanded ? 'fa-chevron-up' : 'fa-pen'} aud-171`} />
                 </button>
                 <button onClick={() => onUpdate({ activa: !stage.activa })} style={miniBtn(false)}
                         title={stage.activa ? 'Desactivar' : 'Activar'}>
-                    <i className={`fa-solid ${stage.activa ? 'fa-eye' : 'fa-eye-slash'}`} style={{ fontSize: '0.7rem' }} />
+                    <i className={`fa-solid ${stage.activa ? 'fa-eye' : 'fa-eye-slash'} aud-171`} />
                 </button>
-                <button onClick={onDelete} style={{ ...miniBtn(false), color: '#fca5a5' }} title="Eliminar">
-                    <i className="fa-solid fa-trash" style={{ fontSize: '0.7rem' }} />
+                <button onClick={onDelete} style={{ ...miniBtn(false), color: '#fca5a5' }} title={t('common.delete')}>
+                    <i className="fa-solid fa-trash aud-171" />
                 </button>
             </div>
 
             {expanded && (
                 <div style={{ padding: '0 11px 10px 40px', animation: 'fadeIn 0.18s ease-out' }}>
-                    <textarea
+                    <textarea className="aud-172"
+                        aria-label={t('auditor.x.stageDesc')}
                         value={localDesc}
                         onChange={e => setLocalDesc(e.target.value)}
                         onBlur={commit}
-                        placeholder="Descripción de la etapa: qué evaluar, qué se espera del vendedor, frases clave..."
+                        placeholder={t('auditor.x.stageDescPh')}
                         rows={3}
-                        style={{
-                            width: '100%', fontSize: '0.82rem', padding: '8px 11px',
-                            background: 'rgba(0,0,0,0.30)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            borderRadius: 6, color: '#fff', outline: 'none',
-                            resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box',
-                        }}
                     />
                 </div>
             )}
@@ -1819,61 +1480,40 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
         : inputStyle;
 
     return (
-        <div style={{
-            flex: 1, width: '100%',
-            overflowY: 'auto', minHeight: 0,
-            padding: isMobile ? '6px 0 32px' : '8px 2px 24px',
-            display: 'flex', flexDirection: 'column', gap: 12,
-        }}>
+        <div className="aud-173" style={{ padding: isMobile ? '6px 0 32px' : '8px 2px 24px' }}>
             {/* ── Habilitación del auditor (db-metric-card horizontal, igual que AgenteIA) ── */}
-            <div className="db-metric-card" style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            <div className="db-metric-card aud-174">
                 <div className="db-metric-icon">
                     <i className="fa-solid fa-magnifying-glass-chart" />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div className="aud-175">
                     <div className="db-metric-label">{t('auditor.config.enableLabel')}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', marginTop: 3 }}>
+                    <div className="aud-176">
                         {t('auditor.config.enableHint')}
                     </div>
                 </div>
-                <label style={{
-                    position: 'relative', display: 'inline-block',
-                    width: 46, height: 26, cursor: 'pointer', flexShrink: 0,
-                }}>
-                    <input
+                <label className="aud-177">
+                    <input className="aud-178"
                         type="checkbox"
                         checked={cfg.auditEnabled}
                         onChange={e => update('auditEnabled', e.target.checked)}
-                        style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
                     />
-                    <span style={{
-                        position: 'absolute', inset: 0, borderRadius: 13,
-                        background: cfg.auditEnabled ? '#a78bfa' : 'rgba(255,255,255,0.15)',
-                        transition: '0.2s',
-                    }}>
-                        <span style={{
-                            position: 'absolute', top: 3, left: cfg.auditEnabled ? 23 : 3,
-                            width: 20, height: 20, borderRadius: '50%',
-                            background: '#fff', transition: '0.2s',
-                        }} />
+                    <span className="aud-179" style={{ background: cfg.auditEnabled ? '#a78bfa' : 'rgba(255,255,255,0.15)' }}>
+                        <span className="aud-180" style={{ left: cfg.auditEnabled ? 23 : 3 }} />
                     </span>
                 </label>
             </div>
 
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '1.15fr 1fr 1fr',
-                gap: 12, alignItems: 'stretch',
-            }}>
+            <div className="aud-181" style={{ gridTemplateColumns: isMobile ? '1fr' : '1.15fr 1fr 1fr' }}>
             <StagesManager isMobile={isMobile} />
 
             {/* ── Horario de análisis ── */}
-            <div className="db-card" style={{ gap: 14 }}>
-                <div className="db-card-title" style={{ margin: 0 }}>
-                    <i className="fa-solid fa-clock" style={{ color: '#a78bfa' }} />
+            <div className="db-card aud-182">
+                <div className="db-card-title aud-156">
+                    <i className="fa-solid fa-clock aud-41" />
                     {t('auditor.config.scheduleLabel')}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', lineHeight: 1.5, marginTop: -6 }}>
+                <div className="aud-183">
                     {t('auditor.config.scheduleHint')}
                 </div>
                 <TimeRangePicker
@@ -1884,10 +1524,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                     t={t}
                 />
                 {!horarioOk && (
-                    <div style={{
-                        fontSize: '0.74rem', color: '#fca5a5',
-                        display: 'flex', alignItems: 'center', gap: 5,
-                    }}>
+                    <div className="aud-184">
                         <i className="fa-solid fa-triangle-exclamation" />
                         {t('auditor.config.scheduleError')}
                     </div>
@@ -1895,9 +1532,9 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
             </div>
 
             {/* ── Notificaciones ── */}
-            <div className="db-card" style={{ gap: 14 }}>
-                <div className="db-card-title" style={{ margin: 0 }}>
-                    <i className="fa-solid fa-bell" style={{ color: '#a78bfa' }} />
+            <div className="db-card aud-182">
+                <div className="db-card-title aud-156">
+                    <i className="fa-solid fa-bell aud-41" />
                     {t('auditor.config.notificationsTitle')}
                 </div>
 
@@ -1908,7 +1545,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                         autoComplete="email"
                         value={cfg.auditEmail}
                         onChange={e => update('auditEmail', e.target.value)}
-                        placeholder="gerente@empresa.com"
+                        placeholder={t('auditor.x.emailPh')}
                         style={baseInput}
                     />
                 </Field>
@@ -1948,18 +1585,10 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
             <button
                 onClick={onSave}
                 disabled={saving || !horarioOk}
-                className="btn-primary"
-                style={{
-                    width: '100%', marginTop: 4, flexShrink: 0,
-                    background: saved ? '#10b981' : 'rgba(167,139,250,0.85)',
-                    padding: isMobile ? '13px 0' : undefined,
-                    fontSize: isMobile ? '0.95rem' : undefined,
-                    opacity: !horarioOk ? 0.5 : 1,
-                    cursor: !horarioOk ? 'not-allowed' : 'pointer',
-                }}
+                className="btn-primary aud-185"
+                style={{ background: saved ? '#10b981' : 'rgba(167,139,250,0.85)', padding: isMobile ? '13px 0' : undefined, fontSize: isMobile ? '0.95rem' : undefined, opacity: !horarioOk ? 0.5 : 1, cursor: !horarioOk ? 'not-allowed' : 'pointer' }}
             >
-                <i className={`fa-solid ${saving ? 'fa-spinner fa-spin' : saved ? 'fa-check' : 'fa-floppy-disk'}`}
-                   style={{ marginRight: 6 }} />
+                <i className={`fa-solid ${saving ? 'fa-spinner fa-spin' : saved ? 'fa-check' : 'fa-floppy-disk'} aud-17`} />
                 {saving ? t('auditor.config.savingBtn') : saved ? t('auditor.config.savedBtn') : t('auditor.config.saveBtn')}
             </button>
         </div>
@@ -1969,6 +1598,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
 // ─── ResponseTimeCard ────────────────────────────────────────────────────────
 
 function ResponseTimeCard({ cfg, setCfg }) {
+    const { t } = useLanguage();
     const update = (k, v) => setCfg(prev => ({ ...prev, [k]: v }));
     const horasPico  = cfg.horasPico || [];
     const hayPico    = horasPico.length > 0;
@@ -1986,62 +1616,50 @@ function ResponseTimeCard({ cfg, setCfg }) {
     };
 
     return (
-        <div className="db-card" style={{ gap: 14 }}>
-            <div className="db-card-title" style={{ margin: 0 }}>
-                <i className="fa-solid fa-stopwatch" style={{ color: '#a78bfa' }} />
-                Tiempo de respuesta del vendedor
+        <div className="db-card aud-182">
+            <div className="db-card-title aud-156">
+                <i className="fa-solid fa-stopwatch aud-41" />
+                {t('auditor.x.respTitle')}
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3)', lineHeight: 1.5, marginTop: -6 }}>
-                El auditor mide el tiempo desde el primer mensaje del cliente hasta la
-                primera respuesta del vendedor y evalúa si fue adecuado.
+            <div className="aud-183">
+                {t('auditor.x.respDesc')}
             </div>
 
             {/* Umbral normal */}
             <Field
-                label="Respuesta lenta a partir de"
-                hint="Si el vendedor tarda más de este tiempo en responder al primer mensaje del cliente, se considera respuesta lenta."
+                label={t('auditor.x.slowFrom')}
+                hint={t('auditor.x.slowHint')}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="aud-186">
                     <input
                         type="number" min="1" max="240"
                         value={cfg.respuestaMaxMinutos}
                         onChange={e => update('respuestaMaxMinutos', Math.max(1, Math.min(240, Number(e.target.value) || 30)))}
                         style={{ ...inputStyle, width: 76, textAlign: 'center' }}
                     />
-                    <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>minutos</span>
+                    <span className="aud-187">{t('auditor.x.minutes')}</span>
                 </div>
             </Field>
 
             {/* Toggle horarios pico */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div className="aud-188">
                 <div>
-                    <div className="db-metric-label">Horarios pico (mayor exigencia)</div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--color-text-3)', marginTop: 3, lineHeight: 1.5 }}>
-                        En estos períodos el umbral es más estricto.
+                    <div className="db-metric-label">{t('auditor.x.peakTitle')}</div>
+                    <div className="aud-189">
+                        {t('auditor.x.peakDesc')}
                     </div>
                 </div>
-                <label style={{
-                    position: 'relative', display: 'inline-block',
-                    width: 46, height: 26, cursor: 'pointer', flexShrink: 0, marginTop: 2,
-                }}>
-                    <input
+                <label className="aud-190">
+                    <input className="aud-178"
                         type="checkbox"
                         checked={hayPico}
                         onChange={e => update('horasPico', e.target.checked
                             ? [{ inicio: '11:00', fin: '12:30' }, { inicio: '17:00', fin: '18:15' }]
                             : []
                         )}
-                        style={{ opacity: 0, width: 0, height: 0, position: 'absolute' }}
                     />
-                    <span style={{
-                        position: 'absolute', inset: 0, borderRadius: 13,
-                        background: hayPico ? '#a78bfa' : 'rgba(255,255,255,0.15)', transition: '0.2s',
-                    }}>
-                        <span style={{
-                            position: 'absolute', top: 3, left: hayPico ? 23 : 3,
-                            width: 20, height: 20, borderRadius: '50%',
-                            background: '#fff', transition: '0.2s',
-                        }} />
+                    <span className="aud-179" style={{ background: hayPico ? '#a78bfa' : 'rgba(255,255,255,0.15)' }}>
+                        <span className="aud-180" style={{ left: hayPico ? 23 : 3 }} />
                     </span>
                 </label>
             </div>
@@ -2049,32 +1667,34 @@ function ResponseTimeCard({ cfg, setCfg }) {
             {hayPico && (
                 <>
                     <Field
-                        label="Tolerancia en horario pico"
-                        hint="El vendedor debe responder dentro de este tiempo durante los horarios pico configurados abajo."
+                        label={t('auditor.x.peakTolerance')}
+                        hint={t('auditor.x.peakHint')}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="aud-186">
                             <input
                                 type="number" min="1" max="120"
                                 value={cfg.respuestaPicoMaxMinutos}
                                 onChange={e => update('respuestaPicoMaxMinutos', Math.max(1, Math.min(120, Number(e.target.value) || 15)))}
                                 style={{ ...inputStyle, width: 76, textAlign: 'center' }}
                             />
-                            <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>minutos</span>
+                            <span className="aud-187">{t('auditor.x.minutes')}</span>
                         </div>
                     </Field>
 
                     <div>
-                        <div className="db-metric-label" style={{ marginBottom: 8 }}>Rangos de horario pico</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div className="db-metric-label aud-191">{t('auditor.x.peakRanges')}</div>
+                        <div className="aud-192">
                             {horasPico.map((r, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div className="aud-186" key={i}>
                                     <input
+                                        aria-label={`Rango pico ${i + 1}: desde`}
                                         type="time" value={r.inicio}
                                         onChange={e => updateRango(i, 'inicio', e.target.value)}
                                         style={{ ...inputStyle, flex: 1, padding: '6px 10px' }}
                                     />
-                                    <span style={{ color: 'var(--color-text-3)', fontSize: '0.8rem' }}>→</span>
+                                    <span className="aud-193">→</span>
                                     <input
+                                        aria-label={`Rango pico ${i + 1}: hasta`}
                                         type="time" value={r.fin}
                                         onChange={e => updateRango(i, 'fin', e.target.value)}
                                         style={{ ...inputStyle, flex: 1, padding: '6px 10px' }}
@@ -2083,40 +1703,27 @@ function ResponseTimeCard({ cfg, setCfg }) {
                                         type="button"
                                         onClick={() => removeRango(i)}
                                         style={{ ...miniBtn(false), color: '#fca5a5', padding: '6px 9px' }}
-                                        title="Eliminar rango"
+                                        title={t('auditor.x.removeRange')}
                                     >
-                                        <i className="fa-solid fa-xmark" style={{ fontSize: '0.75rem' }} />
+                                        <i className="fa-solid fa-xmark aud-194" />
                                     </button>
                                 </div>
                             ))}
                         </div>
                         {horasPico.length < 4 && (
-                            <button
+                            <button className="aud-195"
                                 type="button"
                                 onClick={addRango}
-                                style={{
-                                    marginTop: 8, width: '100%', padding: '7px 14px', borderRadius: 8,
-                                    background: 'rgba(167,139,250,0.08)',
-                                    border: '1px dashed rgba(167,139,250,0.28)',
-                                    color: '#c4b5fd', cursor: 'pointer',
-                                    fontSize: '0.78rem', fontWeight: 600,
-                                }}
                             >
-                                <i className="fa-solid fa-plus" style={{ marginRight: 6 }} />
-                                Agregar horario pico
+                                <i className="fa-solid fa-plus aud-17" />
+                                {t('auditor.x.addPeak')}
                             </button>
                         )}
                     </div>
 
-                    <div style={{
-                        padding: '9px 12px', borderRadius: 8,
-                        background: 'rgba(167,139,250,0.06)',
-                        border: '1px solid rgba(167,139,250,0.16)',
-                        fontSize: '0.75rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6,
-                    }}>
-                        <i className="fa-solid fa-circle-info" style={{ color: '#a78bfa', marginRight: 5 }} />
-                        Si el cliente escribe <strong style={{ color: 'rgba(255,255,255,0.65)' }}>fuera del horario laboral</strong> configurado,
-                        el tiempo de respuesta no se penaliza.
+                    <div className="aud-196">
+                        <i className="fa-solid fa-circle-info aud-197" />
+                        {t('auditor.x.outsideA')} <strong className="aud-198">{t('auditor.x.outsideB')}</strong> {t('auditor.x.outsideC')}
                     </div>
                 </>
             )}
@@ -2136,40 +1743,36 @@ function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
     const activePreset = presets.findIndex(p => p.inicio === inicio && p.fin === fin);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div className="aud-38">
+            <div className="aud-199">
                 <input
+                    aria-label={t('dashboard.picker.from')}
                     type="time"
                     value={inicio}
                     onChange={e => onChange(e.target.value, fin)}
                     style={{ ...baseInput, flex: 1 }}
                 />
-                <span style={{ color: 'var(--color-text-3)', fontSize: '0.8rem' }}>→</span>
+                <span className="aud-193">→</span>
                 <input
+                    aria-label={t('dashboard.picker.to')}
                     type="time"
                     value={fin}
                     onChange={e => onChange(inicio, e.target.value)}
                     style={{ ...baseInput, flex: 1 }}
                 />
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <div className="aud-200">
                 {presets.map((p, i) => {
                     const active = i === activePreset;
                     return (
-                        <button
+                        <button className="aud-217"
                             key={p.label}
                             type="button"
                             onClick={() => onChange(p.inicio, p.fin)}
-                            style={{
-                                padding: '5px 11px', borderRadius: 16,
-                                border: `1px solid ${active ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.10)'}`,
-                                background: active ? 'rgba(167,139,250,0.14)' : 'rgba(255,255,255,0.03)',
-                                color: active ? '#c4b5fd' : 'rgba(255,255,255,0.55)',
-                                fontSize: '0.74rem', cursor: 'pointer', transition: '0.15s',
-                            }}
+                            style={{ borderRadius: '16px', border: `1px solid ${active ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.10)'}`, background: active ? 'rgba(167,139,250,0.14)' : 'rgba(255,255,255,0.03)', color: active ? '#c4b5fd' : 'rgba(255,255,255,0.55)' }}
                         >
                             {p.label}
-                            <span style={{ opacity: 0.55, marginLeft: 4 }}>{p.inicio}–{p.fin}</span>
+                            <span className="aud-202">{p.inicio}–{p.fin}</span>
                         </button>
                     );
                 })}
@@ -2181,18 +1784,18 @@ function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
 // ─── Field ───────────────────────────────────────────────────────────────────
 
 function Field({ label, hint, children }) {
+    // <label> como contenedor: asocia el texto con el primer control de adentro
     return (
-        <div>
-            <div className="db-metric-label" style={{ marginBottom: 6 }}>
+        <label className="aud-203">
+            <div className="db-metric-label aud-204">
                 {label}
                 {hint && (
-                    <i className="fa-regular fa-circle-question"
-                       title={hint}
-                       style={{ color: 'var(--color-text-3)', cursor: 'help', marginLeft: 6 }} />
+                    <i className="fa-regular fa-circle-question aud-205"
+                       title={hint} />
                 )}
             </div>
             {children}
-        </div>
+        </label>
     );
 }
 

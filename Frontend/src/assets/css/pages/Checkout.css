@@ -1,0 +1,40 @@
+/* Estilos extraídos de los style={{}} estáticos de Checkout.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.chk-1) { display: flex !important; gap: 6px !important; font-size: 1.05rem !important; color: var(--color-text-3) !important; flex-shrink: 0 !important; }
+:where(.chk-2) { display: flex !important; flex-direction: column !important; gap: 1px !important; line-height: 1 !important; }
+:where(.chk-3) { font-size: 0.58rem !important; font-weight: 900 !important; color: #fff !important; letter-spacing: 1px !important; }
+:where(.chk-4) { font-size: 0.55rem !important; font-weight: 900 !important; color: #eb001b !important; }
+:where(.chk-5) { font-size: 1.25rem !important; }
+:where(.chk-6) { display: flex !important; justify-content: center !important; align-items: center !important; height: 100% !important; }
+:where(.chk-7) { height: 100% !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+:where(.chk-8) { flex: 1 !important; overflow-y: auto !important; padding: 30px 20px !important; }
+:where(.chk-9) { max-width: 860px !important; margin: 0 auto !important; }
+:where(.chk-10) { background: none !important; border: none !important; color: #9ca3af !important; cursor: pointer !important; font-size: 0.85rem !important; margin-bottom: 20px !important; display: flex !important; align-items: center !important; gap: 6px !important; padding: 0 !important; }
+:where(.chk-11) { display: flex !important; gap: 24px !important; flex-wrap: wrap !important; align-items: flex-start !important; }
+:where(.chk-12) { flex: 1 !important; min-width: 280px !important; }
+:where(.chk-13) { flex: 1 !important; min-width: 0 !important; }
+:where(.chk-14) { color: #60a5fa !important; flex-shrink: 0 !important; margin-top: 2px !important; }
+:where(.chk-15) { flex: 1 !important; }
+:where(.chk-16) { color: #93c5fd !important; font-size: 0.82rem !important; margin: 0 0 8px 0 !important; line-height: 1.45 !important; }
+:where(.chk-17) { width: 100% !important; background: rgba(255,255,255,0.07) !important; border: 1px solid rgba(59,130,246,0.35) !important; border-radius: 8px !important; padding: 7px 10px !important; color: #fff !important; font-size: 0.85rem !important; outline: none !important; box-sizing: border-box !important; }
+:where(.chk-18) { color: #6b8fbd !important; font-size: 0.75rem !important; margin: 5px 0 0 0 !important; }
+:where(.chk-19) { width: 290px !important; flex-shrink: 0 !important; position: sticky !important; top: 20px !important; }
+:where(.chk-20) { display: block !important; font-size: 0.62rem !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 2px !important; color: var(--color-accent) !important; margin-bottom: 6px !important; }
+:where(.chk-21) { display: block !important; font-size: 1.55rem !important; font-weight: 800 !important; color: #fff !important; margin-bottom: 4px !important; }
+:where(.chk-22) { font-size: 0.95rem !important; color: rgba(255,255,255,0.65) !important; font-weight: 600 !important; }
+:where(.chk-23) { font-size: 0.68rem !important; opacity: 0.55 !important; }
+:where(.chk-24) { padding: 16px 20px !important; }
+:where(.chk-25) { color: var(--color-text-3) !important; }
+:where(.chk-26) { font-weight: 600 !important; }
+:where(.chk-27) { display: flex !important; justify-content: space-between !important; align-items: baseline !important; padding: 16px 20px !important; border-top: 1px solid rgba(255,255,255,0.08) !important; }
+:where(.chk-28) { font-size: 0.88rem !important; font-weight: 700 !important; color: #fff !important; }
+:where(.chk-29) { font-size: 1.4rem !important; font-weight: 800 !important; color: #fff !important; }
+:where(.chk-30) { font-size: 0.72rem !important; color: var(--color-text-3) !important; font-weight: 500 !important; }
+:where(.chk-31) { margin-top: 12px !important; background: rgba(239,68,68,0.1) !important; border: 1px solid var(--color-danger) !important; border-radius: 8px !important; padding: 10px 14px !important; color: #fca5a5 !important; font-size: 0.82rem !important; display: flex !important; gap: 8px !important; align-items: center !important; }
+:where(.chk-32) { width: 100% !important; padding: 15px !important; font-weight: 700 !important; font-size: 0.95rem !important; border-radius: 12px !important; border: none !important; margin-top: 14px !important; color: #fff !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 10px !important; transition: all 0.2s !important; }
+:where(.chk-33) { font-size: 0.85rem !important; }
+:where(.chk-34) { text-align: center !important; margin-top: 13px !important; color: #64748b !important; font-size: 0.74rem !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important; }
+:where(.chk-35) { color: var(--color-accent) !important; }

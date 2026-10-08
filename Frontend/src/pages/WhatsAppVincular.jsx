@@ -4,20 +4,18 @@ import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
 import { useLanguage } from '../context/LangContext';
 import NotificationBell from '../components/kanban/NotificationBell';
+import useDialog from '../hooks/useDialog';
+import '../assets/css/pages/WhatsAppVincular.css';
 
 // ─── Modal base ───────────────────────────────────────────────────────────────
 function Modal({ id, active, onClose, children }) {
-    useEffect(() => {
-        const handler = (e) => { if (e.key === 'Escape') onClose(); };
-        if (active) document.addEventListener('keydown', handler);
-        return () => document.removeEventListener('keydown', handler);
-    }, [active, onClose]);
+    const dialog = useDialog(active, onClose);
 
     if (!active) return null;
     return (
-        <div className="custom-modal-overlay active" role="dialog" aria-modal="true" id={id}
+        <div className="custom-modal-overlay active" id={id}
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="custom-modal">{children}</div>
+            <div className="custom-modal" {...dialog}>{children}</div>
         </div>
     );
 }
@@ -44,7 +42,7 @@ function DeviceCard({ device, onConectar, onDesvincular, onEliminar }) {
             <div className="device-info">
                 <h3>{device.alias}</h3>
                 <p>{device.numeroTelefono || t('wa.statusPending')}</p>
-                <div className="device-meta" style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: 5 }}>
+                <div className="device-meta wa-1">
                     ID: {String(device.sessionId || '').slice(0, 12)}
                 </div>
             </div>
@@ -57,7 +55,7 @@ function DeviceCard({ device, onConectar, onDesvincular, onEliminar }) {
                 <button className="btn-card-action btn-card-warning" title={t('wa.unlink')} onClick={() => onDesvincular(device.id)}>
                     <i className="fas fa-unlink"></i> {t('wa.unlink')}
                 </button>
-                <button className="btn-card-action btn-card-danger" onClick={() => onEliminar(device.id)}>
+                <button type="button" className="btn-card-action btn-card-danger" onClick={() => onEliminar(device.id)} aria-label={`${t('common.delete')} ${device.alias || ''}`.trim()}>
                     <i className="fas fa-trash-alt"></i>
                 </button>
             </div>
@@ -107,11 +105,11 @@ export default function WhatsAppVincular() {
             const res = await api.get('/whatsapp');
             setDevices(res.data);
         } catch {
-            toast('Error', 'No se pudieron cargar los dispositivos', '#ef4444');
+            toast(t('common.errorTitle'), t('common.errLoadDevices'), '#ef4444');
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     // Carga inicial (fetch on mount).
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -134,7 +132,7 @@ export default function WhatsAppVincular() {
             await api.post('/whatsapp', { alias: alias.trim() });
             setAlias(''); setModalCrear(false); loadDevices();
         } catch {
-            toast('Error', 'No se pudo crear el dispositivo', '#ef4444');
+            toast(t('common.errorTitle'), t('common.errCreateDevice'), '#ef4444');
         } finally { setCreando(false); }
     };
 
@@ -143,7 +141,7 @@ export default function WhatsAppVincular() {
         try {
             await api.post(`/whatsapp/${selectedId}/disconnect`);
             setModalDesvincular(false); loadDevices();
-        } catch { toast('Error', 'No se pudo desvincular', '#ef4444'); }
+        } catch { toast(t('common.errorTitle'), t('wa.errUnlink'), '#ef4444'); }
         finally { setDesvinculando(false); }
     };
 
@@ -152,7 +150,7 @@ export default function WhatsAppVincular() {
         try {
             await api.delete(`/whatsapp/${selectedId}`);
             setModalEliminar(false); loadDevices();
-        } catch { toast('Error', 'No se pudo eliminar', '#ef4444'); }
+        } catch { toast(t('common.errorTitle'), t('common.errDelete'), '#ef4444'); }
         finally { setEliminando(false); }
     };
 
@@ -194,38 +192,37 @@ export default function WhatsAppVincular() {
     };
 
     const pedirCodigo = async () => {
-        if (!pairPhone || pairPhone.length < 10) { toast('Aviso', 'Ingresa un numero valido con codigo de pais', '#f59e0b'); return; }
+        if (!pairPhone || pairPhone.length < 10) { toast(t('common.notice'), t('wa.errPhone'), '#f59e0b'); return; }
         setGettingCode(true);
         try {
             const res = await api.post('/whatsapp/pair-code', { deviceId: currentDeviceId.current, phoneNumber: pairPhone });
             if (res.data.code) { setPairCode(`${res.data.code.slice(0, 4)}-${res.data.code.slice(4)}`); }
             else toast('Error', res.data.error || 'No se pudo obtener el codigo', '#ef4444');
-        } catch { toast('Error', 'Error de conexion', '#ef4444'); }
+        } catch { toast(t('common.errorTitle'), t('wa.errConn'), '#ef4444'); }
         finally { setGettingCode(false); }
     };
 
     return (
         <div>
-            <div className="header-top" style={{ justifyContent: 'space-between', padding: '20px 25px' }}>
+            <div className="header-top wa-2">
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <i className="fab fa-whatsapp" style={{ color: '#25D366' }}></i> {t('wa.title')}
+                    <h2 className="wa-3">
+                        <i className="fab fa-whatsapp wa-4"></i> {t('wa.title')}
                     </h2>
-                    <p style={{ margin: '5px 0 0', color: 'var(--text-sec)', fontSize: '0.95rem' }}>{t('wa.subtitle')}</p>
+                    <p className="wa-5">{t('wa.subtitle')}</p>
                 </div>
                 <NotificationBell />
             </div>
 
-            <div className="dashboard-content" style={{ paddingTop: 10 }}>
+            <div className="dashboard-content wa-6">
                 <div className="devices-grid">
-                    <button type="button" className="ghost-column-placeholder"
-                        style={{ minHeight: 200, height: 'auto', maxWidth: 'none', width: '100%' }}
+                    <button type="button" className="ghost-column-placeholder wa-7"
                         onClick={() => { setAlias(''); setModalCrear(true); }}>
                         <div className="ghost-icon-circle"><i className="fas fa-plus"></i></div>
                         <span className="ghost-text">{t('wa.addNumber')}</span>
                     </button>
                     {loading
-                        ? <div style={{ padding: 40 }}><div className="spinner"></div></div>
+                        ? <div className="wa-8"><div className="spinner"></div></div>
                         : devices.map(d => (
                             <DeviceCard key={d.id} device={d} onConectar={abrirQr}
                                 onDesvincular={(id) => { setSelectedId(id); setModalDesvincular(true); }}
@@ -236,9 +233,9 @@ export default function WhatsAppVincular() {
             </div>
 
             <Modal id="modalCrear" active={modalCrear} onClose={() => setModalCrear(false)}>
-                <h3 style={{ margin: '0 0 5px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('wa.newNumber')}</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 20 }}>{t('wa.newNumberDesc')}</p>
-                <input className="clean-input" autoFocus style={{ width: '100%', marginBottom: 20 }}
+                <h3 className="wa-9">{t('wa.newNumber')}</h3>
+                <p className="wa-10">{t('wa.newNumberDesc')}</p>
+                <input aria-label={t('wa.aliasPlaceholder')} className="clean-input wa-11" autoFocus
                     placeholder={t('wa.aliasPlaceholder')} value={alias} autoComplete="off"
                     onChange={e => setAlias(e.target.value)} onKeyDown={e => e.key === 'Enter' && confirmarCrear()} />
                 <div className="modal-actions">
@@ -250,16 +247,16 @@ export default function WhatsAppVincular() {
             </Modal>
 
             <Modal id="modalDesvincular" active={modalDesvincular} onClose={() => setModalDesvincular(false)}>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px', fontSize: '1.8rem' }}>
+                <div className="wa-12">
+                    <div className="wa-13">
                         <i className="fas fa-unlink"></i>
                     </div>
-                    <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>{t('wa.unlinkTitle')}</h3>
-                    <p style={{ color: '#94a3b8', marginBottom: 20 }}>{t('wa.unlinkDesc')}</p>
+                    <h3 className="wa-14">{t('wa.unlinkTitle')}</h3>
+                    <p className="wa-15">{t('wa.unlinkDesc')}</p>
                 </div>
                 <div className="modal-actions">
                     <button className="btn-modal btn-cancel" onClick={() => setModalDesvincular(false)}>{t('common.cancel')}</button>
-                    <button className="btn-modal" style={{ backgroundColor: '#f59e0b', color: 'white' }}
+                    <button className="btn-modal wa-16"
                         onClick={confirmarDesvincular} disabled={desvinculando}>
                         {desvinculando ? <i className="fas fa-spinner fa-spin"></i> : t('wa.unlink')}
                     </button>
@@ -267,12 +264,12 @@ export default function WhatsAppVincular() {
             </Modal>
 
             <Modal id="modalEliminar" active={modalEliminar} onClose={() => setModalEliminar(false)}>
-                <div style={{ textAlign: 'center' }}>
-                    <div className="icon-trash-bg" style={{ margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#ef4444' }}>
+                <div className="wa-12">
+                    <div className="icon-trash-bg wa-17">
                         <i className="fas fa-trash-alt"></i>
                     </div>
-                    <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>{t('wa.deleteTitle')}</h3>
-                    <p style={{ color: '#94a3b8', marginBottom: 20 }}>{t('wa.deleteDesc')}</p>
+                    <h3 className="wa-14">{t('wa.deleteTitle')}</h3>
+                    <p className="wa-15">{t('wa.deleteDesc')}</p>
                 </div>
                 <div className="modal-actions">
                     <button className="btn-modal btn-cancel" onClick={() => setModalEliminar(false)}>{t('common.cancel')}</button>
@@ -283,47 +280,45 @@ export default function WhatsAppVincular() {
             </Modal>
 
             <Modal id="modalQr" active={modalQr} onClose={cerrarQr}>
-                <h3 style={{ margin: '0 0 15px', fontSize: '1.4rem', background: 'linear-gradient(to right, #fff, #aebac1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('wa.vincularTitle')}</h3>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 20, borderBottom: '1px solid #333', paddingBottom: 10 }}>
-                    <button type="button" onClick={() => switchTab('qr')}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: qrTab === 'qr' ? '#10b981' : 'var(--color-text-3)', fontWeight: qrTab === 'qr' ? 'bold' : 'normal' }}>
+                <h3 className="wa-18">{t('wa.vincularTitle')}</h3>
+                <div className="wa-19">
+                    <button className="wa-20" type="button" onClick={() => switchTab('qr')}
+                        style={{ color: qrTab === 'qr' ? '#10b981' : 'var(--color-text-3)', fontWeight: qrTab === 'qr' ? 'bold' : 'normal' }}>
                         {t('wa.qrTab')}
                     </button>
-                    <button type="button" onClick={() => switchTab('code')}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: qrTab === 'code' ? '#10b981' : 'var(--color-text-3)', fontWeight: qrTab === 'code' ? 'bold' : 'normal' }}>
+                    <button className="wa-20" type="button" onClick={() => switchTab('code')}
+                        style={{ color: qrTab === 'code' ? '#10b981' : 'var(--color-text-3)', fontWeight: qrTab === 'code' ? 'bold' : 'normal' }}>
                         {t('wa.codeTab')}
                     </button>
                 </div>
 
                 {qrTab === 'qr' && (
-                    <div style={{ textAlign: 'center' }}>
-                        {qrLoading && <div style={{ padding: 40 }}><div className="spinner"></div><p style={{ marginTop: 20, color: '#888' }}>{t('wa.loadingQr')}</p></div>}
-                        {qrSrc && <img src={qrSrc} style={{ width: 260, height: 260, borderRadius: 12, border: '4px solid white', margin: '0 auto', display: 'block' }} alt="QR WhatsApp" />}
+                    <div className="wa-12">
+                        {qrLoading && <div className="wa-8"><div className="spinner"></div><p className="wa-21">{t('wa.loadingQr')}</p></div>}
+                        {qrSrc && <img className="wa-22" src={qrSrc} alt={t('wa.qrAlt')} />}
                     </div>
                 )}
 
                 {qrTab === 'code' && (
-                    <div style={{ textAlign: 'left' }}>
-                        <p style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: 15 }}>{t('wa.phoneDesc')}</p>
-                        <label htmlFor="input-phone-pair" style={{ fontSize: '0.8rem', color: '#fff' }}>{t('wa.phoneLabel')}</label>
-                        <input id="input-phone-pair" type="text" placeholder="Ej: 5491122334455" value={pairPhone}
-                            onChange={e => setPairPhone(e.target.value)}
-                            style={{ width: '100%', padding: 10, marginTop: 5, background: '#222', border: '1px solid #444', color: 'white', borderRadius: 6, boxSizing: 'border-box' }} />
-                        <button type="button" onClick={pedirCodigo} disabled={gettingCode}
-                            style={{ width: '100%', marginTop: 15, padding: '10px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+                    <div className="wa-23">
+                        <p className="wa-24">{t('wa.phoneDesc')}</p>
+                        <label className="wa-25" htmlFor="input-phone-pair">{t('wa.phoneLabel')}</label>
+                        <input className="wa-26" id="input-phone-pair" type="text" placeholder={t('wa.phonePh')} value={pairPhone}
+                            onChange={e => setPairPhone(e.target.value)} />
+                        <button className="wa-27" type="button" onClick={pedirCodigo} disabled={gettingCode}>
                             {gettingCode ? <><i className="fas fa-circle-notch fa-spin"></i>{' '}{t('wa.generating')}</> : pairCode ? t('wa.reloadCode') : t('wa.getCode')}
                         </button>
                         {pairCode && (
-                            <div style={{ marginTop: 20, textAlign: 'center' }}>
-                                <p style={{ color: '#aaa', fontSize: '0.85rem' }}>{t('wa.codePrompt')}</p>
-                                <div style={{ fontSize: '2rem', fontFamily: 'monospace', letterSpacing: 5, color: '#10b981', fontWeight: 'bold', margin: '10px 0' }}>{pairCode}</div>
-                                <p style={{ color: '#ef4444', fontSize: '0.8rem' }}>{t('wa.codeExpiry')}</p>
+                            <div className="wa-28">
+                                <p className="wa-29">{t('wa.codePrompt')}</p>
+                                <div className="wa-30">{pairCode}</div>
+                                <p className="wa-31">{t('wa.codeExpiry')}</p>
                             </div>
                         )}
                     </div>
                 )}
 
-                <div className="modal-actions" style={{ marginTop: 30 }}>
+                <div className="modal-actions wa-32">
                     <button className="btn-modal btn-cancel" onClick={cerrarQr}>{t('wa.close')}</button>
                 </div>
             </Modal>

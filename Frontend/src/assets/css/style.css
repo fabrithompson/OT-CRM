@@ -3942,3 +3942,71 @@ display: flex;
     .spam-chat-split { flex-direction: column !important; height: auto !important; }
     .spam-chat-bandeja { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--color-border); max-height: 220px; }
 }
+
+/* Nombre de la tarjeta del Kanban como botón (ver KanbanCard.jsx) */
+.card-open {
+    min-width: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+/* Estados vacíos con acción (UX-23) */
+.kanban-empty { margin: 16px 25px 0; border: 1px dashed var(--color-border-strong); border-radius: var(--radius-lg); background: rgba(255, 255, 255, 0.02); }
+.kanban-empty .ui-empty { padding: var(--space-6) var(--space-5); }
+.contactos-empty-actions { margin-top: var(--space-4); }
+@media (max-width: 768px) { .kanban-empty { margin: 12px 12px 0; } }
+
+/* Skeletons con la forma del contenido (UX-24) */
+.dash-skeleton { display: flex; flex-direction: column; gap: 18px; height: 100%; overflow: hidden; }
+.dash-skeleton__card { border-radius: 16px; }
+.contactos-skeleton-row td { padding: 16px 12px; }
+.contactos-skeleton-name { display: flex; align-items: center; gap: 12px; }
+.chat-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 8px 0; }
+.chat-skeleton__msg { width: min(62%, 420px); border-radius: 12px; }
+.chat-skeleton__msg--out { align-self: flex-end; }
+
+/* Primeros pasos del Dashboard (UX-29) */
+.onboarding {
+    padding: 18px 20px;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(99, 102, 241, 0.06));
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+}
+.onboarding__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.onboarding__title { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--color-text-1); }
+.onboarding__progress { margin: 2px 0 0; font-size: 0.82rem; color: var(--color-text-3); }
+.onboarding__bar { height: 6px; margin: 12px 0 14px; overflow: hidden; background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
+.onboarding__bar span { display: block; height: 100%; background: var(--color-accent); border-radius: inherit; transition: width var(--duration-slow) var(--ease-out); }
+.onboarding__list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.onboarding__item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px; background: rgba(0, 0, 0, 0.22);
+    border: 1px solid var(--color-border); border-radius: 12px;
+}
+.onboarding__check {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 34px; height: 34px; border-radius: 10px;
+    color: var(--color-text-2); background: rgba(255, 255, 255, 0.06);
+}
+.onboarding__item.is-done .onboarding__check { color: #04130d; background: var(--color-accent); }
+.onboarding__text { display: flex; flex-direction: column; min-width: 0; flex: 1; font-size: 0.85rem; }
+.onboarding__text strong { color: var(--color-text-1); }
+.onboarding__text span { color: var(--color-text-3); font-size: 0.78rem; }
+.onboarding__item.is-done .onboarding__text strong { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.35); }
+.onboarding__state { font-size: 0.78rem; font-weight: 600; color: var(--color-accent); }
+
+/* Auditoría en móvil: título + pestañas ocupan la fila y "Auditar ahora" baja (antes se superponían).
+   !important + especificidad (0,2,0) para ganarle a las clases extraídas :where(.aud-N) */
+@media (max-width: 640px) {
+    .audit-scope .aud-10 { flex: 1 1 100% !important; }
+    .audit-scope .aud-14 { flex: 1 1 100% !important; }
+    .audit-scope .aud-14 .btn-primary { width: 100%; justify-content: center; }
+}

@@ -1,0 +1,15 @@
+/* Estilos extraídos de los style={{}} estáticos de StageModals.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.stg-1) { position: fixed !important; inset: 0 !important; background: rgba(0,0,0,0.7) !important; backdrop-filter: blur(4px) !important; z-index: 1060 !important; display: flex !important; justify-content: center !important; align-items: center !important; }
+:where(.stg-2) { background: linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 16px !important; padding: 30px !important; width: 90% !important; max-width: 400px !important; box-shadow: 0 25px 50px rgba(0,0,0,0.7) !important; }
+:where(.stg-3) { margin: 0 0 5px !important; font-size: 1.4rem !important; background: linear-gradient(to right, #fff, #aebac1) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }
+:where(.stg-4) { color: var(--color-text-3) !important; font-size: 0.9rem !important; margin-bottom: 20px !important; }
+:where(.stg-5) { width: 100% !important; margin-bottom: 20px !important; }
+:where(.stg-6) { text-align: center !important; }
+:where(.stg-7) { margin: 0 auto 15px !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.8rem !important; color: var(--color-danger) !important; }
+:where(.stg-8) { color: #fff !important; margin: 0 0 8px !important; font-size: 1.3rem !important; }
+:where(.stg-9) { color: var(--color-text-3) !important; margin-bottom: 20px !important; }
+:where(.stg-10) { color: #fff !important; }

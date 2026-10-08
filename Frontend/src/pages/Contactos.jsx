@@ -5,6 +5,9 @@ import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
 import NotificationBell from '../components/kanban/NotificationBell';
 import { useLanguage } from '../context/LangContext';
+import useDialog from '../hooks/useDialog';
+import Skeleton from '../components/ui/Skeleton';
+import '../assets/css/pages/Contactos.css';
 
 const FORMAT_BYTES = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -17,22 +20,18 @@ const FORMAT_BYTES = (bytes) => {
 
 function ConfirmDeleteModal({ active, onClose, onConfirm, deleting }) {
     const { t } = useLanguage();
-    useEffect(() => {
-        const h = (e) => { if (e.key === 'Escape') onClose(); };
-        if (active) document.addEventListener('keydown', h);
-        return () => document.removeEventListener('keydown', h);
-    }, [active, onClose]);
+    const dialog = useDialog(active, onClose, { canClose: !deleting });
 
     if (!active) return null;
     return (
-        <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+        <div className="custom-modal-overlay active"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="custom-modal" style={{ textAlign: 'center' }}>
-                <div className="icon-trash-bg" style={{ margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', color: '#ef4444' }}>
+            <div className="custom-modal cnt-1" {...dialog}>
+                <div className="icon-trash-bg cnt-2">
                     <i className="fas fa-trash-alt"></i>
                 </div>
-                <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>{t('contactos.deleteTitle')}</h3>
-                <p style={{ color: '#94a3b8', marginBottom: 20 }}>{t('contactos.deleteMsg')}</p>
+                <h3 className="cnt-3">{t('contactos.deleteTitle')}</h3>
+                <p className="cnt-4">{t('contactos.deleteMsg')}</p>
                 <div className="modal-actions">
                     <button className="btn-modal btn-cancel" onClick={onClose}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm-danger" onClick={onConfirm} disabled={deleting}>
@@ -47,16 +46,17 @@ ConfirmDeleteModal.propTypes = { active: PropTypes.bool.isRequired, onClose: Pro
 
 function ConfirmImportModal({ active, file, onClose, onConfirm, importing }) {
     const { t } = useLanguage();
+    const dialog = useDialog(active && !!file, onClose, { canClose: !importing });
     if (!active || !file) return null;
     return (
-        <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+        <div className="custom-modal-overlay active"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className="custom-modal" style={{ textAlign: 'center' }}>
-                <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 15px', fontSize: '1.8rem' }}>
+            <div className="custom-modal cnt-1" {...dialog}>
+                <div className="cnt-5">
                     <i className="fas fa-file-upload"></i>
                 </div>
-                <h3 style={{ color: '#fff', margin: '0 0 8px', fontSize: '1.3rem' }}>{t('contactos.importTitle')}</h3>
-                <p style={{ color: '#94a3b8', marginBottom: 20 }}>Archivo: <strong style={{ color: '#fff' }}>{file.name}</strong><br />Tamaño: {FORMAT_BYTES(file.size)}</p>
+                <h3 className="cnt-3">{t('contactos.importTitle')}</h3>
+                <p className="cnt-4">{t('contactos.fileLabel')} <strong className="cnt-6">{file.name}</strong><br />{t('contactos.sizeLabel')} {FORMAT_BYTES(file.size)}</p>
                 <div className="modal-actions">
                     <button className="btn-modal btn-cancel" onClick={onClose} disabled={importing}>{t('common.cancel')}</button>
                     <button className="btn-modal btn-confirm" onClick={onConfirm} disabled={importing}>
@@ -69,16 +69,17 @@ function ConfirmImportModal({ active, file, onClose, onConfirm, importing }) {
 }
 ConfirmImportModal.propTypes = { active: PropTypes.bool.isRequired, file: PropTypes.instanceOf(File), onClose: PropTypes.func.isRequired, onConfirm: PropTypes.func.isRequired, importing: PropTypes.bool.isRequired };
 function ResultModal({ active, type, title, message, onClose }) {
+    const dialog = useDialog(active, onClose);
     if (!active) return null;
     const isError = type === 'error';
     return (
-        <div className="custom-modal-overlay active" role="dialog" aria-modal="true"
+        <div className="custom-modal-overlay active"
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             {/* FIX: add maxWidth and maxHeight so it doesn't stretch the screen */}
-            <div className="custom-modal" style={{ maxWidth: 480, maxHeight: '80vh', overflowY: 'auto' }}>
+            <div className="custom-modal cnt-7" {...dialog}>
                 <div className={`modal-icon ${isError ? 'icon-danger' : 'icon-success'}`}><i className={`fas ${isError ? 'fa-times-circle' : 'fa-check-circle'}`}></i></div>
                 <div className="modal-title">{title}</div>
-                <div className="modal-desc" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{message?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}</div>
+                <div className="modal-desc cnt-8">{message?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '')}</div>
                 <div className="modal-actions">
                     <button className="btn-modal btn-confirm" onClick={onClose}>{isError ? 'Entendido' : 'Aceptar'}</button>
                 </div>
@@ -140,11 +141,11 @@ export default function Contactos() {
                 setTotalItems(Array.isArray(data) ? data.length : 0);
             }
         } catch {
-            toast('Error', 'No se pudieron cargar los contactos', '#ef4444');
+            toast(t('common.errorTitle'), t('contactos.errLoad'), '#ef4444');
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     // Recarga al cambiar página/tamaño. La búsqueda se dispara manualmente desde
     // handleSearch (con debouncing); por eso 'search' no está en deps a propósito.
@@ -188,7 +189,7 @@ export default function Contactos() {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
         } catch {
-            toast('Error', 'No se pudieron exportar los contactos', '#ef4444');
+            toast(t('common.errorTitle'), t('contactos.errExport'), '#ef4444');
         }
     };
 
@@ -247,11 +248,11 @@ export default function Contactos() {
             loadClientes(page, pageSize, search);
         } catch (e) {
             setDeleteId(null);
-            let msg = e.response?.data?.error || 'No se pudo eliminar el contacto';
+            let msg = e.response?.data?.error || t('contactos.errDelete');
             if (msg.includes('foreign key') || msg.includes('FK3')) {
-                msg = '<strong>No se puede eliminar este contacto</strong><br><br>El contacto tiene mensajes asociados. Elimina primero el historial del chat.';
+                msg = `${t('contactos.cantDelete')}\n\n${t('contactos.cantDeleteDetail')}`;
             }
-            showResult('error', 'No se pudo eliminar', msg);
+            showResult('error', t('common.errDelete'), msg);
         } finally {
             setDeleting(false);
         }
@@ -265,49 +266,65 @@ export default function Contactos() {
 
     const renderTableBody = () => {
         if (loading) {
-            return <tr><td colSpan={8} className="table-cards__full" style={{ textAlign: 'center', padding: 40 }}><div className="spinner"></div></td></tr>;
+            return Array.from({ length: 6 }, (_, i) => (
+                <tr key={`sk-${i}`} className="contactos-skeleton-row" aria-hidden="true">
+                    <td className="cell-primary"><div className="contactos-skeleton-name"><Skeleton variant="circle" width={36} height={36} /><Skeleton variant="text" width="60%" /></div></td>
+                    {[1, 2, 3, 4, 5, 6, 7].map(j => <td key={j}><Skeleton variant="text" width="70%" /></td>)}
+                </tr>
+            ));
         }
         if (clientes.length === 0) {
             return (
                 <tr>
-                    <td colSpan={8} className="table-cards__full" style={{ textAlign: 'center', padding: 40, color: '#94a3b8', height: 'calc(100dvh - 268px)', verticalAlign: 'middle' }}>
-                        <i className="fas fa-users" style={{ fontSize: '2.5rem', marginBottom: 16, opacity: 0.3, display: 'block' }}></i>
-                        <span style={{ fontSize: '1rem' }}>No se encontraron contactos</span>
+                    <td colSpan={8} className="table-cards__full cnt-10">
+                        <i className="fas fa-users cnt-11"></i>
+                        <span className="cnt-12">{search ? t('contactos.empty.noResults') : t('contactos.empty.title')}</span>
+                        <div className="ui-actions contactos-empty-actions">
+                            {search ? (
+                                <button type="button" className="ui-btn ui-btn--secondary" onClick={() => handleSearch('')}>
+                                    <i className="fas fa-times" aria-hidden="true" /> {t('contactos.empty.clear')}
+                                </button>
+                            ) : (
+                                <button type="button" className="ui-btn ui-btn--primary" onClick={() => fileInputRef.current?.click()}>
+                                    <i className="fas fa-file-upload" aria-hidden="true" /> {t('contactos.empty.import')}
+                                </button>
+                            )}
+                        </div>
                     </td>
                 </tr>
             );
         }
         return clientes.map(c => (
             <tr key={c.id} id={`row-${c.id}`}>
-                <td className="col-left ps-4 cell-primary" style={{ textAlign: 'left' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <td className="col-left ps-4 cell-primary cnt-13">
+                    <div className="cnt-14">
                         <div className="avatar-circle"><span>{(c.nombre || '?').charAt(0).toUpperCase()}</span></div>
-                        <span style={{ fontWeight: 700, color: '#fff' }}>{c.nombre}</span>
+                        <span className="cnt-15">{c.nombre}</span>
                     </div>
                 </td>
-                <td data-label={t('contactos.colPlatform')} className="col-center" style={{ textAlign: 'center' }}><div className="session-cell" style={{ justifyContent: 'center' }}><PlatformIcon origen={c.origen} /></div></td>
-                <td data-label={t('contactos.colPhone')} className="col-center text-muted" style={{ textAlign: 'center', fontFamily: 'monospace' }}>{c.telefono}</td>
-                <td data-label={t('contactos.colDevice')} className="col-center" style={{ textAlign: 'center' }}>
-                    {c.dispositivo ? <span className="badge-device"><i className="fas fa-mobile-alt" style={{ marginRight: 4 }}></i>{c.dispositivo.alias}</span> : <span style={{ color: 'var(--color-text-3)' }}>-</span>}
+                <td data-label={t('contactos.colPlatform')} className="col-center cnt-1"><div className="session-cell cnt-16"><PlatformIcon origen={c.origen} /></div></td>
+                <td data-label={t('contactos.colPhone')} className="col-center text-muted cnt-17">{c.telefono}</td>
+                <td data-label={t('contactos.colDevice')} className="col-center cnt-1">
+                    {c.dispositivo ? <span className="badge-device"><i className="fas fa-mobile-alt cnt-18"></i>{c.dispositivo.alias}</span> : <span className="cnt-19">-</span>}
                 </td>
-                <td data-label={t('contactos.colLabels')} className="col-center" style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <td data-label={t('contactos.colLabels')} className="col-center cnt-1">
+                    <div className="cnt-20">
                         {c.etiquetas?.length > 0
                             ? c.etiquetas.map(tag => (<span key={tag.id} className="badge-tag" style={{ backgroundColor: `${tag.color}20`, color: tag.color, border: `1px solid ${tag.color}40` }}>{tag.nombre}</span>))
-                            : <span style={{ color: 'var(--color-text-3)' }}>-</span>
+                            : <span className="cnt-19">-</span>
                         }
                     </div>
                 </td>
-                <td data-label={t('contactos.colStatus')} className="col-center" style={{ textAlign: 'center' }}>
-                    {c.etapa ? <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}><span className="stage-dot"></span><span className="text-sec">{c.etapa.nombre}</span></div> : <span style={{ color: 'var(--color-text-3)' }}>-</span>}
+                <td data-label={t('contactos.colStatus')} className="col-center cnt-1">
+                    {c.etapa ? <div className="cnt-21"><span className="stage-dot"></span><span className="text-sec">{c.etapa.nombre}</span></div> : <span className="cnt-19">-</span>}
                 </td>
-                <td data-label={t('contactos.colMessage')} className="col-center" style={{ textAlign: 'center' }}>
-                    <p style={{ maxWidth: 200, margin: '0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#94a3b8', fontSize: '0.85rem' }}>{c.ultimoMensajeResumen || '-'}</p>
+                <td data-label={t('contactos.colMessage')} className="col-center cnt-1">
+                    <p className="cnt-22">{c.ultimoMensajeResumen || '-'}</p>
                 </td>
-                <td data-label={t('contactos.colActions')} className="col-center pe-4" style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-                        <button type="button" className="btn-action-icon chat" title="Abrir Chat" onClick={() => abrirChat(c.id)}><i className="fas fa-comment-dots"></i></button>
-                        <button type="button" className="btn-action-icon trash" title="Eliminar" onClick={() => setDeleteId(c.id)}><i className="fas fa-trash-alt"></i></button>
+                <td data-label={t('contactos.colActions')} className="col-center pe-4 cnt-1">
+                    <div className="cnt-23">
+                        <button type="button" className="btn-action-icon chat" title={t('contactos.openChat')} onClick={() => abrirChat(c.id)}><i className="fas fa-comment-dots"></i></button>
+                        <button type="button" className="btn-action-icon trash" title={t('common.delete')} onClick={() => setDeleteId(c.id)}><i className="fas fa-trash-alt"></i></button>
                     </div>
                 </td>
             </tr>
@@ -315,75 +332,75 @@ export default function Contactos() {
     };
 
     return (
-        <section className="page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="header-top contactos-head" style={{ flexShrink: 0, padding: '20px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                    <i className="fas fa-users text-primary" style={{ fontSize: '1.4rem' }}></i>
+        <section className="page-wrapper cnt-24">
+            <div className="header-top contactos-head cnt-25">
+                <div className="cnt-26">
+                    <i className="fas fa-users text-primary cnt-27"></i>
                     <div>
-                        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', margin: 0 }}>{t('contactos.title')}</h2>
-                        <span className="text-muted" style={{ fontSize: '0.85rem' }}>{totalItems} {t('contactos.clients')}</span>
+                        <h2 className="cnt-28">{t('contactos.title')}</h2>
+                        <span className="text-muted cnt-29">{totalItems} {t('contactos.clients')}</span>
                     </div>
                 </div>
-                <div className="contactos-head__right" style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-                    <div className="search-wrapper" style={{ margin: 0, height: 40, position: 'relative' }}>
-                        <i className="fas fa-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#aaa' }}></i>
-                        <input type="text" placeholder={t('contactos.search')} value={search} onChange={e => handleSearch(e.target.value)} autoComplete="off" style={{ height: '100%', width: 240, paddingLeft: 35, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-glass)', borderRadius: 8, color: 'white', outline: 'none' }} />
+                <div className="contactos-head__right cnt-26">
+                    <div className="search-wrapper cnt-30">
+                        <i className="fas fa-search cnt-31"></i>
+                        <input className="cnt-32" aria-label={t('contactos.search')} type="text" placeholder={t('contactos.search')} value={search} onChange={e => handleSearch(e.target.value)} autoComplete="off" />
                     </div>
-                    <button type="button" className="btn-excel-animado" onClick={exportar} style={{ backgroundColor: '#1D6F42', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                        <i className="fas fa-file-download"></i><span className="texto-btn" style={{ marginLeft: 5 }}>{t('contactos.exportBtn')}</span>
+                    <button type="button" className="btn-excel-animado cnt-33" onClick={exportar}>
+                        <i className="fas fa-file-download"></i><span className="texto-btn cnt-34">{t('contactos.exportBtn')}</span>
                     </button>
-                    <button type="button" className="btn-excel-animado" onClick={() => fileInputRef.current?.click()} style={{ backgroundColor: '#0061f2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <i className="fas fa-file-upload"></i><span className="texto-btn" style={{ marginLeft: 5 }}>{t('contactos.importBtn2')}</span>
+                    <button type="button" className="btn-excel-animado cnt-35" onClick={() => fileInputRef.current?.click()}>
+                        <i className="fas fa-file-upload"></i><span className="texto-btn cnt-34">{t('contactos.importBtn2')}</span>
                     </button>
                     <NotificationBell />
                     <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleFileSelect} />
                 </div>
             </div>
 
-            <div className="dashboard-content contactos-body" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div className="glass-table-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-                    <div className="table-scroll-wrapper custom-scrollbar" style={{ flex: 1, overflowY: 'auto' }}>
-                        <table className="table custom-table table-cards" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                            <thead style={{ backgroundColor: '#0a0a14' }}>
+            <div className="dashboard-content contactos-body cnt-36">
+                <div className="glass-table-card cnt-37">
+                    <div className="table-scroll-wrapper custom-scrollbar cnt-38">
+                        <table className="table custom-table table-cards cnt-39">
+                            <thead className="cnt-40">
                                 <tr>
-                                    <th className="col-left ps-4 sticky-header" style={{ textAlign: 'left' }}>{t('contactos.colName')}</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colPlatform')}</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colPhone')}</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colDevice')}</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colLabels')}</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colStatus')}</th>
-                                    <th className="col-center sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colMessage')}</th>
-                                    <th className="col-center pe-4 sticky-header" style={{ textAlign: 'center' }}>{t('contactos.colActions')}</th>
+                                    <th className="col-left ps-4 sticky-header cnt-13">{t('contactos.colName')}</th>
+                                    <th className="col-center sticky-header cnt-1">{t('contactos.colPlatform')}</th>
+                                    <th className="col-center sticky-header cnt-1">{t('contactos.colPhone')}</th>
+                                    <th className="col-center sticky-header cnt-1">{t('contactos.colDevice')}</th>
+                                    <th className="col-center sticky-header cnt-1">{t('contactos.colLabels')}</th>
+                                    <th className="col-center sticky-header cnt-1">{t('contactos.colStatus')}</th>
+                                    <th className="col-center sticky-header cnt-1">{t('contactos.colMessage')}</th>
+                                    <th className="col-center pe-4 sticky-header cnt-1">{t('contactos.colActions')}</th>
                                 </tr>
                             </thead>
                             <tbody>{renderTableBody()}</tbody>
                         </table>
                     </div>
 
-                    <div className="table-footer" style={{ padding: '15px 20px', borderTop: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', gap: 20 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontWeight: 500 }}>{t('contactos.rowsPerPage')}:</span>
-                            <select value={pageSize} onChange={handlePageSize} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', outline: 'none', cursor: 'pointer', backgroundColor: '#0e0e1c', color: 'white' }}>
+                    <div className="table-footer cnt-41">
+                        <div className="cnt-42">
+                            <span className="cnt-43">{t('contactos.rowsPerPage')}:</span>
+                            <select className="cnt-44" aria-label={t('contactos.rowsPerPage')} value={pageSize} onChange={handlePageSize}>
                                 <option value={10}>10</option><option value={20}>20</option><option value={50}>50</option>
                             </select>
                         </div>
                         {totalPages > 1 ? (
                             <nav className="pagination-wrapper">
                                 <button type="button" className="btn-page" onClick={() => goToPage(page - 1)} disabled={page === 0}>
-                                    <i className="fas fa-chevron-left" style={{ fontSize: '0.7rem' }}></i><span>Anterior</span>
+                                    <i className="fas fa-chevron-left cnt-45"></i><span>{t('contactos.prev')}</span>
                                 </button>
                                 <div className="page-info-capsule">
-                                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>Página</span>
+                                    <span className="text-muted cnt-46">{t('contactos.page')}</span>
                                     <span className="current">{page + 1}</span>
-                                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>de</span>
+                                    <span className="text-muted cnt-46">{t('contactos.of')}</span>
                                     <span className="total">{totalPages}</span>
                                 </div>
                                 <button type="button" className="btn-page" onClick={() => goToPage(page + 1)} disabled={page + 1 >= totalPages}>
-                                    <span>Siguiente</span><i className="fas fa-chevron-right" style={{ fontSize: '0.7rem' }}></i>
+                                    <span>{t('contactos.next')}</span><i className="fas fa-chevron-right cnt-45"></i>
                                 </button>
                             </nav>
                         ) : (
-                            <div style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: 500 }}>Mostrando todos los resultados</div>
+                            <div className="cnt-47">{t('contactos.showingAll')}</div>
                         )}
                     </div>
                 </div>

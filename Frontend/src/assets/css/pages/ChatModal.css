@@ -1,0 +1,51 @@
+/* Estilos extraídos de los style={{}} estáticos de ChatModal.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.cht-1) { position: relative !important; }
+:where(.cht-2) { position: absolute !important; inset: 0 !important; z-index: 9999 !important; background: rgba(16,185,129,0.15) !important; border: 3px dashed var(--color-accent) !important; border-radius: 16px !important; display: flex !important; align-items: center !important; justify-content: center !important; backdrop-filter: blur(2px) !important; pointer-events: none !important; }
+:where(.cht-3) { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 12px !important; color: var(--color-accent) !important; }
+:where(.cht-4) { font-size: 3rem !important; }
+:where(.cht-5) { font-size: 1.2rem !important; font-weight: 700 !important; }
+:where(.cht-6) { width: 38px !important; height: 38px !important; border-radius: 50% !important; background: linear-gradient(135deg,var(--brand-purple),#a855f7) !important; display: flex !important; align-items: center !important; justify-content: center !important; color: #fff !important; font-weight: 700 !important; flex-shrink: 0 !important; }
+:where(.cht-7) { width: 100% !important; height: 100% !important; border-radius: 50% !important; object-fit: cover !important; }
+:where(.cht-8) { display: flex !important; align-items: center !important; gap: 6px !important; padding-left: 8px !important; font-size: 0.82rem !important; }
+:where(.cht-9) { font-weight: 600 !important; }
+:where(.cht-10) { display: flex !important; align-items: center !important; gap: 6px !important; }
+:where(.cht-11) { background: rgba(255,255,255,0.05) !important; border-radius: 8px !important; width: 36px !important; height: 36px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+:where(.cht-12) { font-size: 1rem !important; }
+:where(.cht-13) { position: fixed !important; inset: 0 !important; z-index: 100 !important; }
+:where(.cht-14) { position: absolute !important; right: 0 !important; top: calc(100% + 6px) !important; background: #1e293b !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 8px !important; min-width: 240px !important; z-index: 101 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important; }
+:where(.cht-15) { display: flex !important; align-items: center !important; gap: 10px !important; width: 100% !important; padding: 12px 14px !important; background: transparent !important; color: #e2e8f0 !important; border: none !important; text-align: left !important; font-size: 0.9rem !important; }
+:where(.cht-16) { color: #fbbf24 !important; width: 16px !important; }
+:where(.cht-17) { font-size: 0.75rem !important; opacity: 0.6 !important; margin-top: 2px !important; }
+:where(.cht-18) { text-align: center !important; padding: 8px !important; background: none !important; border: none !important; cursor: pointer !important; opacity: 0.7 !important; font-size: 0.8rem !important; color: var(--color-text-3) !important; }
+:where(.cht-19) { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; flex: 1 !important; }
+:where(.cht-20) { opacity: 0.55 !important; font-weight: 400 !important; font-size: 0.85rem !important; margin-left: 6px !important; }
+:where(.cht-21) { width: 32px !important; }
+:where(.cht-22) { cursor: pointer !important; }
+:where(.cht-23) { color: var(--color-accent) !important; }
+:where(.cht-24) { color: var(--color-info) !important; }
+:where(.cht-25) { color: var(--color-danger) !important; }
+:where(.cht-26) { display: inline-flex !important; align-items: center !important; gap: 6px !important; color: var(--color-danger) !important; font-variant-numeric: tabular-nums !important; font-size: 0.85rem !important; font-weight: 600 !important; }
+:where(.cht-27) { font-size: 1.1rem !important; }
+:where(.cht-28) { background: transparent !important; border: none !important; color: #d1d7db !important; width: 100% !important; }
+:where(.cht-29) { background: #202c33 !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; color: #d1d7db !important; padding: 10px !important; resize: none !important; min-height: 80px !important; width: 100% !important; }
+:where(.cht-30) { color: var(--color-accent) !important; font-weight: 700 !important; font-size: 1.1rem !important; }
+:where(.cht-31) { margin-top: 8px !important; }
+:where(.cht-32) { color: #555 !important; font-size: 0.75rem !important; font-style: italic !important; }
+:where(.cht-33) { display: flex !important; align-items: center !important; gap: 8px !important; }
+:where(.cht-34) { background: transparent !important; border: none !important; outline: none !important; color: #d1d7db !important; font-size: 0.85rem !important; flex: 1 !important; }
+:where(.cht-35) { display: flex !important; gap: 4px !important; }
+:where(.cht-36) { width: 18px !important; height: 18px !important; border-radius: 50% !important; cursor: pointer !important; padding: 0 !important; flex-shrink: 0 !important; outline: none !important; }
+:where(.cht-37) { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px !important; }
+:where(.cht-38) { padding: 10px !important; opacity: 0.5 !important; color: var(--color-text-3) !important; font-size: 0.8rem !important; grid-column: 1/-1 !important; }
+:where(.cht-39) { aspect-ratio: 1 !important; border-radius: 6px !important; overflow: hidden !important; cursor: pointer !important; background: #111 !important; border: none !important; padding: 0 !important; }
+:where(.cht-40) { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+:where(.cht-41) { margin-left: 5px !important; font-size: 10px !important; }
+:where(.cht-42) { background: none !important; border: none !important; padding: 0 !important; cursor: pointer !important; }
+:where(.cht-43) { font-size: 0.75rem !important; opacity: 0.78 !important; display: inline-flex !important; align-items: center !important; gap: 5px !important; }
+:where(.cht-44) { font-size: 0.72rem !important; }
+:where(.cht-45) { margin-bottom: 5px !important; word-break: break-word !important; }
+:where(.cht-46) { width: 18px !important; height: 18px !important; cursor: pointer !important; padding: 0 !important; flex-shrink: 0 !important; outline: none !important; }

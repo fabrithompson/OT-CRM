@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Unbounded:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Landing pública — "dark cinematic" espacial.
@@ -23,8 +23,10 @@
     --lx-border: rgba(190, 175, 255, 0.14);
     --lx-border-strong: rgba(190, 175, 255, 0.35);
     --lx-fill: rgba(180, 165, 255, 0.045);
-    --lx-display: 'Unbounded', 'Montserrat', system-ui, sans-serif;
-    --lx-body: 'Hanken Grotesk', system-ui, sans-serif;
+    /* Serif editorial para titulares + monoespaciada para todo lo demás (inspiración: blink.capital).
+       Instrument Serif solo tiene peso regular: los titulares van en 400 y el énfasis en cursiva. */
+    --lx-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+    --lx-body: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --lx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     --lx-gap-section: clamp(88px, 10vw, 132px);
 
@@ -37,7 +39,7 @@
     background: var(--lx-bg);
     color: var(--lx-text);
     font-family: var(--lx-body);
-    font-size: 17px;
+    font-size: 15px;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     scroll-behavior: smooth;
@@ -58,7 +60,7 @@
 
 .lx-h1 {
     font-family: var(--lx-display);
-    font-weight: 500;
+    font-weight: 400;
     font-size: clamp(38px, 6.2vw, 88px);
     line-height: 1.04;
     letter-spacing: -0.025em;
@@ -67,7 +69,7 @@
 }
 .lx-h2 {
     font-family: var(--lx-display);
-    font-weight: 500;
+    font-weight: 400;
     font-size: clamp(30px, 4vw, 56px);
     line-height: 1.06;
     letter-spacing: -0.02em;
@@ -90,7 +92,7 @@
 .lx-num {
     font-family: var(--lx-display);
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 400;
     letter-spacing: 0.06em;
     color: var(--lx-accent);
 }
@@ -415,7 +417,7 @@
     margin-bottom: 12px !important;
     font-family: var(--lx-display);
     font-size: 22px;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1.2;
     text-wrap: balance;
 }
@@ -462,7 +464,7 @@
     gap: 10px;
 }
 .lx-work__label { font-size: 14px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lx-text-2); }
-.lx-work__name { font-family: var(--lx-display); font-size: clamp(26px, 3vw, 40px); font-weight: 500; line-height: 1.1; }
+.lx-work__name { font-family: var(--lx-display); font-size: clamp(30px, 3.4vw, 48px); font-weight: 400; line-height: 1.1; }
 .lx-work__go {
     position: absolute;
     right: 32px;
@@ -493,10 +495,10 @@
     border: 1px solid var(--lx-border-strong);
     border-radius: 999px;
 }
-.lx-plan__name { font-family: var(--lx-display); font-size: 24px; font-weight: 500; }
+.lx-plan__name { font-family: var(--lx-display); font-size: 32px; font-weight: 400; }
 .lx-plan__tagline { min-height: 3.1em; font-size: 15px; color: var(--lx-text-2); text-wrap: pretty; }
 .lx-plan__price { display: flex; align-items: baseline; gap: 6px; }
-.lx-plan__amount { font-family: var(--lx-display); font-size: 32px; font-weight: 500; letter-spacing: -0.02em; }
+.lx-plan__amount { font-family: var(--lx-display); font-size: 40px; font-weight: 400; letter-spacing: -0.01em; }
 .lx-plan__period { font-size: 15px; color: var(--lx-text-2); }
 .lx-plan__devices {
     padding-block: 12px;
@@ -586,7 +588,7 @@
 .lx-closing__title {
     font-family: var(--lx-display);
     font-size: clamp(52px, 11vw, 164px);
-    font-weight: 600;
+    font-weight: 400;
     line-height: 0.95;
     /* La guía pide -0.04em, pero Unbounded es muy ancha y a ese tracking las letras se pisan */
     letter-spacing: -0.01em;
@@ -662,4 +664,177 @@
     .lx-reveal { opacity: 1; transform: none; transition: none; }
     .lx-btn, .lx-btn svg, .lx-work__scene, .lx-work__go { transition: none; }
     .lx-work__card:hover .lx-work__scene { transform: none; }
+}
+
+
+/* ── Ajustes tipográficos serif + mono ─────────────────────────────────── */
+.lx-h1 { font-size: clamp(46px, 7.4vw, 112px); line-height: 0.98; letter-spacing: -0.02em; max-width: 14ch; }
+.lx-h2 { font-size: clamp(36px, 4.8vw, 68px); line-height: 1.02; letter-spacing: -0.015em; }
+/* Las palabras de acento van en cursiva, como el énfasis editorial */
+.lx-h1 .lx-accent, .lx-h2 .lx-accent, .lx-closing__title .lx-accent, .ax-visual__title .lx-accent { font-style: italic; }
+.lx-lead { font-size: clamp(15px, 1.2vw, 17px); line-height: 1.65; }
+.lx-about__title { font-size: clamp(32px, 3.2vw, 48px); line-height: 1.05; }
+.lx-about__lead { font-family: var(--lx-display); font-size: clamp(26px, 2.6vw, 36px); line-height: 1.2; }
+/* Manifiesto: sin mayúsculas, la segunda línea en cursiva */
+.lx-manifesto__title { text-transform: none; font-size: clamp(40px, 4.6vw, 64px); line-height: 1; }
+.lx-manifesto__title .lx-w300 { font-weight: 400; }
+.lx-manifesto__title .lx-w600 { font-weight: 400; font-style: italic; color: var(--lx-accent); }
+.lx-steps h3 { font-family: var(--lx-display); font-size: 24px; font-weight: 400; }
+.lx-service__title { font-size: 30px; line-height: 1.1; }
+.lx-closing__title { letter-spacing: -0.02em; line-height: 0.92; }
+/* Botones, navegación y etiquetas: mono en mayúsculas, chicas (como blink.capital) */
+.lx-btn, .lx-link, .lx-nav__links a, .lx-pill, .lx-scroll, .lx-hero__bottom, .lx-footer {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.lx-btn { font-size: 13px; }
+.lx-btn--lg { font-size: 14px; }
+.lx-nav__links a, .lx-link { font-size: 13px; }
+.lx-pill { font-size: 12px; }
+.lx-tag, .lx-work__label, .lx-plan__badge { letter-spacing: 0.12em; }
+.lx-field > span, .ax .lx-field > label { text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; }
+.lx-hero__social a { text-transform: none; }
+
+
+/* ══ Notificación entrante del héroe (inspiración: blink.capital) ═════════ */
+.lx-notif {
+    position: absolute;
+    top: clamp(112px, 34vh, 320px);
+    right: max(32px, calc((100vw - 1264px) / 2));
+    width: 340px;
+    padding: 14px 16px 16px;
+    color: #F5F3FF;
+    background: #5B21B6;
+    border-radius: 10px;
+    animation: lx-notif-in 0.7s var(--lx-ease) 0.6s both;
+}
+.lx-notif__head { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(245, 243, 255, 0.72); }
+.lx-notif__head i { margin-right: 4px; }
+.lx-notif__msg { margin-top: 10px !important; font-size: 14px; line-height: 1.5; }
+.lx-notif__event {
+    margin-top: 12px !important;
+    padding-top: 10px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #EDE9FE;
+    border-top: 1px solid rgba(245, 243, 255, 0.22);
+    animation: lx-fade-in 0.5s ease 2.2s both;
+}
+@keyframes lx-notif-in { from { opacity: 0; transform: translateY(-12px) scale(0.98); } }
+@keyframes lx-fade-in { from { opacity: 0; } }
+@media (max-width: 1100px) { .lx-notif { display: none; } }
+
+/* ══ Demo: conversación que avanza por el embudo ══════════════════════════ */
+.lx-demo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(32px, 6vw, 96px);
+}
+.lx-demo__text { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
+.lx-demo__steps { display: grid; gap: 4px; width: 100%; margin: 8px 0 4px; padding: 0; list-style: none; }
+.lx-demo__steps li {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    opacity: 0.55;
+    transition: opacity 0.4s, border-color 0.4s, background 0.4s;
+}
+.lx-demo__steps li.is-done { opacity: 0.8; }
+.lx-demo__steps li.is-active { opacity: 1; background: var(--lx-fill); border-color: var(--lx-border-strong); }
+.lx-demo__steps strong { display: block; font-family: var(--lx-display); font-size: 22px; font-weight: 400; }
+.lx-demo__steps span span { display: block; margin-top: 2px; font-size: 13px; color: var(--lx-text-2); }
+
+.lx-phone {
+    display: flex;
+    flex-direction: column;
+    height: 560px;
+    overflow: hidden;
+    background: var(--lx-panel);
+    border: 1px solid var(--lx-border);
+    border-radius: 28px;
+}
+.lx-phone__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--lx-border);
+}
+.lx-phone__avatar {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 38px; height: 38px;
+    font-family: var(--lx-display); font-size: 20px;
+    color: var(--lx-bg); background: var(--lx-text); border-radius: 50%;
+}
+.lx-phone__who { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: 12px; color: var(--lx-text-2); }
+.lx-phone__who strong { font-size: 14px; color: var(--lx-text); }
+.lx-phone__stage {
+    padding: 5px 10px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--lx-text-2);
+    border: 1px solid var(--lx-border-strong);
+    border-radius: 999px;
+    transition: color 0.3s, border-color 0.3s, background 0.3s;
+}
+.lx-phone__stage.is-done { color: var(--lx-bg); background: var(--lx-accent); border-color: var(--lx-accent); }
+.lx-phone__log {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 10px;
+    flex: 1;
+    margin: 0;
+    padding: 18px;
+    overflow: hidden;
+    list-style: none;
+}
+.lx-msg {
+    max-width: 78%;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    border-radius: 14px;
+    animation: lx-msg-in 0.35s var(--lx-ease) both;
+}
+.lx-msg--in { align-self: flex-start; background: rgba(238, 236, 255, 0.07); border-bottom-left-radius: 4px; }
+.lx-msg--out { align-self: flex-end; background: rgba(167, 139, 250, 0.18); border: 1px solid rgba(167, 139, 250, 0.35); border-bottom-right-radius: 4px; }
+.lx-msg__cmd { display: block; margin-bottom: 4px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--lx-accent); }
+.lx-msg--typing { display: flex; gap: 4px; padding: 14px 16px; }
+.lx-msg--typing span { width: 6px; height: 6px; background: var(--lx-text-2); border-radius: 50%; animation: lx-typing 1s infinite ease-in-out; }
+.lx-msg--typing span:nth-child(2) { animation-delay: 0.15s; }
+.lx-msg--typing span:nth-child(3) { animation-delay: 0.3s; }
+.lx-event {
+    align-self: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--lx-text-2);
+    border: 1px dashed var(--lx-border-strong);
+    border-radius: 999px;
+    animation: lx-msg-in 0.35s var(--lx-ease) both;
+}
+.lx-event i { color: var(--lx-accent); }
+.lx-event.is-done { color: var(--lx-text); border-style: solid; border-color: var(--lx-accent); }
+@keyframes lx-msg-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes lx-typing { 0%, 60%, 100% { opacity: 0.3; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+
+@media (max-width: 900px) {
+    .lx-demo { grid-template-columns: 1fr; }
+    .lx-phone { height: 500px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .lx-notif, .lx-notif__event, .lx-msg, .lx-event { animation: none; }
+    .lx-msg--typing span { animation: none; }
 }

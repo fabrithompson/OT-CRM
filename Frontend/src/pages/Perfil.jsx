@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { useUser } from '../context/UserContext';
 import { useLanguage } from '../context/LangContext';
+import '../assets/css/pages/Perfil.css';
 
 export default function Perfil() {
     const { t } = useLanguage();
@@ -184,71 +185,59 @@ export default function Perfil() {
     };
 
     if (loading) return (
-        <div style={{ padding: '2rem', color: 'white', display: 'flex', justifyContent: 'center' }}>
+        <div className="prf-1">
             <div className="spinner"></div>
         </div>
     );
 
     return (
-        <div id="profile-wrapper" className="profile-wrapper" style={{ height: '100%', overflowY: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
-            <div className="profile-content" style={{ width: '100%', maxWidth: 1400, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <h2 style={{ margin: 0, fontSize: '1.55rem', fontWeight: 800, color: '#fff' }}>{t('perfil.title')}</h2>
+        <div id="profile-wrapper" className="profile-wrapper prf-2">
+            <div className="profile-content prf-3">
+                <h2 className="prf-4">{t('perfil.title')}</h2>
 
                 {mensaje.texto && (
-                    <div style={{
-                        background: mensaje.tipo === 'exito' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
-                        color:      mensaje.tipo === 'exito' ? '#86efac' : '#fca5a5',
-                        border:     `1px solid ${mensaje.tipo === 'exito' ? '#10b981' : '#ef4444'}`,
-                        padding: '15px', borderRadius: '10px', marginBottom: '20px',
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                    }}>
+                    <div className="prf-65" style={{ borderRadius: '10px', background: mensaje.tipo === 'exito' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color:      mensaje.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${mensaje.tipo === 'exito' ? '#10b981' : '#ef4444'}` }}>
                         <i className={`fas ${mensaje.tipo === 'exito' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                         <span>{mensaje.texto}</span>
                     </div>
                 )}
 
                 {/* Grid: configuración (izq) | equipo + solicitudes (der) */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
-                    gap: 14, alignItems: 'start',
-                }}>
-                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '22px' }}>
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="prf-6">
+                <div className="content-card prf-7">
+                    <form className="prf-8" onSubmit={handleSubmit}>
 
                         {/* Avatar */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingBottom: '14px', borderBottom: '1px solid var(--border-glass)' }}>
+                        <div className="prf-9">
                             {previewUrl ? (
-                                <img src={previewUrl} alt="Perfil" style={{ width: '96px', height: '96px', borderRadius: '50%', objectFit: 'cover', border: '3px solid white', boxShadow: '0 0 20px rgba(255,255,255,0.2)' }} />
+                                <img className="prf-10" src={previewUrl} alt={t('perfil.photoAlt')} />
                             ) : (
-                                <div style={{ width: '96px', height: '96px', fontSize: '2.5rem', border: '3px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', borderRadius: '50%', background: '#333', color: '#fff' }}>
+                                <div className="prf-11">
                                     {(usuario.nombreCompleto || usuario.username || 'U').charAt(0).toUpperCase()}
                                 </div>
                             )}
-                            <label style={{ cursor: 'pointer', display: 'flex', gap: '8px', alignItems: 'center', padding: '10px 20px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none' }}>
+                            <label className="prf-12">
                                 <i className="fas fa-camera"></i> {t('perfil.changePhoto')}
-                                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFotoChange} />
+                                <input className="prf-13" type="file" accept="image/*" onChange={handleFotoChange} />
                             </label>
                         </div>
 
                         {/* Campos */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div className="prf-14">
                             <div>
-                                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af' }}>{t('perfil.fullName')}</label>
-                                <input
+                                <label className="prf-15">{t('perfil.fullName')}</label>
+                                <input aria-label={t('perfil.fullName')} autoComplete="name"
                                     type="text"
-                                    className="form-control"
-                                    style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', outline: 'none' }}
+                                    className="form-control prf-16"
                                     value={usuario.nombreCompleto || ''}
                                     onChange={e => setUsuario({ ...usuario, nombreCompleto: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af' }}>{t('perfil.email')}</label>
-                                <input
+                                <label className="prf-15">{t('perfil.email')}</label>
+                                <input aria-label={t('perfil.email')} autoComplete="email"
                                     type="email"
-                                    className="form-control"
-                                    style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', outline: 'none' }}
+                                    className="form-control prf-16"
                                     value={usuario.email || ''}
                                     onChange={e => setUsuario({ ...usuario, email: e.target.value })}
                                 />
@@ -257,22 +246,21 @@ export default function Perfil() {
 
                         {/* Contraseña */}
                         <div>
-                            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af' }}>
-                                {t('perfil.newPwd')} <span style={{ fontWeight: 'normal', opacity: 0.6 }}>({t('common.optional')})</span>
+                            <label className="prf-15">
+                                {t('perfil.newPwd')} <span className="prf-17">({t('common.optional')})</span>
                             </label>
-                            <div style={{ position: 'relative' }}>
-                                <input
+                            <div className="prf-18">
+                                <input aria-label={t('perfil.pwdPlaceholder')} autoComplete="new-password"
                                     type={showPassword ? 'text' : 'password'}
                                     placeholder={t('perfil.pwdPlaceholder')}
-                                    className="form-control"
-                                    style={{ width: '100%', padding: '12px', paddingRight: '45px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', outline: 'none' }}
+                                    className="form-control prf-19"
                                     value={newPassword}
                                     onChange={e => setNewPassword(e.target.value)}
                                 />
-                                <button
+                                <button className="prf-20"
                                     type="button"
                                     onClick={() => setShowPassword(p => !p)}
-                                    style={{ position: 'absolute', top: '50%', right: '15px', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: '1.1rem' }}
+                                    aria-label={t('auth.x.showPwd')}
                                 >
                                     <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                                 </button>
@@ -281,41 +269,41 @@ export default function Perfil() {
 
                         <button
                             type="submit"
-                            className="btn-primary"
+                            className="btn-primary prf-21"
                             disabled={saving}
-                            style={{ padding: '15px', margin: '0 auto', width: '100%', maxWidth: '250px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                            style={{ cursor: saving ? 'not-allowed' : 'pointer' }}
                         >
                             {saving ? <i className="fas fa-spinner fa-spin"></i> : t('perfil.saveBtn')}
                         </button>
                     </form>
                 </div>
                 {/* Columna derecha: Equipo + Solicitudes apiladas */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+                <div className="prf-22">
                 {/* Equipo */}
-                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '22px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--border-glass)' }}>
-                        <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <i className="fas fa-users" style={{ color: '#6366f1', fontSize: '1.1rem' }}></i>
+                <div className="content-card prf-7">
+                    <div className="prf-23">
+                        <div className="prf-24">
+                            <i className="fas fa-users prf-25"></i>
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{t('perfil.team.title')}</h3>
-                            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-3)' }}>{t('perfil.team.subtitle')}</p>
+                            <h3 className="prf-26">{t('perfil.team.title')}</h3>
+                            <p className="prf-27">{t('perfil.team.subtitle')}</p>
                         </div>
                     </div>
 
                     {usuario.agencia && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                                <i className="fas fa-shield-alt" style={{ color: '#6366f1' }}></i>
-                                <span style={{ color: '#c4b5fd', fontSize: '0.88rem' }}>
-                                    {t('perfil.team.currentTeam')} <strong style={{ color: '#fff' }}>{usuario.agencia.nombre}</strong>
+                        <div className="prf-28">
+                            <div className="prf-29">
+                                <i className="fas fa-shield-alt prf-30"></i>
+                                <span className="prf-31">
+                                    {t('perfil.team.currentTeam')} <strong className="prf-32">{usuario.agencia.nombre}</strong>
                                 </span>
                             </div>
                             {usuario.agencia.codigoInvitacion && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                                    <i className="fas fa-key" style={{ color: '#10b981' }}></i>
-                                    <span style={{ color: 'var(--color-text-3)', fontSize: '0.88rem' }}>{t('perfil.team.yourCode')}</span>
-                                    <code style={{ color: '#10b981', fontWeight: 700, fontSize: '1rem', letterSpacing: '0.12em', background: 'rgba(16,185,129,0.1)', padding: '2px 10px', borderRadius: '6px' }}>
+                                <div className="prf-33">
+                                    <i className="fas fa-key prf-34"></i>
+                                    <span className="prf-35">{t('perfil.team.yourCode')}</span>
+                                    <code className="prf-36">
                                         {usuario.agencia.codigoInvitacion}
                                     </code>
                                 </div>
@@ -324,37 +312,30 @@ export default function Perfil() {
                     )}
 
                     {mensajeEquipo.texto && (
-                        <div style={{
-                            background: mensajeEquipo.tipo === 'exito' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                            color:      mensajeEquipo.tipo === 'exito' ? '#86efac' : '#fca5a5',
-                            border:     `1px solid ${mensajeEquipo.tipo === 'exito' ? '#10b981' : '#ef4444'}`,
-                            padding: '12px 16px', borderRadius: '10px', marginBottom: '16px',
-                            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem',
-                        }}>
+                        <div className="prf-66" style={{ borderRadius: '10px', background: mensajeEquipo.tipo === 'exito' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color:      mensajeEquipo.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${mensajeEquipo.tipo === 'exito' ? '#10b981' : '#ef4444'}` }}>
                             <i className={`fas ${mensajeEquipo.tipo === 'exito' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                             <span>{mensajeEquipo.texto}</span>
                         </div>
                     )}
 
-                    <form onSubmit={handleUnirseEquipo} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', color: '#9ca3af', fontSize: '0.85rem' }}>
+                    <form className="prf-38" onSubmit={handleUnirseEquipo}>
+                        <div className="prf-39">
+                            <label className="prf-40">
                                 {t('perfil.team.codeLabel')}
                             </label>
-                            <input
+                            <input aria-label={t('perfil.team.codeLabel')}
                                 type="text"
-                                className="form-control"
+                                className="form-control prf-41"
                                 placeholder={t('perfil.team.codePlaceholder')}
                                 maxLength={7}
                                 value={codigoEquipo}
                                 onChange={e => setCodigoEquipo(e.target.value.toUpperCase())}
-                                style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', outline: 'none', letterSpacing: '0.1em', fontWeight: 600 }}
                             />
                         </div>
-                        <button
+                        <button className="prf-42"
                             type="submit"
                             disabled={enviandoSolicitud || !codigoEquipo.trim()}
-                            style={{ padding: '12px 24px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: enviandoSolicitud || !codigoEquipo.trim() ? 'not-allowed' : 'pointer', opacity: enviandoSolicitud || !codigoEquipo.trim() ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', flexShrink: 0, marginBottom: "3px" }}
+                            style={{ cursor: enviandoSolicitud || !codigoEquipo.trim() ? 'not-allowed' : 'pointer', opacity: enviandoSolicitud || !codigoEquipo.trim() ? 0.6 : 1 }}
                         >
                             {enviandoSolicitud
                                 ? <><i className="fas fa-spinner fa-spin"></i> {t('perfil.team.sending')}</>
@@ -366,65 +347,65 @@ export default function Perfil() {
 
                 {/* Solicitudes pendientes — solo admins */}
                 {isAdmin && (
-                    <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '22px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--border-glass)' }}>
-                            <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(167,139,250,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <i className="fas fa-user-plus" style={{ color: '#a78bfa', fontSize: '1.1rem' }}></i>
+                    <div className="content-card prf-7">
+                        <div className="prf-23">
+                            <div className="prf-43">
+                                <i className="fas fa-user-plus prf-44"></i>
                             </div>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>
+                                <h3 className="prf-26">
                                     {t('solicitudes.title')}
                                     {solicitudes.length > 0 && (
-                                        <span style={{ marginLeft: 8, background: '#a78bfa', color: '#fff', borderRadius: '20px', padding: '2px 9px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                        <span className="prf-45">
                                             {solicitudes.length}
                                         </span>
                                     )}
                                 </h3>
-                                <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-3)' }}>{t('solicitudes.subtitle')}</p>
+                                <p className="prf-27">{t('solicitudes.subtitle')}</p>
                             </div>
                         </div>
 
                         {solicitudes.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--color-text-3)', fontSize: '0.9rem' }}>
-                                <i className="fas fa-inbox" style={{ fontSize: '1.5rem', marginBottom: 8, display: 'block' }}></i>
+                            <div className="prf-46">
+                                <i className="fas fa-inbox prf-47"></i>
                                 {t('solicitudes.empty')}
                             </div>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div className="prf-48">
                                 {solicitudes.map(s => {
                                     const u = s.usuarioSolicitante;
                                     const fecha = new Date(s.fechaCreacion).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
                                     const busy = gestionando === s.id;
                                     return (
-                                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', borderRadius: '12px', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)' }}>
+                                        <div className="prf-49" key={s.id}>
                                             {u.fotoUrl ? (
-                                                <img src={u.fotoUrl} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                                                <img className="prf-50" src={u.fotoUrl} alt="" />
                                             ) : (
-                                                <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(167,139,250,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: '#a78bfa', fontWeight: 700, flexShrink: 0 }}>
+                                                <div className="prf-51">
                                                     {(u.nombreCompleto || u.username || '?').charAt(0).toUpperCase()}
                                                 </div>
                                             )}
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            <div className="prf-52">
+                                                <div className="prf-53">
                                                     {u.nombreCompleto || u.username}
                                                 </div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-3)' }}>
+                                                <div className="prf-54">
                                                     @{u.username} · {t('solicitudes.requested')} {fecha}
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                                                <button
+                                            <div className="prf-55">
+                                                <button className="prf-56"
                                                     onClick={() => handleGestionar(s.id, true)}
                                                     disabled={busy}
-                                                    style={{ padding: '7px 16px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.35)', color: '#10b981', borderRadius: '8px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                                                    style={{ cursor: busy ? 'not-allowed' : 'pointer' }}
                                                 >
                                                     {busy ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
                                                     {t('solicitudes.approve')}
                                                 </button>
-                                                <button
+                                                <button className="prf-57"
                                                     onClick={() => handleGestionar(s.id, false)}
                                                     disabled={busy}
-                                                    style={{ padding: '7px 16px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                                                    style={{ cursor: busy ? 'not-allowed' : 'pointer' }}
                                                 >
                                                     {busy ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-times"></i>}
                                                     {t('solicitudes.reject')}
@@ -438,64 +419,52 @@ export default function Perfil() {
                     </div>
                 )}
                 {/* Google Contacts */}
-                <div className="content-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '16px', padding: '22px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px', paddingBottom: '14px', borderBottom: '1px solid var(--border-glass)' }}>
-                        <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(234,67,53,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <i className="fab fa-google" style={{ color: '#ea4335', fontSize: '1.1rem' }}></i>
+                <div className="content-card prf-7">
+                    <div className="prf-23">
+                        <div className="prf-58">
+                            <i className="fab fa-google prf-59"></i>
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Google Contacts</h3>
-                            <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-text-3)' }}>
-                                Sincroniza nombres de clientes con la agenda de tu celular
+                            <h3 className="prf-26">Google Contacts</h3>
+                            <p className="prf-27">
+                                {t('perfil.gcSub')}
                             </p>
                         </div>
-                        <div style={{ marginLeft: 'auto' }}>
-                            <span style={{
-                                padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700,
-                                background: googleConectado ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.15)',
-                                color: googleConectado ? '#10b981' : 'var(--color-text-3)',
-                                border: `1px solid ${googleConectado ? 'rgba(16,185,129,0.3)' : 'rgba(107,114,128,0.3)'}`,
-                            }}>
+                        <div className="prf-60">
+                            <span className="prf-67" style={{ borderRadius: '20px', background: googleConectado ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.15)', color: googleConectado ? '#10b981' : 'var(--color-text-3)', border: `1px solid ${googleConectado ? 'rgba(16,185,129,0.3)' : 'rgba(107,114,128,0.3)'}` }}>
                                 {googleConectado ? 'Conectado' : 'No conectado'}
                             </span>
                         </div>
                     </div>
 
                     {googleMsg.texto && (
-                        <div style={{
-                            background: googleMsg.tipo === 'exito' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                            color:      googleMsg.tipo === 'exito' ? '#86efac' : '#fca5a5',
-                            border:     `1px solid ${googleMsg.tipo === 'exito' ? '#10b981' : '#ef4444'}`,
-                            padding: '12px 16px', borderRadius: '10px', marginBottom: '16px',
-                            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem',
-                        }}>
+                        <div className="prf-66" style={{ borderRadius: '10px', background: googleMsg.tipo === 'exito' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color:      googleMsg.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${googleMsg.tipo === 'exito' ? '#10b981' : '#ef4444'}` }}>
                             <i className={`fas ${googleMsg.tipo === 'exito' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                             <span>{googleMsg.texto}</span>
                         </div>
                     )}
 
-                    <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#9ca3af', lineHeight: 1.5 }}>
-                        Al renombrar un cliente desde el chat, el cambio se refleja automáticamente en los contactos de tu celular.
-                        Funciona en Android y en iPhone con Google Contacts activado en Ajustes.
+                    <p className="prf-62">
+                        {t('perfil.gcDesc')}
                     </p>
 
                     {googleConectado ? (
-                        <button
+                        <button className="prf-63"
                             onClick={handleGoogleDesconectar}
                             disabled={googleLoading}
-                            style={{ padding: '10px 22px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: '8px', fontWeight: 600, cursor: googleLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem' }}
+                            style={{ cursor: googleLoading ? 'not-allowed' : 'pointer' }}
                         >
                             {googleLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-unlink"></i>}
-                            Desconectar Google
+                            {t('perfil.gcDisconnect')}
                         </button>
                     ) : (
-                        <button
+                        <button className="prf-64"
                             onClick={handleGoogleConectar}
                             disabled={googleLoading}
-                            style={{ padding: '10px 22px', background: 'rgba(234,67,53,0.12)', border: '1px solid rgba(234,67,53,0.35)', color: '#ea4335', borderRadius: '8px', fontWeight: 600, cursor: googleLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem' }}
+                            style={{ cursor: googleLoading ? 'not-allowed' : 'pointer' }}
                         >
                             {googleLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fab fa-google"></i>}
-                            Conectar con Google Contacts
+                            {t('perfil.gcConnect')}
                         </button>
                     )}
                 </div>

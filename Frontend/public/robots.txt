@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /kanban
+Disallow: /contactos
+Disallow: /respuestas-rapidas
+Disallow: /whatsapp-vincular
+Disallow: /telegram-vincular
+Disallow: /spam
+Disallow: /planes
+Disallow: /checkout
+Disallow: /mi-suscripcion
+Disallow: /agente-ia
+Disallow: /auditoria
+Disallow: /perfil

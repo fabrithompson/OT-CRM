@@ -1,0 +1,13 @@
+/* Estilos extraídos de los style={{}} estáticos de KanbanCard.jsx (Fase 4 del plan UI/UX).
+ * Cada clase reemplaza un objeto de estilo inline; los valores dinámicos siguen inline en el JSX.
+ * `:where(.x) { ... !important }` reproduce la prioridad exacta del inline: gana a cualquier regla
+ * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
+
+:where(.kcard-1) { display: flex !important; justify-content: space-between !important; width: 100% !important; }
+:where(.kcard-2) { font-size: 0.75rem !important; opacity: 0.6 !important; flex-shrink: 0 !important; }
+:where(.kcard-3) { display: flex !important; justify-content: space-between !important; align-items: center !important; gap: 5px !important; margin-top: 2px !important; }
+:where(.kcard-4) { flex: 1 !important; font-size: 0.8rem !important; opacity: 0.7 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; display: flex !important; align-items: center !important; gap: 5px !important; }
+:where(.kcard-5) { font-size: 0.78rem !important; flex-shrink: 0 !important; }
+:where(.kcard-6) { overflow: hidden !important; text-overflow: ellipsis !important; }
+:where(.kcard-7) { display: flex !important; gap: 3px !important; margin-top: 5px !important; }
+:where(.kcard-8) { width: 8px !important; height: 8px !important; border-radius: 50% !important; display: inline-block !important; }
