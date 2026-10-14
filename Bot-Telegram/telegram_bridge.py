@@ -35,6 +35,20 @@ asyncio.set_event_loop(global_loop)
 active_clients = {}
 MAX_ACTIVE_SESSIONS = 100
 
+# ── Historial al conectar ─────────────────────────────────────────────────
+# Cuántos chats privados y cuántos mensajes por chat se importan al conectar
+# la cuenta (configurable por entorno). Los lotes van en serie y con pausa:
+# el backend limita /api/telegram a 60 pedidos por minuto.
+HISTORY_MAX_DIALOGS = int(os.environ.get('HISTORY_MAX_DIALOGS', '300'))
+HISTORY_MAX_MESSAGES_PER_CHAT = int(os.environ.get('HISTORY_MAX_MESSAGES_PER_CHAT', '500'))
+HISTORY_BATCH_SIZE = 300
+HISTORY_PAUSE_SECONDS = 1.5
+WEBHOOK_BASE = JAVA_WEBHOOK_URL.rstrip('/')
+
+# Mensajes que salieron desde el CRM (via /send-message y /send-media). Telethon los
+# vuelve a emitir como "salientes": hay que ignorarlos para no duplicarlos en el chat.
+crm_sent_ids = set()
+
 
 def require_bot_auth():
     """Validate BOT_SECRET_KEY on inbound requests."""
@@ -121,7 +135,8 @@ async def incoming_message_handler(event, device_session_id):
             "fileUrl": file_url,
             "fileType": file_type,
             "isGroup": event.is_group,
-            "date": event.message.date.isoformat()
+            "date": event.message.date.isoformat(),
+            "messageKey": _clave_mensaje(device_session_id, event.chat_id, event.message.id)
         }
 
         if JAVA_WEBHOOK_URL:
@@ -131,6 +146,132 @@ async def incoming_message_handler(event, device_session_id):
 
     except Exception as e:
         print(f"❌ Error en handler: {e}")
+
+def _clave_mensaje(user_id, chat_id, message_id):
+    """Id estable de un mensaje de Telegram: el mismo en vivo y en el historial."""
+    return f"TG_{user_id}_{chat_id}_{message_id}"
+
+
+def _telefono_de(entity):
+    """Mismo criterio que el webhook en vivo: teléfono si se conoce, si no el id del usuario."""
+    return (getattr(entity, 'phone', None) or str(entity.id)) if entity else None
+
+
+def _nombre_de(entity):
+    if not entity:
+        return None
+    nombre = f"{getattr(entity, 'first_name', '') or ''} {getattr(entity, 'last_name', '') or ''}".strip()
+    return nombre or getattr(entity, 'username', None)
+
+
+def _mensaje_para_crm(user_id, entity, message):
+    """Convierte un mensaje de Telethon al formato de importación (sin descargar archivos)."""
+    texto = message.message or ''
+    tipo = 'TEXTO'
+    if message.media and not isinstance(message.media, MessageMediaWebPage):
+        tipo = {
+            'photo': 'IMAGEN', 'sticker': 'STICKER', 'video': 'VIDEO',
+            'voice': 'AUDIO', 'audio': 'AUDIO',
+        }.get(_detectar_tipo_media(message), 'DOCUMENTO')
+    if not texto and tipo == 'TEXTO':
+        return None  # mensajes de servicio, vacíos, etc.
+    return {
+        "telefono": _telefono_de(entity),
+        "nombre": _nombre_de(entity),
+        "saliente": bool(message.out),
+        "texto": texto or None,
+        "tipo": tipo,
+        "timestamp": int(message.date.timestamp()) if message.date else None,
+        "externoId": _clave_mensaje(user_id, entity.id, message.id),
+    }
+
+
+async def _post_lote(path, user_id, mensajes):
+    headers = {"X-Bot-Token": BOT_SECRET_KEY}
+    payload = {"deviceId": user_id, "mensajes": mensajes}
+    async with httpx.AsyncClient(timeout=60.0) as http:
+        for intento in range(3):
+            try:
+                r = await http.post(f"{WEBHOOK_BASE}{path}", json=payload, headers=headers)
+                if r.status_code == 429:
+                    await asyncio.sleep(60)  # límite de pedidos: esperar a que se libere
+                    continue
+                r.raise_for_status()
+                return r.json()
+            except Exception as e:
+                print(f"⚠️ Lote {path} falló (intento {intento + 1}/3): {e}")
+                await asyncio.sleep(2 * (intento + 1))
+    return None
+
+
+def _marca_historial(user_id):
+    return os.path.join(SESSION_FOLDER, f"{user_id}.history_done")
+
+
+async def importar_historial(user_id):
+    """Importa los chats privados de la cuenta. Se ejecuta una sola vez por sesión:
+    al terminar deja una marca; reintentar es seguro porque el backend no duplica."""
+    if os.path.exists(_marca_historial(user_id)):
+        return
+    client = active_clients.get(user_id)
+    if not client or not await client.is_user_authorized():
+        return
+    print(f"📚 Importando historial de Telegram para {user_id}...")
+    lote, total = [], 0
+    try:
+        async for dialog in client.iter_dialogs(limit=HISTORY_MAX_DIALOGS):
+            entity = dialog.entity
+            # Solo chats privados con personas (no grupos, canales, bots ni "Mensajes guardados")
+            if not dialog.is_user or getattr(entity, 'bot', False) or getattr(entity, 'is_self', False):
+                continue
+            try:
+                async for message in client.iter_messages(entity, limit=HISTORY_MAX_MESSAGES_PER_CHAT):
+                    m = _mensaje_para_crm(user_id, entity, message)
+                    if not m:
+                        continue
+                    lote.append(m)
+                    if len(lote) >= HISTORY_BATCH_SIZE:
+                        await _post_lote('/history', user_id, lote)
+                        total += len(lote)
+                        lote = []
+                        await asyncio.sleep(HISTORY_PAUSE_SECONDS)
+            except errors.FloodWaitError as fw:
+                print(f"⏳ Telegram pide esperar {fw.seconds}s")
+                await asyncio.sleep(fw.seconds + 1)
+        if lote:
+            await _post_lote('/history', user_id, lote)
+            total += len(lote)
+        with open(_marca_historial(user_id), 'w') as marca:
+            marca.write(str(total))
+        print(f"✅ Historial de Telegram importado para {user_id}: {total} mensajes")
+    except Exception as e:
+        print(f"❌ Error importando historial de {user_id}: {e}")
+
+
+def lanzar_importacion_historial(user_id):
+    """Corre la importación en segundo plano, sin bloquear el pedido HTTP."""
+    asyncio.run_coroutine_threadsafe(importar_historial(user_id), global_loop)
+
+
+async def outgoing_message_handler(event, device_session_id):
+    """Mensaje que el vendedor mandó desde su celular: se registra en el chat del CRM."""
+    try:
+        if not event.is_private:
+            return
+        # Lo que salió desde el CRM ya está guardado: Telethon lo re-emite, se ignora
+        await asyncio.sleep(2)
+        if (device_session_id, event.message.id) in crm_sent_ids:
+            crm_sent_ids.discard((device_session_id, event.message.id))
+            return
+        entity = await event.get_chat()
+        if getattr(entity, 'bot', False) or getattr(entity, 'is_self', False):
+            return
+        m = _mensaje_para_crm(device_session_id, entity, event.message)
+        if m:
+            await _post_lote('/outbound', device_session_id, [m])
+    except Exception as e:
+        print(f"❌ Error en handler de salientes: {e}")
+
 
 async def get_client(user_id):
     global active_clients
@@ -150,6 +291,10 @@ async def get_client(user_id):
     client.add_event_handler(
         lambda e: incoming_message_handler(e, user_id),
         events.NewMessage(incoming=True)
+    )
+    client.add_event_handler(
+        lambda e: outgoing_message_handler(e, user_id),
+        events.NewMessage(outgoing=True)
     )
 
     active_clients[user_id] = client
@@ -202,7 +347,9 @@ def submit_code():
             await client.sign_in(phone=phone, code=code, phone_code_hash=ph_hash)
             me = await client.get_me()
             return {"status": "CONNECTED", "username": me.username, "id": me.id}
-        return jsonify(run_async(do_login()))
+        resultado = run_async(do_login())
+        lanzar_importacion_historial(user_id)
+        return jsonify(resultado)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 @app.route('/send-message', methods=['POST'])
@@ -224,11 +371,12 @@ def send_message():
             client = await get_client(user_id)
             try:
                 target = int(chat_id)
-                await client.send_message(target, text)
+                enviado = await client.send_message(target, text)
             except (ValueError, TypeError):
                 phone = str(chat_id) if str(chat_id).startswith('+') else '+' + str(chat_id)
                 entity = await client.get_entity(phone)
-                await client.send_message(entity, text)
+                enviado = await client.send_message(entity, text)
+            crm_sent_ids.add((user_id, enviado.id))
             return {"status": "SENT"}
         return jsonify(run_async(do_send()))
     except Exception as e:
@@ -287,7 +435,8 @@ def send_media():
         async def do_send_media():
             client = await get_client(user_id)
             target = await _resolver_entidad(client, chat_id)
-            await client.send_file(target, media_url, caption=caption)
+            enviado = await client.send_file(target, media_url, caption=caption)
+            crm_sent_ids.add((user_id, enviado.id))
             return {"status": "SENT"}
 
         return jsonify(run_async(do_send_media()))
@@ -335,5 +484,7 @@ def loop_in_thread(loop):
     loop.run_forever()
 t = threading.Thread(target=loop_in_thread, args=(global_loop,), daemon=True)
 t.start()
+for _uid in list(active_clients.keys()):
+    lanzar_importacion_historial(_uid)
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

@@ -201,6 +201,22 @@ public class TelegramBridgeService {
     public void procesarMensajeWebhook(String deviceSessionId, String telegramId, String nombreSender,
             String telefono, String texto, String avatarUrl,
             String fileUrl, String fileType, String messageDate) {
+        procesarMensajeWebhook(deviceSessionId, telegramId, nombreSender, telefono, texto, avatarUrl,
+                fileUrl, fileType, messageDate, null);
+    }
+
+    /**
+     * @param externoId id real del mensaje en Telegram (deduplica contra el historial y reintentos)
+     */
+    @SuppressWarnings("java:S107")
+    @Transactional
+    public void procesarMensajeWebhook(String deviceSessionId, String telegramId, String nombreSender,
+            String telefono, String texto, String avatarUrl,
+            String fileUrl, String fileType, String messageDate, String externoId) {
+        if (externoId != null && !externoId.isBlank() && mensajeRepository.findByWhatsappId(externoId).isPresent()) {
+            log.debug("Mensaje Telegram {} ya registrado, ignorando duplicado.", externoId);
+            return;
+        }
 
         Optional<Dispositivo> dispositivoOpt = dispositivoRepository.findBySessionId(deviceSessionId);
         if (dispositivoOpt.isEmpty()) {
@@ -210,13 +226,21 @@ public class TelegramBridgeService {
 
         Dispositivo disp = dispositivoOpt.get();
         String telefonoFinal = (telefono != null && !telefono.isEmpty()) ? telefono : telegramId;
-        procesarMensajeEntrante(disp, telefonoFinal, nombreSender, texto, avatarUrl, fileUrl, fileType, messageDate);
+        procesarMensajeEntrante(disp, telefonoFinal, nombreSender, texto, avatarUrl, fileUrl, fileType, messageDate,
+                externoId);
     }
 
     @SuppressWarnings({ "java:S107", "null" })
     @Transactional
     public void procesarMensajeEntrante(Dispositivo disp, String telefono, String nombreSender,
             String texto, String avatarUrl, String fileUrl, String fileType, String dateStr) {
+        procesarMensajeEntrante(disp, telefono, nombreSender, texto, avatarUrl, fileUrl, fileType, dateStr, null);
+    }
+
+    @SuppressWarnings({ "java:S107", "null" })
+    @Transactional
+    public void procesarMensajeEntrante(Dispositivo disp, String telefono, String nombreSender,
+            String texto, String avatarUrl, String fileUrl, String fileType, String dateStr, String externoId) {
 
         if (disp == null || disp.getAgencia() == null) {
             log.warn("Dispositivo o agencia nula al procesar mensaje entrante");
@@ -243,6 +267,9 @@ public class TelegramBridgeService {
         cliente = clienteRepository.save(cliente);
 
         Mensaje mensaje = crearMensajeEntradaConArchivo(cliente, texto, urlFinalArchivo, fileType, fechaReal);
+        if (externoId != null && !externoId.isBlank()) {
+            mensaje.setWhatsappId(externoId);
+        }
         mensajeRepository.save(mensaje);
 
         notificarCambio(cliente, mensaje, false, nombreSender, disp.getAlias());
@@ -288,7 +315,9 @@ public class TelegramBridgeService {
         if (dateStr == null || dateStr.isEmpty())
             return LocalDateTime.now();
         try {
-            return OffsetDateTime.parse(dateStr).toLocalDateTime();
+            return OffsetDateTime.parse(dateStr)
+                    .atZoneSameInstant(java.time.ZoneId.of("America/Argentina/Buenos_Aires"))
+                    .toLocalDateTime();
         } catch (RuntimeException e) {
             log.warn("Error parseando fecha Telegram: {}", dateStr);
             return LocalDateTime.now();

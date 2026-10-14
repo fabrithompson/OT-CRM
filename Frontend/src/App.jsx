@@ -41,6 +41,7 @@ const Landing = lazy(() => import('./pages/Landing'));
 // Lazy loading: cada página se descarga solo cuando el usuario navega a ella
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Kanban = lazy(() => import('./pages/Kanban'));
+const Chats = lazy(() => import('./pages/Chats'));
 const WhatsAppVincular = lazy(() => import('./pages/WhatsAppVincular'));
 const TelegramVincular = lazy(() => import('./pages/TelegramVincular'));
 const Contactos = lazy(() => import('./pages/Contactos'));
@@ -70,6 +71,7 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/dashboard"          element={<Dashboard />} />
               <Route path="/kanban"             element={<Kanban />} />
+              <Route path="/chats"              element={<Chats />} />
               <Route path="/whatsapp-vincular"  element={<WhatsAppVincular />} />
               <Route path="/telegram-vincular"  element={<TelegramVincular />} />
               <Route path="/respuestas-rapidas" element={<RespuestasRapidas/>} />

@@ -43,15 +43,21 @@ public class WhatsAppWebhookController {
     @Value("${bot.secret.key}")
     private String secretKey;
 
+    private final service.HistorialService historialService;
+
     public WhatsAppWebhookController(WhatsAppService whatsAppService,
-                                     SimpMessagingTemplate messagingTemplate) {
+                                     SimpMessagingTemplate messagingTemplate,
+                                     service.HistorialService historialService) {
         this.whatsAppService = whatsAppService;
         this.messagingTemplate = messagingTemplate;
+        this.historialService = historialService;
     }
 
     // Records para deserializar los payloads del bot
     public record WebhookPayload(String from, String body, String name, String sessionId,
-                                 String profilePicUrl, String origen, String mediaUrl, String mimeType) {}
+                                 String profilePicUrl, String origen, String mediaUrl, String mimeType,
+                                 String whatsappId, Long timestamp) {}
+    public record HistorialPayload(String sessionId, java.util.List<service.HistorialService.MensajeHistorial> mensajes) {}
     public record StatusPayload(String sessionId, String status, String phone, String qr) {}
     public record OutboundExternalPayload(String sessionId, String to, String body, String whatsappId,
                                           String mediaUrl, String mimeType) {}
@@ -70,13 +76,30 @@ public class WhatsAppWebhookController {
             try {
                 whatsAppService.procesarMensajeRobot(new WhatsAppService.MensajeEntranteRequest(
                         payload.from(), payload.body(), payload.name(), payload.sessionId(),
-                        payload.profilePicUrl(), payload.origen(), payload.mediaUrl(), payload.mimeType()
+                        payload.profilePicUrl(), payload.origen(), payload.mediaUrl(), payload.mimeType(),
+                        payload.whatsappId(), payload.timestamp()
                 ));
             } catch (Exception e) {
                 log.error("Error procesando mensaje: {}", e.getMessage(), e);
             }
         });
         return ResponseEntity.ok("PROCESSED");
+    }
+
+    // ─── Historial (lo que WhatsApp entrega al vincular la cuenta) ───────────
+
+    /**
+     * Importa un lote del historial. Es síncrono a propósito: el bot espera la respuesta
+     * antes de mandar el siguiente lote, así el backend nunca se satura y el orden se respeta.
+     */
+    @PostMapping("/api/webhook/whatsapp/history")
+    public ResponseEntity<?> recibirHistorial(
+            @RequestHeader(value = HEADER_API_KEY, required = false) String apiKey,
+            @RequestBody HistorialPayload payload) {
+        if (!SecurityUtil.constantTimeEquals(secretKey, apiKey)) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (payload == null || payload.sessionId() == null) return ResponseEntity.badRequest().body("Payload invalido");
+        return ResponseEntity.ok(historialService.importar(
+                payload.sessionId(), service.HistorialService.WHATSAPP, payload.mensajes(), false));
     }
 
     // ─── Estado de sesión (CONNECTED / DISCONNECTED) ─────────────────────────

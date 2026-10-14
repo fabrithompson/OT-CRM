@@ -62,8 +62,9 @@ export default function Kanban() {
     const filterRef    = useRef(null);
     const wsEventRef   = useRef(null);
 
-    const loadBoard = useCallback(async (etiquetaId = '') => {
-        setLoading(true);
+    // silencioso: refresca sin mostrar el esqueleto de carga (recargas automáticas)
+    const loadBoard = useCallback(async (etiquetaId = '', { silencioso = false } = {}) => {
+        if (!silencioso) setLoading(true);
         try {
             const clientesUrl = etiquetaId
                 ? `/clientes?etiquetaId=${etiquetaId}&size=${PAGE_SIZE}`
@@ -82,11 +83,22 @@ export default function Kanban() {
                 setEtiquetas([...tagMap.values()]);
             }
         } catch {
-            toast(t('common.errorTitle'), t('kanban.errLoad'), '#ef4444');
+            if (!silencioso) toast(t('common.errorTitle'), t('kanban.errLoad'), '#ef4444');
         } finally {
-            setLoading(false);
+            if (!silencioso) setLoading(false);
         }
     }, [toast, t]);
+
+    // Recarga silenciosa agrupada: varios avisos seguidos (p. ej. lotes del historial
+    // que se está importando) producen una sola recarga.
+    const recargaTimer = useRef(null);
+    const recargarSilencioso = useCallback((etiquetaId) => {
+        clearTimeout(recargaTimer.current);
+        recargaTimer.current = setTimeout(() => {
+            loadBoard(etiquetaId, { silencioso: true });
+        }, 1200);
+    }, [loadBoard]);
+    useEffect(() => () => clearTimeout(recargaTimer.current), []);
 
     // Valor estimado por etapa (suma de valorEstimado de los contactos de cada columna)
     const cargarValorEmbudo = useCallback(async () => {
@@ -218,11 +230,24 @@ export default function Kanban() {
         } else if (tipo === 'ETAPAS_REORDENADAS') {
             handleEtapasReordenadas(ev);
         } else if (tipo === 'REFRESCAR_KANBAN') {
-            loadBoard(filterEtiquetaId);
+            recargarSilencioso(filterEtiquetaId);
+            refrescarValor();
         } else if (tipo === 'PLAN_EQUIPO_ACTUALIZADO') {
             window.dispatchEvent(new CustomEvent('crm:plan-updated'));
         }
-    }, [filterEtiquetaId, loadBoard, handleClienteEvent, handleEtapasReordenadas, refrescarValor]);
+    }, [filterEtiquetaId, recargarSilencioso, handleClienteEvent, handleEtapasReordenadas, refrescarValor]);
+
+    // Respaldo del tiempo real: cada 30 s (con la pestaña visible) el tablero se
+    // refresca en silencio, por si se perdió algún evento del WebSocket.
+    useEffect(() => {
+        const intervalo = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                loadBoard(filterEtiquetaId, { silencioso: true });
+                refrescarValor();
+            }
+        }, 30000);
+        return () => clearInterval(intervalo);
+    }, [filterEtiquetaId, loadBoard, refrescarValor]);
 
     // Patrón "latest-callback ref": las refs apuntan siempre al último callback
     // para que las suscripciones WS los invoquen sin reconectar cuando cambian deps.
@@ -249,6 +274,7 @@ export default function Kanban() {
         return () => window.removeEventListener('crm:embudo', handler);
     }, []);
 
+    const conexionPreviaRef = useRef(null);
     const { clientRef: stompRef, connectionStatus } = useWebSocket(agenciaId, handleWSEvent, (client) => {
         client.publish({ destination: '/app/presence', body: JSON.stringify({ username: usuario, status: 'ONLINE', agenciaId, timestamp: Date.now() }) });
 
@@ -295,6 +321,15 @@ export default function Kanban() {
         setClientes(prev => prev.map(c => c.id === Number.parseInt(clienteId, 10) ? { ...c, ...updates } : c));
         if (updates && 'valorEstimado' in updates) refrescarValor();
     }, [refrescarValor]);
+
+    // Al volver a conectar el WebSocket se recupera lo que llegó mientras estaba caído
+    useEffect(() => {
+        const previa = conexionPreviaRef.current;
+        conexionPreviaRef.current = connectionStatus;
+        if (connectionStatus === 'connected' && previa && previa !== 'connected') {
+            recargarSilencioso(filterEtiquetaId);
+        }
+    }, [connectionStatus, filterEtiquetaId, recargarSilencioso]);
 
     const toggleMute = useCallback((id) => {
         setMutedStages(prev => {

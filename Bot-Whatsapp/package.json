@@ -6,6 +6,7 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "preinstall": "node ./scripts/check-package-manager.js",
+    "postinstall": "node ./scripts/patch-baileys-historial.js",
     "setup": "pnpm install --config.blockExoticSubdeps=false",
     "start": "node index.js"
   },

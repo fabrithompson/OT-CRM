@@ -243,6 +243,16 @@ setInterval(persistLidMap, 5000);
 process.on('SIGTERM', persistLidMap);
 process.on('SIGINT', persistLidMap);
 
+// Baileys a veces rechaza promesas internas sin capturar (p. ej. "Connection Closed"
+// en un reintento de descifrado cuando la sesion se cae). Sin esto Node termina el
+// proceso y se desconectan TODAS las sesiones; se registra y se sigue funcionando.
+process.on('unhandledRejection', (err) => {
+    console.error('⚠️ Promesa rechazada sin capturar (ignorada):', err?.message || err);
+});
+process.on('uncaughtException', (err) => {
+    console.error('⚠️ Excepcion sin capturar (ignorada):', err?.stack || err);
+});
+
 const lidToPhone = {
     get: (lidUser) => lidMap.get(lidUser),
     set: (lidUser, phone) => {
@@ -853,6 +863,148 @@ const extractMessageContent = async (msg, sessionId, sock) => {
     return { texto, mediaUrl, mimeType };
 };
 
+// ── Historial al vincular ──────────────────────────────────────────────────
+// El backend limita /api/webhook a 60 pedidos por minuto por IP: los lotes van en
+// serie (uno por vez, esperando la respuesta) y con una pausa entre cada uno.
+const HISTORY_BATCH_SIZE = 300;
+const HISTORY_PAUSE_MS = 1500;
+const historyQueues = new Map(); // sessionId -> Promise (envío en serie)
+
+// messageTimestamp puede venir como number o como Long (protobuf)
+const toEpochSeconds = (ts) => {
+    if (ts == null) return null;
+    if (typeof ts === 'number') return ts;
+    if (typeof ts === 'object' && typeof ts.toNumber === 'function') return ts.toNumber();
+    const n = Number(ts);
+    return Number.isFinite(n) ? n : null;
+};
+
+const TIPOS_MEDIA_HISTORIAL = {
+    imageMessage: 'IMAGEN',
+    videoMessage: 'VIDEO',
+    audioMessage: 'AUDIO',
+    documentMessage: 'DOCUMENTO',
+    stickerMessage: 'STICKER',
+};
+
+// Texto y tipo de un mensaje del historial SIN descargar archivos: los archivos
+// viejos suelen haber expirado en los servidores de WhatsApp y descargar todo el
+// historial sería lentísimo. En el CRM quedan como "[IMAGEN]", "[AUDIO]", etc.
+const contenidoHistorial = (message) => {
+    if (!message) return null;
+    let m = message;
+    if (m.ephemeralMessage?.message) m = m.ephemeralMessage.message;
+    if (m.viewOnceMessage?.message) m = m.viewOnceMessage.message;
+    if (m.viewOnceMessageV2?.message) m = m.viewOnceMessageV2.message;
+    if (m.documentWithCaptionMessage?.message) m = m.documentWithCaptionMessage.message;
+
+    const texto = m.conversation
+        || m.extendedTextMessage?.text
+        || m.imageMessage?.caption
+        || m.videoMessage?.caption
+        || m.documentMessage?.caption
+        || '';
+
+    for (const [clave, tipo] of Object.entries(TIPOS_MEDIA_HISTORIAL)) {
+        if (m[clave]) {
+            const nombreArchivo = clave === 'documentMessage' ? m[clave].fileName : null;
+            return { texto: texto || (nombreArchivo ? `[${nombreArchivo}]` : null), tipo };
+        }
+    }
+    if (texto) return { texto, tipo: 'TEXTO' };
+    if (m.locationMessage) return { texto: '[Ubicación]', tipo: 'TEXTO' };
+    if (m.contactMessage) return { texto: `[Contacto: ${m.contactMessage.displayName || ''}]`, tipo: 'TEXTO' };
+    return null; // reacciones, encuestas, mensajes de protocolo, etc.
+};
+
+// Con el historial llegan los contactos y los chats: sirven para resolver los JID
+// @lid a teléfono (incluso en mensajes propios) y para tener el nombre del contacto.
+const registrarMapeosHistorial = (chats = [], contacts = []) => {
+    const nombres = new Map();
+    const vincular = (a, b) => {
+        const pn = [a, b].find(j => typeof j === 'string' && j.endsWith('@s.whatsapp.net'));
+        const lid = [a, b].find(j => typeof j === 'string' && j.endsWith('@lid'));
+        if (pn && lid) lidToPhone.set(getJidUser(lid), getRealNumber(pn));
+    };
+    for (const c of contacts || []) {
+        vincular(c.id, c.lid);
+        vincular(c.id, c.jid);
+        const nombre = c.name || c.notify || c.verifiedName;
+        if (nombre) {
+            if (c.id) nombres.set(getJidUser(c.id), nombre);
+            if (c.lid) nombres.set(getJidUser(c.lid), nombre);
+        }
+    }
+    for (const ch of chats || []) {
+        vincular(ch.id, ch.lidJid);
+        vincular(ch.id, ch.pnJid);
+        const nombreChat = ch.name || ch.displayName;
+        if (nombreChat && ch.id) nombres.set(getJidUser(ch.id), nombreChat);
+    }
+    return nombres;
+};
+
+// motivos (opcional): contador de descartes por causa, para el log
+const mapearMensajeHistorial = (msg, nombres, motivos = {}) => {
+    const descartar = (motivo) => { motivos[motivo] = (motivos[motivo] || 0) + 1; return null; };
+    const jid = msg?.key?.remoteJid;
+    if (!jid) return descartar('sinJid');
+    if (jid.includes('@g.us') || jid.includes('@newsletter') || jid.includes('@broadcast')) return descartar('grupoOCanal');
+    const contenido = contenidoHistorial(msg.message);
+    if (!contenido) return descartar('sinContenido');
+    const telefono = resolverTelefonoContacto(msg);
+    // @lid sin teléfono conocido: no crear un contacto con un id interno
+    if (!telefono) return descartar('lidSinTelefono');
+    const nombre = nombres.get(getJidUser(jid)) || (!msg.key.fromMe ? msg.pushName : null) || null;
+    return {
+        telefono,
+        nombre,
+        saliente: !!msg.key.fromMe,
+        texto: contenido.texto,
+        tipo: contenido.tipo,
+        timestamp: toEpochSeconds(msg.messageTimestamp),
+        externoId: msg.key.id,
+    };
+};
+
+// Envía el historial a Java en lotes, en serie por sesión. Un lote que falla se
+// guarda en disco y se reintenta solo (mismo mecanismo que los mensajes en vivo);
+// el backend es idempotente, así que reenviar nunca duplica.
+const enviarHistorialAJava = (sessionId, mensajes) => {
+    const url = `${getBaseUrl()}/history`;
+    const anterior = historyQueues.get(sessionId) || Promise.resolve();
+    const siguiente = anterior.then(async () => {
+        for (let i = 0; i < mensajes.length; i += HISTORY_BATCH_SIZE) {
+            const lote = mensajes.slice(i, i + HISTORY_BATCH_SIZE);
+            const pedido = {
+                method: 'post',
+                url,
+                data: { sessionId, mensajes: lote },
+                headers: { 'X-Bot-Token': SECRET_KEY },
+                timeout: 60000,
+            };
+            try {
+                let resp;
+                try {
+                    resp = await axiosWithRetry(pedido, 3, 2000);
+                } catch (err) {
+                    if (err.response?.status !== 429) throw err;
+                    // Límite de pedidos: esperar a que se libere el minuto y reintentar una vez
+                    await new Promise(r => setTimeout(r, 60000));
+                    resp = await axiosWithRetry(pedido, 3, 2000);
+                }
+                logger.info({ sessionId, lote: lote.length, resultado: resp?.data }, 'Lote de historial importado');
+            } catch (err) {
+                logger.error({ sessionId, lote: lote.length, error: err.message }, 'Lote de historial no importado, queda en disco');
+                await saveFailedMessage({ url, payload: { sessionId, mensajes: lote } });
+            }
+            await new Promise(r => setTimeout(r, HISTORY_PAUSE_MS));
+        }
+    }).catch(err => logger.error({ sessionId, error: err.message }, 'Error en la cola de historial'));
+    historyQueues.set(sessionId, siguiente);
+    return siguiente;
+};
+
 // ── Procesamiento de mensajes entrantes ────────────────────────────────────
 const processIncomingMessage = async (msg, sessionId, sock) => {
     try {
@@ -895,7 +1047,9 @@ const processIncomingMessage = async (msg, sessionId, sock) => {
             origen: "WHATSAPP",
             profilePicUrl: profilePicUrl,
             mediaUrl: mediaUrl,
-            mimeType: mimeType
+            mimeType: mimeType,
+            whatsappId: msg.key.id,
+            timestamp: toEpochSeconds(msg.messageTimestamp)
         };
 
         logger.info({ from: numeroReal, body: texto?.substring(0, 50) }, "Enviando a Java CRM");
@@ -954,6 +1108,7 @@ const cleanupSessionHandlers = (sessionId) => {
             if (handlers.connectionUpdate) handlers.sock.ev.off('connection.update', handlers.connectionUpdate);
             if (handlers.messagesUpsert) handlers.sock.ev.off('messages.upsert', handlers.messagesUpsert);
             if (handlers.messagesUpdate) handlers.sock.ev.off('messages.update', handlers.messagesUpdate);
+            if (handlers.historySet) handlers.sock.ev.off('messaging-history.set', handlers.historySet);
         } catch (err) { logger.warn({ sessionId, error: err.message }, 'Error limpiando event listeners'); }
     }
     sessionHandlers.delete(sessionId);
@@ -996,7 +1151,13 @@ const startSession = async (sessionId, phoneNumber = null) => {
             logger: pino({ level: 'error' }),
             browser: Browsers.macOS('Desktop'),
             generateHighQualityLinkPreview: true,
+            // Historial: al vincular, WhatsApp manda los chats recientes (lo que el
+            // propio WhatsApp decide compartir con un dispositivo vinculado). Se procesa
+            // en el evento 'messaging-history.set' y se importa al CRM en lotes.
+            // syncFullHistory queda en false: con true WhatsApp rechaza la vinculacion
+            // (cierre 428 antes de emitir el QR).
             syncFullHistory: false,
+            shouldSyncHistoryMessage: () => true,
             markOnlineOnConnect: false,
             connectTimeoutMs: 60000,
             defaultQueryTimeoutMs: 60000,
@@ -1126,6 +1287,25 @@ const startSession = async (sessionId, phoneNumber = null) => {
             }
         };
         sock.ev.on('messages.upsert', handlers.messagesUpsert);
+
+        handlers.historySet = ({ chats, contacts, messages, syncType, progress }) => {
+            try {
+                const nombres = registrarMapeosHistorial(chats, contacts);
+                const aImportar = [];
+                const motivos = {};
+                for (const msg of messages || []) {
+                    const m = mapearMensajeHistorial(msg, nombres, motivos);
+                    if (m) aImportar.push(m);
+                }
+                logger.info({ sessionId, syncType, progress, recibidos: (messages || []).length,
+                    chats: (chats || []).length, contactos: (contacts || []).length,
+                    aImportar: aImportar.length, descartados: motivos }, 'Historial recibido de WhatsApp');
+                if (aImportar.length > 0) enviarHistorialAJava(sessionId, aImportar);
+            } catch (err) {
+                logger.error({ sessionId, error: err.message }, 'Error procesando historial de WhatsApp');
+            }
+        };
+        sock.ev.on('messaging-history.set', handlers.historySet);
 
         handlers.messagesUpdate = async (updates) => {
             for (const update of updates) {

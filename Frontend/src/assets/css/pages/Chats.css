@@ -1,0 +1,114 @@
+/* ── Bandeja de chats (estilo WhatsApp Web) ─────────────────────────────── */
+.chats-shell {
+    display: flex; flex: 1; min-height: 0; height: 100%;
+    background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 16px; overflow: hidden;
+}
+
+/* Columna izquierda: lista de conversaciones */
+.chats-lista {
+    display: flex; flex-direction: column; width: 360px; flex-shrink: 0; min-height: 0;
+    border-right: 1px solid var(--border-glass);
+}
+.chats-lista__head { display: flex; align-items: center; gap: 10px; padding: 18px 18px 10px; }
+.chats-lista__head h2 { margin: 0; font-size: 1.3rem; }
+.chats-ws { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; }
+.chats-ws--connected { background: #22c55e; }
+.chats-ws--disconnected { background: #ef4444; }
+
+.chats-buscar { position: relative; margin: 0 14px 10px; }
+.chats-buscar i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: .8rem; color: var(--text-muted); }
+.chats-buscar input {
+    width: 100%; min-height: 40px; padding: 0 12px 0 34px; color: var(--text-main);
+    background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px;
+}
+
+.chats-filtros { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
+.chats-filtro {
+    min-height: 32px; padding: 0 12px; font: 500 .78rem inherit; font-family: inherit; color: var(--text-sec);
+    background: rgba(255, 255, 255, .06); border: 0; border-radius: 999px; cursor: pointer;
+}
+.chats-filtro:hover { color: var(--text-main); background: rgba(255, 255, 255, .1); }
+.chats-filtro.is-active { color: #fff; background: #F64302; }
+
+.chats-lista__scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.chats-ul { margin: 0; padding: 0; list-style: none; }
+
+.chat-fila {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px;
+    color: inherit; font: inherit; text-align: left;
+    background: none; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .04); cursor: pointer;
+}
+.chat-fila:hover { background: rgba(255, 255, 255, .04); }
+.chat-fila.is-active { background: rgba(246, 67, 2, .14); }
+.chat-fila:focus-visible { outline: 2px solid var(--color-focus, #F64302); outline-offset: -2px; }
+
+.chat-fila__avatar {
+    position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 46px; height: 46px; font-weight: 600; color: #fff;
+    background: linear-gradient(135deg, #F64302, #D63A00); border-radius: 50%;
+}
+.chat-fila__avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.chat-fila__canal {
+    position: absolute; right: -2px; bottom: -2px; display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; font-size: .7rem; background: #111; border-radius: 50%;
+}
+.chat-fila__canal.is-wa { color: #25D366; }
+.chat-fila__canal.is-tg { color: #0088cc; }
+
+.chat-fila__cuerpo { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.chat-fila__linea { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chat-fila__nombre { flex: 1; min-width: 0; overflow: hidden; font-weight: 500; white-space: nowrap; text-overflow: ellipsis; }
+.chat-fila__hora { flex-shrink: 0; font-size: .72rem; color: var(--text-muted); }
+.chat-fila__preview { flex: 1; min-width: 0; overflow: hidden; font-size: .82rem; color: var(--text-sec); white-space: nowrap; text-overflow: ellipsis; }
+.chat-fila__badge {
+    flex-shrink: 0; min-width: 20px; height: 20px; padding: 0 6px; font-size: .7rem; font-weight: 600; line-height: 20px;
+    text-align: center; color: #fff; background: #F64302; border-radius: 999px;
+}
+.chat-fila__instancia { font-size: .68rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-fila.is-unread .chat-fila__nombre { font-weight: 700; }
+.chat-fila.is-unread .chat-fila__hora { color: #FF7A45; }
+.chat-fila.is-unread .chat-fila__preview { color: var(--text-main); }
+
+.chats-skeleton { margin: 0; padding: 6px 14px; list-style: none; }
+.chats-skeleton li { display: flex; flex-direction: column; gap: 8px; padding: 12px 0 12px 58px; position: relative; }
+.chats-skeleton li::before { content: ''; position: absolute; left: 0; top: 10px; width: 46px; height: 46px; border-radius: 50%; background: rgba(255, 255, 255, .07); }
+.chats-skeleton span { display: block; height: 11px; border-radius: 6px; background: rgba(255, 255, 255, .07); animation: chats-pulso 1.4s ease-in-out infinite; }
+.chats-skeleton span:first-child { width: 55%; }
+.chats-skeleton span:last-child { width: 80%; }
+@keyframes chats-pulso { 50% { opacity: .45; } }
+.chats-vacio { padding: 24px 14px; }
+
+/* Columna derecha: conversación abierta */
+.chats-panel { display: flex; flex: 1; min-width: 0; min-height: 0; }
+.chats-panel__vacio {
+    display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    padding: 24px; text-align: center; color: var(--text-sec);
+}
+.chats-panel__vacio i { font-size: 3rem; color: #F64302; opacity: .8; }
+.chats-panel__vacio h3 { margin: 8px 0 0; color: var(--text-main); }
+.chats-panel__vacio p { margin: 0; font-size: .9rem; }
+
+/* El chat del Kanban, montado dentro de la página en vez de como modal */
+#chatModal.chat-embedded { display: flex; flex: 1; min-width: 0; min-height: 0; height: 100%; }
+#chatModal.chat-embedded .pro-modal {
+    width: 100%; max-width: none; height: 100%; margin: 0;
+    border: 0; border-radius: 0; box-shadow: none;
+}
+/* Datos del contacto: se abren con el botón de info, como en WhatsApp Web */
+#chatModal.chat-embedded .chat-info-toggle { display: flex; }
+#chatModal.chat-embedded .info-sidebar-pro { display: none; }
+#chatModal.chat-embedded .pro-modal.show-info .info-sidebar-pro { display: flex; }
+
+@media (max-width: 1100px) {
+    .chats-lista { width: 300px; }
+}
+
+/* Celular / tablet: lista o conversación, una a la vez */
+@media (max-width: 900px) {
+    .chats-shell { border-radius: 0; border: 0; }
+    .chats-lista { width: 100%; border-right: 0; }
+    .chats-panel { display: none; }
+    .chats-shell.has-chat .chats-lista { display: none; }
+    .chats-shell.has-chat .chats-panel { display: flex; }
+    #chatModal.chat-embedded .pro-modal { height: 100%; }
+}

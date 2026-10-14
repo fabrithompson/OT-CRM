@@ -20,7 +20,8 @@ const FORMAT_BYTES = (bytes) => {
 
 const COLORS_TAG = ['#F64302', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#D63A00'];
 
-export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, usuario, onClose, onMoveCard, onUpdateCard }) {
+// embedded: se muestra dentro de una página (bandeja de Chats) en vez de como modal
+export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, usuario, onClose, onMoveCard, onUpdateCard, embedded = false }) {
     // Solo móvil (<=900px): alterna entre la conversación y el panel de datos del contacto
     const [showInfo, setShowInfo] = useState(false);
     const { t, lang } = useLanguage();
@@ -43,7 +44,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
     const [montoInput, setMontoInput]     = useState('');
     const [isDragging, setIsDragging]       = useState(false);
     const [pendingFiles, setPendingFiles]   = useState([]);
-    const chatDialog = useDialog(Boolean(clienteId), () => onClose());
+    const chatDialog = useDialog(Boolean(clienteId) && !embedded, () => onClose());
     const [activeFileIdx, setActiveFileIdx] = useState(0);
     const [captionInput, setCaptionInput]   = useState('');
     const [showChatMenu, setShowChatMenu]   = useState(false);
@@ -71,6 +72,46 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
         };
     }, [clienteId]);
     /* eslint-enable react-hooks/immutability, react-hooks/exhaustive-deps */
+
+    // Respaldo del tiempo real: cada 15 s (y al reconectar el WebSocket) se piden los
+    // últimos mensajes y se suman los que falten. Cubre eventos perdidos durante una
+    // desconexión y el historial que se importa mientras el chat está abierto.
+    useEffect(() => {
+        if (!clienteId) return undefined;
+        let cancelado = false;
+        const fechaDe = (m) => {
+            if (typeof m.id === 'string' && m.id.startsWith('temp-')) return Number.MAX_SAFE_INTEGER;
+            const t = Date.parse(m.fechaHora);
+            return Number.isNaN(t) ? Number.MAX_SAFE_INTEGER - 1 : t;
+        };
+        const sincronizar = async () => {
+            if (document.visibilityState !== 'visible') return;
+            try {
+                const res = await api.get(`/chat/${clienteId}/historial?size=50`);
+                if (cancelado || !Array.isArray(res.data)) return;
+                setMessages(prev => {
+                    const ids = new Set(prev.map(x => x.id));
+                    const waIds = new Set(prev.map(x => x.whatsappId).filter(Boolean));
+                    let lista = prev;
+                    let cambio = false;
+                    for (const m of res.data) {
+                        if (ids.has(m.id) || (m.whatsappId && waIds.has(m.whatsappId))) continue;
+                        // Un saliente que todavía figura como "enviando" se reemplaza en vez de duplicarse
+                        const tempIdx = m.esSalida
+                            ? lista.findIndex(x => typeof x.id === 'string' && x.id.startsWith('temp-') && x.contenido === m.contenido)
+                            : -1;
+                        lista = tempIdx !== -1 ? lista.map((x, i) => (i === tempIdx ? m : x)) : [...lista, m];
+                        cambio = true;
+                    }
+                    if (!cambio) return prev;
+                    return [...lista].sort((a, b) => fechaDe(a) - fechaDe(b));
+                });
+            } catch { /* respaldo silencioso: el próximo intento vuelve a probar */ }
+        };
+        if (wsStatus === 'connected') sincronizar();
+        const intervalo = setInterval(sincronizar, 15000);
+        return () => { cancelado = true; clearInterval(intervalo); };
+    }, [clienteId, wsStatus]);
 
     const handleInboundMessage = (ev) => {
         const m = { ...ev, esSalida: !ev.inbound, fechaHora: ev.fecha };
@@ -552,8 +593,8 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
     };
 
     return (
-        <div id="chatModal" className="modal-overlay show" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className={`pro-modal${showInfo ? ' show-info' : ''}`} {...chatDialog} aria-label={cliente?.nombre || t('chat.title')}>
+        <div id="chatModal" className={embedded ? 'chat-embedded' : 'modal-overlay show'} onClick={embedded ? undefined : (e) => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className={`pro-modal${showInfo ? ' show-info' : ''}`} {...(embedded ? { role: 'region' } : chatDialog)} aria-label={cliente?.nombre || t('chat.title')}>
                 <div className="chat-main-panel cht-1" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
                 {isDragging && (
                     <div className="cht-2">

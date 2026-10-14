@@ -35,8 +35,14 @@ public class ChatService {
         int pageSize = Math.max(1, Math.min(size, 100));
         List<Mensaje> result;
         if (beforeId != null) {
+            // El cursor es el mensaje más viejo que ya tiene el front: se pagina por su fecha
+            var cursor = mensajeRepository.findById(beforeId)
+                    .filter(m -> m.getCliente() != null && clienteId.equals(m.getCliente().getId()));
+            if (cursor.isEmpty()) {
+                return new ArrayList<>();
+            }
             result = mensajeRepository.findByClienteIdBeforeCursor(
-                    clienteId, beforeId, PageRequest.of(0, pageSize));
+                    clienteId, beforeId, cursor.get().getFechaHora(), PageRequest.of(0, pageSize));
         } else {
             result = mensajeRepository.findLatestByClienteId(clienteId, PageRequest.of(0, pageSize));
         }

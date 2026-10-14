@@ -87,9 +87,19 @@ public class WhatsAppService {
         this.botClient = botClient;
     }
 
+    /**
+     * @param whatsappId id real del mensaje en WhatsApp (deduplica contra el historial y los reintentos del bot)
+     * @param timestamp  segundos desde 1970: hora real del mensaje (un mensaje que llega tarde queda en su lugar)
+     */
     public record MensajeEntranteRequest(String from, String texto, String nombreSender, String sessionId,
-            String profilePicUrl, String origen, String mediaUrl, String mimeType) {
+            String profilePicUrl, String origen, String mediaUrl, String mimeType,
+            String whatsappId, Long timestamp) {
 
+        /** Compatibilidad: bots viejos no mandan id ni hora. */
+        public MensajeEntranteRequest(String from, String texto, String nombreSender, String sessionId,
+                String profilePicUrl, String origen, String mediaUrl, String mimeType) {
+            this(from, texto, nombreSender, sessionId, profilePicUrl, origen, mediaUrl, mimeType, null, null);
+        }
     }
 
     private record ChatNotification(String contenido, boolean inbound, String fecha, String tipo, String urlArchivo,
@@ -134,6 +144,14 @@ public class WhatsAppService {
         return ZonedDateTime.now(ZONE_ARGENTINA).toLocalDateTime();
     }
 
+    /** Hora real del mensaje; si no viene o es absurda (futuro), la hora actual. */
+    private LocalDateTime fechaDelMensaje(Long epochSegundos) {
+        LocalDateTime ahora = ahoraArgentina();
+        if (epochSegundos == null || epochSegundos <= 0) return ahora;
+        LocalDateTime real = LocalDateTime.ofInstant(java.time.Instant.ofEpochSecond(epochSegundos), ZONE_ARGENTINA);
+        return real.isAfter(ahora.plusMinutes(5)) ? ahora : real;
+    }
+
     @Transactional
     public void procesarMensajeRobot(MensajeEntranteRequest request) {
         procesarMensajeRobotInterno(request);
@@ -159,6 +177,13 @@ public class WhatsAppService {
             if (Boolean.FALSE.equals(dispositivo.getActivo())) {
                 log.warn("Mensaje recibido en dispositivo inactivo '{}'. Ignorado por límite de plan.",
                         req.sessionId());
+                return;
+            }
+
+            // Ya guardado (llegó por el historial o es un reintento del bot): no duplicar ni re-disparar la IA
+            if (req.whatsappId() != null && !req.whatsappId().isBlank()
+                    && mensajeRepository.findByWhatsappId(req.whatsappId()).isPresent()) {
+                log.debug("Mensaje {} ya registrado, ignorando duplicado.", req.whatsappId());
                 return;
             }
 
@@ -594,8 +619,9 @@ public class WhatsAppService {
         Mensaje m = new Mensaje();
         m.setCliente(cliente);
         m.setEsSalida(false);
-        m.setFechaHora(ahoraArgentina());
-        m.setWhatsappId("IN_" + System.currentTimeMillis());
+        m.setFechaHora(fechaDelMensaje(req.timestamp()));
+        m.setWhatsappId(req.whatsappId() != null && !req.whatsappId().isBlank()
+                ? req.whatsappId() : "IN_" + System.currentTimeMillis());
         m.setEstado(Mensaje.EstadoMensaje.READ);
 
         if (req.mediaUrl() != null && !req.mediaUrl().isEmpty()) {

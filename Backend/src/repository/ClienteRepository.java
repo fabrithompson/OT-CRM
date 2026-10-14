@@ -142,6 +142,27 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
         return enOrdenDeIds(idsByAgenciaOrderByUltimoMensaje(agenciaId, pageable));
     }
 
+    /**
+     * Bandeja de chats: solo contactos con al menos un mensaje, del más reciente al más viejo.
+     * patron siempre trae valor ("%" = sin búsqueda) y origen "" = todos, para no pasar
+     * parámetros null que PostgreSQL no puede tipar.
+     */
+    @Query("SELECT c.id FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.ultimoMensajeFecha IS NOT NULL"
+            + " AND (LOWER(c.nombre) LIKE :patron OR c.telefono LIKE :patron)"
+            + " AND (:soloNoLeidos = false OR c.mensajesSinLeer > 0)"
+            + " AND (:origen = '' OR UPPER(c.origen) = :origen)"
+            + " ORDER BY c.ultimoMensajeFecha DESC, c.id DESC")
+    List<Long> idsConversaciones(@Param("agenciaId") Long agenciaId,
+                                 @Param("patron") String patron,
+                                 @Param("soloNoLeidos") boolean soloNoLeidos,
+                                 @Param("origen") String origen,
+                                 Pageable pageable);
+
+    default List<Cliente> conversaciones(Long agenciaId, String patron, boolean soloNoLeidos,
+                                         String origen, Pageable pageable) {
+        return enOrdenDeIds(idsConversaciones(agenciaId, patron, soloNoLeidos, origen, pageable));
+    }
+
     @Query("SELECT c.id FROM Cliente c JOIN c.etiquetas e WHERE c.agencia.id = :agenciaId AND e.id = :etiquetaId ORDER BY c.ultimoMensajeFecha DESC NULLS LAST")
     List<Long> idsByAgenciaAndEtiqueta(
             @Param("agenciaId") Long agenciaId,

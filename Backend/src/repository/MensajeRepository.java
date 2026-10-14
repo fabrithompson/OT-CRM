@@ -52,15 +52,25 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Long> {
     @Query(value = "DELETE FROM mensaje WHERE cliente_id IN (SELECT id FROM clientes WHERE dispositivo_id = :dispositivoId)", nativeQuery = true)
     void deleteByDispositivoId(@Param("dispositivoId") Long dispositivoId);
 
-    @Query("SELECT m FROM Mensaje m WHERE m.cliente.id = :clienteId ORDER BY m.id DESC")
+    // El chat se ordena por fecha (no por id): el historial importado al vincular una
+    // cuenta se inserta después que los mensajes en vivo pero tiene fechas anteriores.
+    @Query("SELECT m FROM Mensaje m WHERE m.cliente.id = :clienteId ORDER BY m.fechaHora DESC, m.id DESC")
     List<Mensaje> findLatestByClienteId(
         @Param("clienteId") Long clienteId, Pageable pageable);
 
-    @Query("SELECT m FROM Mensaje m WHERE m.cliente.id = :clienteId AND m.id < :beforeId ORDER BY m.id DESC")
+    /** Página anterior al mensaje cursor (misma fecha: desempata por id). */
+    @Query("SELECT m FROM Mensaje m WHERE m.cliente.id = :clienteId "
+            + "AND (m.fechaHora < :fecha OR (m.fechaHora = :fecha AND m.id < :beforeId)) "
+            + "ORDER BY m.fechaHora DESC, m.id DESC")
     List<Mensaje> findByClienteIdBeforeCursor(
         @Param("clienteId") Long clienteId,
         @Param("beforeId") Long beforeId,
+        @Param("fecha") java.time.LocalDateTime fecha,
         Pageable pageable);
+
+    /** De los ids recibidos, cuáles ya están guardados (para no duplicar historial). */
+    @Query("SELECT m.whatsappId FROM Mensaje m WHERE m.whatsappId IN :ids")
+    List<String> findWhatsappIdsExistentes(@Param("ids") java.util.Collection<String> ids);
 
     @Query("SELECT COUNT(m) FROM Mensaje m WHERE m.cliente.agencia.id = :agenciaId")
     long countByClienteAgenciaId(@Param("agenciaId") Long agenciaId);

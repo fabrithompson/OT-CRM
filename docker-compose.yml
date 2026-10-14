@@ -79,6 +79,9 @@ services:
       - JAVA_WEBHOOK_URL=http://backend:8080/api/telegram/webhook
       - PUBLIC_URL=http://bot-telegram:5000
       - BOT_SECRET_KEY=${BOT_SECRET_KEY}
+    # La sesión de Telegram vive en disco: sin volumen se perdía al recrear el contenedor
+    volumes:
+      - telegram_sessions:/app/sessions
     deploy:
       resources:
         limits:
@@ -115,4 +118,5 @@ services:
 
 volumes:
   whatsapp_sessions:
+  telegram_sessions:
   postgres_data:

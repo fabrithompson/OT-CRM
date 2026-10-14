@@ -93,6 +93,7 @@ export default function MainLayout() {
     const { agenciaId, loading, usuario: usuarioCtx } = useUser();
     // El handler del WebSocket se registra una sola vez: lee al usuario actual por ref
     const miUsuarioIdRef = useRef(null);
+    const historialAcumRef = useRef({ mensajes: 0, contactos: 0, timer: null });
     useEffect(() => { miUsuarioIdRef.current = usuarioCtx?.id ?? null; }, [usuarioCtx]);
     const { pathname } = useLocation();
     const { playConnect, playDisconnect, playNotification } = useAudio();
@@ -242,6 +243,18 @@ export default function MainLayout() {
                     window.dispatchEvent(new CustomEvent('crm:tareas', { detail: data }));
                 } else if (data.tipo === 'TAREAS_ACTUALIZADAS') {
                     window.dispatchEvent(new CustomEvent('crm:tareas', { detail: data }));
+                } else if (data.tipo === 'HISTORIAL_IMPORTADO') {
+                    // Llegan varios lotes seguidos: se suman y se avisa una sola vez
+                    const acum = historialAcumRef.current;
+                    acum.mensajes += Number(data.mensajes) || 0;
+                    acum.contactos += Number(data.contactos) || 0;
+                    clearTimeout(acum.timer);
+                    acum.timer = setTimeout(() => {
+                        const texto = `${acum.mensajes} ${t('notif.historyMsgs')} · ${acum.contactos} ${t('notif.historyContacts')}`;
+                        window.__crmNotifAdd?.({ title: t('notif.historyTitle'), message: texto, type: 'HISTORIAL', link: null, timestamp: Date.now() });
+                        acum.mensajes = 0;
+                        acum.contactos = 0;
+                    }, 6000);
                 } else if (data.tipo === 'ACTIVIDAD_NUEVA') {
                     window.dispatchEvent(new CustomEvent('crm:actividad', { detail: data }));
                 }

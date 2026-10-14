@@ -23,6 +23,33 @@ public class TelegramWebhookController {
     private static final Logger log = LoggerFactory.getLogger(TelegramWebhookController.class);
 
     private final TelegramBridgeService telegramBridgeService;
+    private final service.HistorialService historialService;
+
+    public record HistorialPayload(String deviceId, java.util.List<service.HistorialService.MensajeHistorial> mensajes) {}
+
+    /**
+     * Historial de chats privados que el puente importa al conectar la cuenta. Síncrono:
+     * el puente espera la respuesta antes de mandar el siguiente lote.
+     * (/api/telegram/webhook/** está protegido por el token del bot en WebhookInterceptor.)
+     */
+    @PostMapping("/webhook/history")
+    public ResponseEntity<?> recibirHistorial(@RequestBody HistorialPayload payload) {
+        if (payload == null || payload.deviceId() == null) {
+            return ResponseEntity.badRequest().body("Payload invalido");
+        }
+        return ResponseEntity.ok(historialService.importar(
+                payload.deviceId(), service.HistorialService.TELEGRAM, payload.mensajes(), false));
+    }
+
+    /** Mensaje que el vendedor mandó desde su celular por Telegram: aparece en el chat en vivo. */
+    @PostMapping("/webhook/outbound")
+    public ResponseEntity<?> recibirSaliente(@RequestBody HistorialPayload payload) {
+        if (payload == null || payload.deviceId() == null) {
+            return ResponseEntity.badRequest().body("Payload invalido");
+        }
+        return ResponseEntity.ok(historialService.importar(
+                payload.deviceId(), service.HistorialService.TELEGRAM, payload.mensajes(), true));
+    }
 
     @PostMapping("/webhook")
     public ResponseEntity<String> recibirMensaje(@RequestBody Map<String, Object> payload, HttpServletRequest request) {
@@ -36,6 +63,8 @@ public class TelegramWebhookController {
             String avatarUrl = (String) payload.getOrDefault("senderPhoto", "");
             String fileUrl = (String) payload.get("fileUrl");
             String fileType = (String) payload.get("fileType");
+            Object externo = payload.get("messageKey");
+            String externoId = externo != null ? String.valueOf(externo) : null;
 
             log.info("🔔 [WEBHOOK] IP={} deviceId={} sender={} tipo={}", request.getRemoteAddr(), deviceSessionId, senderName, fileType != null ? fileType : "TEXTO");
 
@@ -48,7 +77,8 @@ public class TelegramWebhookController {
                     avatarUrl,
                     fileUrl,
                     fileType,
-                    messageDate
+                    messageDate,
+                    externoId
             );
 
             return ResponseEntity.ok("Procesado");

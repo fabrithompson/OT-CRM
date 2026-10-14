@@ -10,6 +10,7 @@ import api, { getRefreshToken, clearTokens } from '../utils/api';
 const NAV_ITEMS = [
     { to: '/dashboard',          icon: 'fa-house',          labelKey: 'nav.inicio',      accent: 'nav-green'  },
     { to: '/kanban',             icon: 'fa-chart-gantt',    labelKey: 'nav.embudo',      accent: 'nav-orange' },
+    { to: '/chats',              icon: 'fa-comments',       labelKey: 'nav.chats',       accent: 'nav-green'  },
     { to: '/respuestas-rapidas', icon: 'fa-bolt-lightning', labelKey: 'nav.respuestas',  accent: 'nav-blue'   },
     { to: '/contactos',          icon: 'fa-user-group',     labelKey: 'nav.contactos',   accent: 'nav-purple' },
     { to: '/tareas',             icon: 'fa-list-check',     labelKey: 'nav.tareas',      accent: 'nav-green'  },

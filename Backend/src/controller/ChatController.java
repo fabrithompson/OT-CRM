@@ -7,6 +7,8 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
@@ -68,6 +70,31 @@ public class ChatController {
         this.cloudStorageService = cloudStorageService;
         this.usuarioRepository = usuarioRepository;
         this.aiAgentService = aiAgentService;
+    }
+
+    /**
+     * Bandeja estilo WhatsApp Web: conversaciones de la agencia ordenadas por último mensaje.
+     * filtro: TODOS | NO_LEIDOS | WHATSAPP | TELEGRAM. q busca por nombre o teléfono.
+     */
+    @GetMapping("/conversaciones")
+    public List<Cliente> conversaciones(@RequestParam(required = false) String q,
+                                        @RequestParam(defaultValue = "TODOS") String filtro,
+                                        @RequestParam(defaultValue = "0") int page,
+                                        @RequestParam(defaultValue = "30") int size,
+                                        @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = getUsuario(userDetails);
+        if (usuario.getAgencia() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sin agencia");
+        }
+        String termino = q == null ? "" : q.trim().toLowerCase();
+        // Los comodines del usuario se toman como texto literal
+        termino = termino.replace("%", "").replace("_", "");
+        String patron = "%" + termino + "%";
+        String f = filtro == null ? "" : filtro.toUpperCase();
+        String origen = ("WHATSAPP".equals(f) || "TELEGRAM".equals(f)) ? f : "";
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(1, Math.min(size, 100)));
+        return clienteRepository.conversaciones(usuario.getAgencia().getId(), patron,
+                "NO_LEIDOS".equals(f), origen, pageable);
     }
 
     @GetMapping("/{clienteId}/historial")
