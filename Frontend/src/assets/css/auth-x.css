@@ -25,8 +25,8 @@
     inset: 0;
     z-index: -1;
     background:
-        linear-gradient(to bottom, rgba(6, 6, 15, 0.55), rgba(6, 6, 15, 0) 35%),
-        radial-gradient(ellipse 80% 55% at 20% 70%, rgba(6, 6, 15, 0.6), rgba(6, 6, 15, 0) 70%);
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 35%),
+        radial-gradient(ellipse 80% 55% at 20% 70%, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0) 70%);
 }
 .ax-visual__inner {
     display: flex;
@@ -40,14 +40,14 @@
 .ax-visual__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .ax-visual__copy { display: flex; flex-direction: column; align-items: flex-start; gap: 24px; max-width: 560px; }
 .ax-visual__title {
-    font-family: var(--lx-display);
+    font-family: var(--lx-dot);
     font-size: clamp(40px, 4.4vw, 68px);
-    font-weight: 400;
-    line-height: 1.06;
-    letter-spacing: -0.02em;
+    font-weight: 800;
+    line-height: 0.98;
+    letter-spacing: -0.04em;
     text-wrap: balance;
 }
-.ax-visual__text { max-width: 440px; font-size: 18px; color: var(--lx-text-2); text-wrap: pretty; }
+.ax-visual__text { max-width: 440px; font-size: 15px; line-height: 1.65; color: var(--lx-text-2); text-wrap: pretty; }
 
 /* ── Formularios ───────────────────────────────────────────────────────── */
 .ax-main {
@@ -73,32 +73,32 @@
     gap: 2px;
     margin-bottom: 36px;
     padding: 4px;
-    background: rgba(13, 11, 31, 0.55);
-    border: 1px solid var(--lx-border);
-    border-radius: 999px;
+    background: #fff;
+    border-radius: 10px;
 }
+/* Mismo estilo que la barra de enlaces de la navbar de la landing */
 .ax-tab {
     height: 44px;
-    font: 500 13px var(--lx-body);
+    font: 500 12px var(--lx-body);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--lx-text-2);
+    color: rgba(0, 0, 0, 0.7);
     background: none;
     border: 0;
-    border-radius: 999px;
+    border-radius: 7px;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
 }
-.ax-tab:hover { color: var(--lx-text); }
-.ax-tab.is-active { color: var(--lx-text); background: rgba(238, 236, 255, 0.12); }
+.ax-tab:hover { color: #000; background: rgba(0, 0, 0, 0.05); }
+.ax-tab.is-active { color: #fff; background: #000; }
 
 .ax-title {
     margin-bottom: 8px !important;
     font-family: var(--lx-display);
-    font-size: clamp(38px, 3.6vw, 52px);
-    font-weight: 400;
+    font-size: clamp(30px, 3vw, 42px);
+    font-weight: 500;
     line-height: 1.1;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.05em;
 }
 .ax-subtitle { margin-bottom: 28px !important; color: var(--lx-text-2); text-wrap: pretty; }
 
@@ -140,7 +140,7 @@
     padding: 12px 14px;
     font-size: 15px;
     border: 1px solid;
-    border-radius: 14px;
+    border-radius: 10px;
 }
 .ax-alert i { margin-top: 3px; }
 .ax-alert--error { color: #FECACA; background: rgba(248, 113, 113, 0.08); border-color: rgba(248, 113, 113, 0.4); }
@@ -156,7 +156,7 @@
     margin-bottom: 20px;
     color: var(--lx-accent);
     border: 1px solid var(--lx-border);
-    border-radius: 16px;
+    border-radius: 12px;
 }
 .ax-resend { margin-top: 24px !important; font-size: 15px; color: var(--lx-text-2); }
 .ax-inline-link {

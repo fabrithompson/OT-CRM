@@ -69,9 +69,12 @@ const PATHS = {
             <path d="M3 12h18M12 3c2.5 2.7 3.6 5.7 3.6 9s-1.1 6.3-3.6 9c-2.5-2.7-3.6-5.7-3.6-9S9.5 5.7 12 3z" />
         </>
     ),
+    chevronRight: <path d="m9 18 6-6-6-6" />,
+    menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+    close: <path d="M18 6 6 18M6 6l12 12" />,
 };
 
-export default function LineIcon({ name, size = 24, className = '' }) {
+export default function LineIcon({ name, size = 24, className = '', strokeWidth = 1.25 }) {
     return (
         <svg
             className={className}
@@ -80,7 +83,7 @@ export default function LineIcon({ name, size = 24, className = '' }) {
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.25"
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
@@ -95,4 +98,5 @@ LineIcon.propTypes = {
     name: PropTypes.oneOf(Object.keys(PATHS)).isRequired,
     size: PropTypes.number,
     className: PropTypes.string,
+    strokeWidth: PropTypes.number,
 };
