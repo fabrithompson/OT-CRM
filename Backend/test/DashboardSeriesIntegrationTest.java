@@ -133,7 +133,7 @@ class DashboardSeriesIntegrationTest extends BaseIntegrationTest {
     }
 
     private Transaccion nuevaTransaccion(Cliente cliente, double monto, String tipo, LocalDateTime fecha) {
-        Transaccion t = new Transaccion(cliente, admin, monto, tipo);
+        Transaccion t = new Transaccion(cliente, admin, java.math.BigDecimal.valueOf(monto), tipo);
         t.setFecha(fecha);
         return t;
     }
