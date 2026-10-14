@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.MessagingException;
@@ -56,10 +57,10 @@ public class RespuestaRapidaController {
     }
 
     @PostMapping
-    public ResponseEntity<?> guardar(@RequestBody RespuestaRapida respuesta, Authentication auth) {
+    public ResponseEntity<?> guardar(@Valid @RequestBody RespuestaRapida respuesta, Authentication auth) {
         try {
             Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
-            RespuestaRapida guardada = respuestaRapidaService.guardar(respuesta, usuario);
+            RespuestaRapida guardada = respuestaRapidaService.crear(respuesta, usuario);
 
             if (usuario.getAgencia() != null) {
                 Map<String, Object> event = new HashMap<>();
@@ -75,11 +76,10 @@ public class RespuestaRapidaController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> actualizar(@PathVariable @NonNull Long id, @RequestBody RespuestaRapida respuesta, Authentication auth) {
+    public ResponseEntity<?> actualizar(@PathVariable @NonNull Long id, @Valid @RequestBody RespuestaRapida respuesta, Authentication auth) {
         try {
             Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
-            respuesta.setId(id);
-            RespuestaRapida guardada = respuestaRapidaService.guardar(respuesta, usuario);
+            RespuestaRapida guardada = respuestaRapidaService.actualizar(id, respuesta, usuario);
 
             if (usuario.getAgencia() != null) {
                 Map<String, Object> event = new HashMap<>();
@@ -96,13 +96,9 @@ public class RespuestaRapidaController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminar(@PathVariable @NonNull Long id, Authentication auth) {
-        try {
-            Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
-            respuestaRapidaService.eliminar(id, usuario);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            logger.error("Error al eliminar respuesta rápida: ", e);
-            return ResponseEntity.badRequest().build();
-        }
+        Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
+        // No existe o es de otra agencia -> 404 (lo resuelve GlobalExceptionHandler)
+        respuestaRapidaService.eliminar(id, usuario);
+        return ResponseEntity.ok().build();
     }
 }

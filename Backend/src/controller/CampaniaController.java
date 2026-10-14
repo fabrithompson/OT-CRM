@@ -38,6 +38,7 @@ import service.CampaniaService;
 import service.PlanService;
 import service.SubscriptionValidationService;
 import service.WhatsAppService;
+import util.MensajeError;
 import util.DispositivoMapper;
 
 /**
@@ -154,7 +155,7 @@ public class CampaniaController {
             return ResponseEntity.ok(resumen);
         } catch (Exception e) {
             log.error("Error importando contactos campaña: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
@@ -290,7 +291,8 @@ public class CampaniaController {
             MensajeCampania m = campaniaService.responderManual(contactoId, agencia.getId(), body.texto());
             return ResponseEntity.ok(mensajeToDto(m));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Error en CampaniaController: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 

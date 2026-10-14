@@ -26,7 +26,7 @@ public class Etiqueta {
     @Column(nullable = false)
     private String nombre;
 
-    private String color = "#10b981";
+    private String color = "#F64302";
 
     @ManyToOne
     @JoinColumn(name = "agencia_id")

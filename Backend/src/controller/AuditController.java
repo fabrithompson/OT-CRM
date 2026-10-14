@@ -38,6 +38,7 @@ import service.EmailService;
 import service.RequestUsuarioCache;
 import service.SubscriptionValidationService;
 import service.WhatsAppService;
+import util.MensajeError;
 
 @RestController
 @RequestMapping("/api/v1/audit")
@@ -127,7 +128,8 @@ public class AuditController {
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+            log.error("Error en AuditController: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
@@ -277,7 +279,8 @@ public class AuditController {
             auditReportRepository.save(report);
             return ResponseEntity.ok(toMap(report));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+            log.error("Error en AuditController: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", MensajeError.de(e)));
         }
     }
 

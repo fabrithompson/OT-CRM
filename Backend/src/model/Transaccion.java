@@ -1,7 +1,9 @@
 package model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -23,7 +25,8 @@ public class Transaccion {
     @ManyToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
-    private Double monto;
+    @Column(precision = 14, scale = 2)
+    private BigDecimal monto;
     private String tipo;
     private LocalDateTime fecha;
 
@@ -31,7 +34,7 @@ public class Transaccion {
         this.fecha = LocalDateTime.now();
     }
 
-    public Transaccion(Cliente cliente, Usuario usuario, Double monto, String tipo) {
+    public Transaccion(Cliente cliente, Usuario usuario, BigDecimal monto, String tipo) {
         this.cliente = cliente;
         this.usuario = usuario;
         this.monto = monto;
@@ -63,11 +66,11 @@ public class Transaccion {
         this.usuario = usuario;
     }
 
-    public Double getMonto() {
+    public BigDecimal getMonto() {
         return monto;
     }
 
-    public void setMonto(Double monto) {
+    public void setMonto(BigDecimal monto) {
         this.monto = monto;
     }
 

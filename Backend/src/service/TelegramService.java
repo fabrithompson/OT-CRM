@@ -75,7 +75,7 @@ public class TelegramService {
                 cliente.setFechaRegistro(LocalDateTime.now());
                 cliente.setNotas("Lead desde Telegram");
                 cliente.setMensajesSinLeer(0);
-                cliente.setSaldo(0.0);
+                cliente.setSaldo(java.math.BigDecimal.ZERO);
                 cliente.setAgencia(agencia);
                 cliente.setDispositivo(dispositivo);
                 cliente.setFotoUrl("https://upload.wikimedia.org/wikipedia/commons/8/82/Telegram_logo.svg");

@@ -90,7 +90,7 @@ public class PayPalController {
         } catch (Exception e) {
             log.error("Error inesperado al crear suscripción PayPal: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                "error", "Error al conectar con PayPal: " + e.getMessage()
+                "error", "No se pudo conectar con PayPal. Intentá de nuevo en unos minutos."
             ));
         }
     }

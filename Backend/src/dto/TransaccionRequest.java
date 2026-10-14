@@ -1,9 +1,11 @@
 package dto;
 
+import java.math.BigDecimal;
+
 public class TransaccionRequest {
 
     private Long clienteId;
-    private Double monto;
+    private BigDecimal monto;
     private String tipo;
 
     public Long getClienteId() {
@@ -14,11 +16,11 @@ public class TransaccionRequest {
         this.clienteId = clienteId;
     }
 
-    public Double getMonto() {
+    public BigDecimal getMonto() {
         return monto;
     }
 
-    public void setMonto(Double monto) {
+    public void setMonto(BigDecimal monto) {
         this.monto = monto;
     }
 

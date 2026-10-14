@@ -1,5 +1,7 @@
 package service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -11,6 +13,7 @@ import model.Cliente;
 import model.Etapa;
 import model.Etiqueta;
 import model.RespuestaRapida;
+import model.Usuario;
 import repository.ClienteRepository;
 import repository.EtapaRepository;
 import repository.EtiquetaRepository;
@@ -23,12 +26,18 @@ public class CrmAgentTools {
     private final EtapaRepository etapaRepository;
     private final EtiquetaRepository etiquetaRepository;
     private final RespuestaRapidaRepository respuestaRapidaRepository;
+    private final TransaccionService transaccionService;
+    private final Usuario usuario;
 
     public CrmAgentTools(Long agenciaId,
                          ClienteRepository clienteRepository,
                          EtapaRepository etapaRepository,
                          EtiquetaRepository etiquetaRepository,
-                         RespuestaRapidaRepository respuestaRapidaRepository) {
+                         RespuestaRapidaRepository respuestaRapidaRepository,
+                         TransaccionService transaccionService,
+                         Usuario usuario) {
+        this.transaccionService = transaccionService;
+        this.usuario = usuario;
         this.agenciaId = agenciaId;
         this.clienteRepository = clienteRepository;
         this.etapaRepository = etapaRepository;
@@ -52,7 +61,7 @@ public class CrmAgentTools {
                         c.getNombre() != null ? c.getNombre() : "(sin nombre)",
                         c.getTelefono() != null ? c.getTelefono() : "-",
                         c.getEtapa() != null ? c.getEtapa().getNombre() : "Sin etapa",
-                        c.getSaldo() != null ? c.getSaldo() : 0.0))
+                        c.getSaldo() != null ? c.getSaldo() : BigDecimal.ZERO))
                 .collect(Collectors.joining("\n"));
     }
 
@@ -117,16 +126,21 @@ public class CrmAgentTools {
     public String ajustarSaldo(
             @ToolParam(description = "ID del contacto") Long contactoId,
             @ToolParam(description = "Monto a ajustar (positivo para sumar, negativo para restar)") Double monto) {
+        // Se valida todo antes de llamar al servicio: la herramienta corre dentro de la
+        // transacción del chat y una excepción ahí la dejaría en rollback-only.
+        if (monto == null || monto.isNaN() || monto.isInfinite()) return "Error: el monto no es válido.";
+        BigDecimal ajuste = BigDecimal.valueOf(monto).setScale(2, RoundingMode.HALF_UP);
+        if (ajuste.signum() == 0) return "Error: el monto no puede ser cero.";
+        if (ajuste.abs().compareTo(TransaccionService.MONTO_MAXIMO) > 0) return "Error: el monto es demasiado grande.";
+        if (usuario == null) return "Error: no se pudo identificar al usuario.";
         Cliente cliente = clienteRepository.findByIdAndAgenciaId(contactoId, agenciaId).orElse(null);
         if (cliente == null) return "Error: contacto no encontrado.";
-        double anterior = cliente.getSaldo() != null ? cliente.getSaldo() : 0.0;
-        double nuevo = anterior + monto;
-        cliente.setSaldo(nuevo);
-        if (monto > 0) {
-            double cargaTotal = cliente.getCargaTotal() != null ? cliente.getCargaTotal() : 0.0;
-            cliente.setCargaTotal(cargaTotal + monto);
-        }
-        clienteRepository.save(cliente);
+
+        BigDecimal anterior = cliente.getSaldo() != null ? cliente.getSaldo() : BigDecimal.ZERO;
+        // Por el servicio único: deja un movimiento registrado, atribuido a quien usa el agente
+        String tipo = ajuste.signum() > 0 ? TransaccionService.TIPO_CARGA : TransaccionService.TIPO_RETIRO;
+        Cliente actualizado = transaccionService.registrar(contactoId, usuario, ajuste.abs(), tipo);
+        BigDecimal nuevo = actualizado.getSaldo() != null ? actualizado.getSaldo() : BigDecimal.ZERO;
         return String.format("✓ Saldo de %s: $%.2f → $%.2f.", cliente.getNombre(), anterior, nuevo);
     }
 

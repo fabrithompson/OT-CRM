@@ -1,5 +1,6 @@
 package repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,14 +18,15 @@ public interface TransaccionRepository extends JpaRepository<Transaccion, Long> 
     List<Transaccion> findAllByOrderByFechaDesc();
     void deleteByClienteId(Long clienteId);
 
-    @Query("SELECT t FROM Transaccion t WHERE t.fecha BETWEEN :desde AND :hasta ORDER BY t.fecha DESC")
-    List<Transaccion> findAllByFechaBetweenOrderByFechaDesc(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+    /** Transacciones de los contactos de una agencia en un rango (reporte Excel). Siempre acotado por agencia. */
+    @Query("SELECT t FROM Transaccion t WHERE t.cliente.agencia.id = :agenciaId AND t.fecha BETWEEN :desde AND :hasta ORDER BY t.fecha DESC")
+    List<Transaccion> findByAgenciaIdAndFechaBetween(@Param("agenciaId") Long agenciaId, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 
-    @Query("SELECT COALESCE(SUM(t.monto), 0.0) FROM Transaccion t WHERE t.usuario.agencia.id = :agenciaId AND t.tipo = :tipo")
-    Double sumMontoByAgenciaIdAndTipo(@Param("agenciaId") Long agenciaId, @Param("tipo") String tipo);
+    @Query("SELECT COALESCE(SUM(t.monto), 0) FROM Transaccion t WHERE t.usuario.agencia.id = :agenciaId AND t.tipo = :tipo")
+    BigDecimal sumMontoByAgenciaIdAndTipo(@Param("agenciaId") Long agenciaId, @Param("tipo") String tipo);
 
-    @Query("SELECT COALESCE(SUM(t.monto), 0.0) FROM Transaccion t WHERE t.usuario.agencia.id = :agenciaId AND t.tipo = :tipo AND t.fecha BETWEEN :desde AND :hasta")
-    Double sumMontoByAgenciaIdAndTipoAndFecha(@Param("agenciaId") Long agenciaId, @Param("tipo") String tipo, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+    @Query("SELECT COALESCE(SUM(t.monto), 0) FROM Transaccion t WHERE t.usuario.agencia.id = :agenciaId AND t.tipo = :tipo AND t.fecha BETWEEN :desde AND :hasta")
+    BigDecimal sumMontoByAgenciaIdAndTipoAndFecha(@Param("agenciaId") Long agenciaId, @Param("tipo") String tipo, @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
 
     @Query("SELECT t FROM Transaccion t WHERE t.usuario.agencia.id = :agenciaId ORDER BY t.fecha DESC")
     List<Transaccion> findTop5ByAgenciaId(@Param("agenciaId") Long agenciaId, Pageable pageable);

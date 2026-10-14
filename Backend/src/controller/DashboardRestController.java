@@ -19,7 +19,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,6 +38,7 @@ import repository.UsuarioRepository;
 import service.DashboardService;
 import service.RequestUsuarioCache;
 import service.UsuarioService;
+import util.MensajeError;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -199,7 +199,6 @@ public class DashboardRestController {
     }
 
     @PostMapping("/equipo/solicitar-union")
-    @Transactional
     public ResponseEntity<?> solicitarUnion(@RequestBody Map<String, String> payload, Authentication authentication) {
         String codigoInvitacion = payload.get("codigo");
         if (codigoInvitacion == null || codigoInvitacion.trim().isEmpty()) {
@@ -235,8 +234,9 @@ public class DashboardRestController {
     // rechazar el ingreso de otra persona. @PreAuthorize corta esto antes de
     // que el método se ejecute.
     @PreAuthorize("hasAnyRole('ADMIN','OWNER')")
+    // Sin @Transactional acá: el servicio ya abre su transacción. Con una externa, un error de
+    // negocio capturado abajo dejaba la transacción en rollback-only y terminaba en un 500.
     @PostMapping("/equipo/gestionar-solicitud")
-    @Transactional
     public ResponseEntity<?> gestionarSolicitud(@RequestBody Map<String, Object> payload, Authentication auth) {
         try {
             Long solicitudId = ((Number) payload.get("solicitudId")).longValue();
@@ -247,12 +247,12 @@ public class DashboardRestController {
 
             return ResponseEntity.ok(Map.of("message", aprobar ? "Aprobado" : "Rechazado"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Error en DashboardRestController: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
     @PostMapping("/equipo/abandonar")
-    @Transactional
     public ResponseEntity<?> abandonarEquipo(Authentication authentication) {
         try {
             Usuario usuario = RequestUsuarioCache.obtener(authentication.getName())
@@ -263,7 +263,8 @@ public class DashboardRestController {
 
             return ResponseEntity.ok(Map.of("message", "Has dejado el equipo. Ahora estás en tu espacio personal con plan FREE."));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Error en DashboardRestController: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
@@ -281,6 +282,7 @@ public class DashboardRestController {
 
     private Map<String, String> mapUsuarioToDto(Usuario u) {
         Map<String, String> map = new HashMap<>();
+        map.put("id", String.valueOf(u.getId()));
         map.put("username", u.getUsername()); 
         map.put("nombre", u.getNombreCompleto() != null ? u.getNombreCompleto() : u.getUsername());
         map.put("email", u.getEmail() != null ? u.getEmail() : "Sin email");

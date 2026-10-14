@@ -78,7 +78,8 @@ public class ExcelService {
     private void llenarFilaTransaccion(Row row, Transaccion t, CellStyle styleCarga, CellStyle styleRetiro) {
         row.createCell(0).setCellValue(obtenerTelefonoCliente(t));
         row.createCell(1).setCellValue(obtenerNombreCliente(t));
-        row.createCell(2).setCellValue(t.getMonto());
+        // POI solo escribe double: se convierte recién al volcar la celda (el dato en base es exacto)
+        row.createCell(2).setCellValue(t.getMonto() != null ? t.getMonto().doubleValue() : 0.0);
         llenarCeldasFechaHora(row, t.getFecha());
         aplicarEstiloTipoTransaccion(row, t.getTipo(), styleCarga, styleRetiro);
         row.createCell(6).setCellValue(obtenerNombreCajero(t));
@@ -138,7 +139,7 @@ public class ExcelService {
     }
 
     public ByteArrayInputStream exportarClientes(List<Cliente> clientes) throws IOException {
-        String[] columnasClientes = {"Nombre", "Teléfono", "Fecha Registro"};
+        String[] columnasClientes = {"Nombre", "Teléfono", "Email", "Empresa", "Fecha Registro"};
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
@@ -170,7 +171,9 @@ public class ExcelService {
             Row row = sheet.createRow(rowIdx++);
             row.createCell(0).setCellValue(c.getNombre() != null ? c.getNombre() : "");
             row.createCell(1).setCellValue(c.getTelefono() != null ? c.getTelefono() : "");
-            row.createCell(2).setCellValue(formatearFechaRegistro(c.getFechaRegistro()));
+            row.createCell(2).setCellValue(c.getEmail() != null ? c.getEmail() : "");
+            row.createCell(3).setCellValue(c.getEmpresa() != null ? c.getEmpresa() : "");
+            row.createCell(4).setCellValue(formatearFechaRegistro(c.getFechaRegistro()));
         }
     }
 
@@ -260,6 +263,17 @@ public class ExcelService {
                 nombre = "Sin Nombre";
             }
             Cliente cliente = crearCliente(nombre.trim(), telefono.trim());
+
+            // Columnas opcionales. Un archivo viejo (o exportado antes de este cambio) trae una
+            // fecha en la columna 3: solo se toma como email si realmente parece uno.
+            String email = getCellValueAsString(row.getCell(2), false);
+            if (email != null && email.trim().matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$") && email.trim().length() <= 255) {
+                cliente.setEmail(email.trim());
+            }
+            String empresa = getCellValueAsString(row.getCell(3), false);
+            if (empresa != null && !empresa.isBlank() && empresa.trim().length() <= 255) {
+                cliente.setEmpresa(empresa.trim());
+            }
             return ResultadoValidacion.valido(cliente);
 
         } catch (Exception e) {

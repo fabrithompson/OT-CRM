@@ -12,17 +12,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 
 import model.Transaccion;
+import model.Usuario;
 import repository.TransaccionRepository;
 import service.ExcelService;
+import service.UsuarioService;
 
 @RestController
 @RequestMapping("/api/v1/reportes")
@@ -32,16 +37,25 @@ public class ReporteController {
 
     private final TransaccionRepository transaccionRepository;
     private final ExcelService excelService;
+    private final UsuarioService usuarioService;
 
-    public ReporteController(TransaccionRepository transaccionRepository, ExcelService excelService) {
+    public ReporteController(TransaccionRepository transaccionRepository, ExcelService excelService,
+                             UsuarioService usuarioService) {
         this.transaccionRepository = transaccionRepository;
         this.excelService = excelService;
+        this.usuarioService = usuarioService;
     }
 
     @GetMapping("/descargar/excel")
     @Transactional(readOnly = true)
     public ResponseEntity<InputStreamResource> descargarExcel(
-            @RequestParam(defaultValue = "America/Argentina/Buenos_Aires") String timezone) {
+            @RequestParam(defaultValue = "America/Argentina/Buenos_Aires") String timezone,
+            Authentication auth) {
+        Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
+        if (usuario.getAgencia() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El usuario no pertenece a una agencia");
+        }
+        Long agenciaId = usuario.getAgencia().getId();
         try {
             ZoneId zona;
             try {
@@ -53,7 +67,7 @@ public class ReporteController {
             LocalDate hoy = LocalDate.now(zona);
             LocalDateTime inicioDia = hoy.atStartOfDay();
             LocalDateTime finDia = hoy.atTime(23, 59, 59);
-            List<Transaccion> transacciones = transaccionRepository.findAllByFechaBetweenOrderByFechaDesc(inicioDia, finDia);
+            List<Transaccion> transacciones = transaccionRepository.findByAgenciaIdAndFechaBetween(agenciaId, inicioDia, finDia);
 
             if (transacciones == null) {
                 log.error("La base de datos devolvió NULL para la lista de transacciones.");

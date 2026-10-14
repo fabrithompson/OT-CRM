@@ -25,10 +25,13 @@ import repository.UsuarioRepository;
 import service.PlanService;
 import service.RequestUsuarioCache;
 import service.SubscriptionValidationService;
+import util.MensajeError;
 
 @RestController
 @RequestMapping("/api/v1/planes")
 public class PlanController {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PlanController.class);
 
     private final PlanService planService;
     private final PlanRepository planRepository;
@@ -143,7 +146,8 @@ public class PlanController {
                     "precio", plan.getPrecioMensual()
             ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Error en PlanController: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
@@ -228,7 +232,8 @@ public class PlanController {
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Error en PlanController: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 

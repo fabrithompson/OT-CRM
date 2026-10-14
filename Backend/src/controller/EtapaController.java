@@ -134,21 +134,18 @@ public class EtapaController {
         Usuario usuario = getUsuarioOrThrow(userDetails);
         Long agenciaId = usuario.getAgencia().getId();
 
+        // Validar primero: con un ID ajeno o inexistente no se debe desmarcar nada
+        if (etapaRepository.findByIdAndAgenciaId(id, agenciaId).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
         List<Etapa> etapas = etapaRepository.findByAgenciaId(agenciaId);
-        etapas.forEach(e -> e.setEsInicial(false));
+        etapas.forEach(e -> e.setEsInicial(Objects.equals(e.getId(), id)));
         etapaRepository.saveAll(etapas);
 
-        return etapaRepository.findById(id)
-            .filter(e -> Objects.equals(e.getAgencia().getId(), agenciaId))
-            .map(etapa -> {
-                etapa.setEsInicial(true);
-                etapaRepository.save(etapa);
-                
-                notificarPrincipalActualizada(agenciaId, id); 
-                
-                return ResponseEntity.ok().<Void>build();
-            })
-            .orElse(ResponseEntity.notFound().build());
+        notificarPrincipalActualizada(agenciaId, id);
+
+        return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}")
@@ -158,7 +155,7 @@ public class EtapaController {
             @RequestBody EtapaUpdateRequest etapaData) {
         
         Usuario usuario = getUsuarioOrThrow(userDetails);
-        Etapa actualizada = etapaService.actualizarEtapa(id, etapaData);
+        Etapa actualizada = etapaService.actualizarEtapa(id, usuario.getAgencia().getId(), etapaData);
 
         notificarEtapaRenombrada(usuario.getAgencia().getId(), id, actualizada.getNombre());
 
@@ -172,7 +169,7 @@ public class EtapaController {
             @PathVariable @NonNull Long id) {
         
         Usuario usuario = getUsuarioOrThrow(userDetails);
-        etapaService.eliminarEtapa(id);
+        etapaService.eliminarEtapa(id, usuario.getAgencia().getId());
         
         notificarEtapaEliminada(usuario.getAgencia().getId(), id);
     }
@@ -184,9 +181,9 @@ public class EtapaController {
             @AuthenticationPrincipal UserDetails userDetails, 
             @RequestBody List<Long> idsOrdenados) {
         
-        etapaService.reordenarEtapas(idsOrdenados);
         Usuario usuario = getUsuarioOrThrow(userDetails);
-        
+        etapaService.reordenarEtapas(idsOrdenados, usuario.getAgencia().getId());
+
         notificarEtapasReordenadas(usuario.getAgencia().getId(), idsOrdenados);
     }
 

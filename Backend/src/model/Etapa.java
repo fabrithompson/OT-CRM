@@ -30,7 +30,7 @@ public class Etapa {
     private boolean esInicial = false;
 
     @Column(name = "color", length = 7)
-    private String color = "#6366f1";
+    private String color = "#767070";
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agencia_id")

@@ -45,10 +45,14 @@ import repository.UsuarioRepository;
 import service.CrmAgentTools;
 import service.RequestUsuarioCache;
 import service.SubscriptionValidationService;
+import service.TransaccionService;
+import util.MensajeError;
 
 @RestController
 @RequestMapping("/api/v1/agent-config")
 public class AgentConfigController {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AgentConfigController.class);
 
     private static final String CRM_ASSISTANT_PROMPT =
         "Sos un asistente inteligente del CRM OT. Tenés tres roles:\n\n" +
@@ -89,6 +93,7 @@ public class AgentConfigController {
     private final SubscriptionValidationService subscriptionValidationService;
     private final DispositivoRepository dispositivoRepository;
     private final AgenciaRepository agenciaRepository;
+    private final TransaccionService transaccionService;
 
     public AgentConfigController(ChatClient chatClient,
                                   AgentConfigRepository agentConfigRepository,
@@ -100,7 +105,9 @@ public class AgentConfigController {
                                   RespuestaRapidaRepository respuestaRapidaRepository,
                                   SubscriptionValidationService subscriptionValidationService,
                                   DispositivoRepository dispositivoRepository,
-                                  AgenciaRepository agenciaRepository) {
+                                  AgenciaRepository agenciaRepository,
+                                  TransaccionService transaccionService) {
+        this.transaccionService = transaccionService;
         this.chatClient = chatClient;
         this.agentConfigRepository = agentConfigRepository;
         this.auditStageRepository = auditStageRepository;
@@ -163,7 +170,6 @@ public class AgentConfigController {
         agentConfigRepository.save(config);
         return ResponseEntity.ok(Map.of("ok", true));
     }
-
     @Transactional(readOnly = true)
     @GetMapping("/audit")
     public ResponseEntity<?> getAuditConfig(@AuthenticationPrincipal UserDetails userDetails) {
@@ -403,14 +409,16 @@ public class AgentConfigController {
             if (agenciaId != null) {
                 CrmAgentTools tools = new CrmAgentTools(
                         agenciaId, clienteRepository, etapaRepository,
-                        etiquetaRepository, respuestaRapidaRepository);
+                        etiquetaRepository, respuestaRapidaRepository,
+                        transaccionService, usuario);
                 spec = spec.tools(tools);
             }
 
             String reply = spec.call().content();
             return ResponseEntity.ok(Map.of("reply", reply != null ? reply : ""));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+            log.error("Error en AgentConfigController: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", MensajeError.de(e)));
         }
     }
 

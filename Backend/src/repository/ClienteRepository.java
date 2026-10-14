@@ -49,6 +49,12 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     long countByAgenciaIdAndFechaRegistroAfter(Long agenciaId, LocalDateTime fecha);
 
+    boolean existsByAgenciaIdAndTelefono(Long agenciaId, String telefono);
+
+    /** Valor estimado acumulado por etapa del embudo (contactos sin valor suman 0). */
+    @Query("SELECT c.etapa.id, COALESCE(SUM(c.valorEstimado), 0), COUNT(c) FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.etapa IS NOT NULL GROUP BY c.etapa.id")
+    List<Object[]> valorEstimadoPorEtapa(@Param("agenciaId") Long agenciaId);
+
     long countByAgenciaIdAndFechaRegistroBetween(Long agenciaId, LocalDateTime desde, LocalDateTime hasta);
 
     @Query("SELECT c.dispositivo.plataforma, COUNT(c) FROM Cliente c WHERE c.agencia.id = :agenciaId AND c.fechaRegistro BETWEEN :desde AND :hasta AND c.dispositivo IS NOT NULL GROUP BY c.dispositivo.plataforma")

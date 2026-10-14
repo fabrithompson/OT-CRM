@@ -1,5 +1,6 @@
 package service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -94,10 +95,10 @@ public class DashboardService {
             data.put("totalMensajes", totalMensajes);
 
             // ── Financiero ──
-            Double totalCarga  = transaccionRepository.sumMontoByAgenciaIdAndTipoAndFecha(agenciaId, "CARGA",   desde, hasta);
-            Double totalRetiro = transaccionRepository.sumMontoByAgenciaIdAndTipoAndFecha(agenciaId, "RETIRO",  desde, hasta);
-            data.put("totalCarga",  totalCarga  != null ? totalCarga  : 0.0);
-            data.put("totalRetiro", totalRetiro != null ? totalRetiro : 0.0);
+            BigDecimal totalCarga  = transaccionRepository.sumMontoByAgenciaIdAndTipoAndFecha(agenciaId, "CARGA",   desde, hasta);
+            BigDecimal totalRetiro = transaccionRepository.sumMontoByAgenciaIdAndTipoAndFecha(agenciaId, "RETIRO",  desde, hasta);
+            data.put("totalCarga",  totalCarga  != null ? totalCarga  : BigDecimal.ZERO);
+            data.put("totalRetiro", totalRetiro != null ? totalRetiro : BigDecimal.ZERO);
 
             List<Map<String, Object>> ultimas = transaccionRepository
                     .findTop5ByAgenciaIdAndFecha(agenciaId, desde, hasta, PageRequest.of(0, 5))

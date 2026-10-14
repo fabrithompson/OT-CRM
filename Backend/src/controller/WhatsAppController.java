@@ -44,6 +44,7 @@ import repository.UsuarioRepository;
 import service.BotHttpClient;
 import service.PlanService;
 import service.WhatsAppService;
+import util.MensajeError;
 import util.DispositivoMapper;
 
 import jakarta.annotation.PostConstruct;
@@ -162,7 +163,8 @@ public class WhatsAppController {
             Dispositivo d = whatsAppService.crearDispositivo(usuario.getAgencia(), alias);
             return ResponseEntity.ok(DispositivoMapper.toDto(d));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Error en WhatsAppController: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
@@ -252,7 +254,9 @@ public class WhatsAppController {
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Sin codigo"));
         } catch (RestClientException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Error Node: " + e.getMessage()));
+            log.error("Error consultando el bot de WhatsApp: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "No se pudo comunicar con el servicio de WhatsApp. Intentá de nuevo."));
         }
     }
 

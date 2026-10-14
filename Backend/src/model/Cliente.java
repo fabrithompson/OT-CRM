@@ -1,5 +1,6 @@
 package model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -58,8 +59,27 @@ public class Cliente {
     @Column(length = 500)
     private String notas;
 
-    private Double carga = 0.0;
-    private Double cargaTotal = 0.0;
+    @Column(length = 255)
+    private String email;
+
+    @Column(length = 255)
+    private String empresa;
+
+    // Vendedor responsable (usuario de la misma agencia). Solo el id: exponer la relación
+    // serializaría el Usuario completo (hash de contraseña, tokens de Google).
+    @Column(name = "responsable_id")
+    private Long responsableId;
+
+    // Proyección de venta de esta oportunidad (no es saldo)
+    @Column(name = "valor_estimado", precision = 14, scale = 2)
+    private BigDecimal valorEstimado;
+
+    // Dinero: BigDecimal (NUMERIC(14,2)) para que las sumas y restas sean exactas
+    @Column(precision = 14, scale = 2)
+    private BigDecimal carga = BigDecimal.ZERO;
+
+    @Column(name = "carga_total", precision = 14, scale = 2)
+    private BigDecimal cargaTotal = BigDecimal.ZERO;
 
     private String ultimoMensajeResumen;
     private LocalDateTime ultimoMensajeFecha;
@@ -93,14 +113,14 @@ public class Cliente {
     )
     private Agencia agencia;
 
-    @Column(name = "saldo")
-    private Double saldo = 0.0;
+    @Column(name = "saldo", precision = 14, scale = 2)
+    private BigDecimal saldo = BigDecimal.ZERO;
 
-    public Double getPresupuesto() {
+    public BigDecimal getPresupuesto() {
         return this.saldo;
     }
 
-    public void setPresupuesto(Double presupuesto) {
+    public void setPresupuesto(BigDecimal presupuesto) {
         this.saldo = presupuesto;
     }
 
@@ -148,13 +168,13 @@ public class Cliente {
             this.origen = "MANUAL";
         }
         if (this.carga == null) {
-            this.carga = 0.0;
+            this.carga = BigDecimal.ZERO;
         }
         if (this.cargaTotal == null) {
-            this.cargaTotal = 0.0;
+            this.cargaTotal = BigDecimal.ZERO;
         }
         if (this.saldo == null) {
-            this.saldo = 0.0;
+            this.saldo = BigDecimal.ZERO;
         }
         if (this.mensajesSinLeer == 0) {
             this.mensajesSinLeer = 0;

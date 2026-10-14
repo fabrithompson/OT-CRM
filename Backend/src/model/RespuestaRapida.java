@@ -19,6 +19,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Entity
@@ -33,9 +35,13 @@ public class RespuestaRapida {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "El atajo es obligatorio")
+    @Size(max = 50, message = "El atajo no puede superar los 50 caracteres")
     @Column(nullable = false, length = 50)
     private String atajo; 
 
+    @NotBlank(message = "La respuesta es obligatoria")
+    @Size(max = 5000, message = "La respuesta no puede superar los 5000 caracteres")
     @Column(nullable = false, columnDefinition = "TEXT")
     private String respuesta; 
 

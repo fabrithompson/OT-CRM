@@ -2,6 +2,9 @@ package controller;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import dto.ClienteSearchResult;
 import model.Agencia;
+import model.Actividad;
 import model.Cliente;
 import model.Etapa;
 import model.Etiqueta;
@@ -48,10 +52,14 @@ import repository.ClienteRepository;
 import repository.EtapaRepository;
 import repository.EtiquetaRepository;
 import repository.MensajeRepository;
+import repository.UsuarioRepository;
 import model.Plan;
+import service.ActividadService;
 import service.ExcelService;
 import service.GoogleContactsService;
+import service.ReglaService;
 import service.SubscriptionValidationService;
+import service.TransaccionService;
 import service.UsuarioService;
 import util.PhoneUtil;
 
@@ -72,6 +80,10 @@ public class ClienteController {
     private final EtiquetaRepository etiquetaRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final GoogleContactsService googleContactsService;
+    private final TransaccionService transaccionService;
+    private final UsuarioRepository usuarioRepository;
+    private final ActividadService actividadService;
+    private final ReglaService reglaService;
 
     public ClienteController(ClienteRepository clienteRepository,
                              EtapaRepository etapaRepository,
@@ -81,7 +93,15 @@ public class ClienteController {
                              MensajeRepository mensajeRepository,
                              EtiquetaRepository etiquetaRepository,
                              SimpMessagingTemplate messagingTemplate,
-                             GoogleContactsService googleContactsService) {
+                             GoogleContactsService googleContactsService,
+                             TransaccionService transaccionService,
+                             UsuarioRepository usuarioRepository,
+                             ActividadService actividadService,
+                             ReglaService reglaService) {
+        this.transaccionService = transaccionService;
+        this.usuarioRepository = usuarioRepository;
+        this.actividadService = actividadService;
+        this.reglaService = reglaService;
         this.clienteRepository = clienteRepository;
         this.etapaRepository = etapaRepository;
         this.usuarioService = usuarioService;
@@ -152,7 +172,7 @@ public class ClienteController {
         } catch (Exception e) {
             logger.error("Error inesperado en importación", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error inesperado: " + e.getMessage());
+                    .body("No se pudo importar el archivo. Revisá que sea un Excel válido e intentá de nuevo.");
         }
     }
 
@@ -218,7 +238,7 @@ public class ClienteController {
         } catch (IOException e) {
             logger.error("Error al procesar archivo Excel", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al procesar el archivo: " + e.getMessage());
+                    .body("No se pudo leer el archivo. Revisá que sea un Excel válido e intentá de nuevo.");
         }
     }
 
@@ -514,21 +534,21 @@ public class ClienteController {
     @PostMapping("/clientes/{id}/saldo")
     public ResponseEntity<?> actualizarSaldo(
             @PathVariable @NonNull Long id, 
-            @RequestParam Double monto, 
+            @RequestParam BigDecimal monto, 
             @RequestParam String accion, 
             Authentication auth) {
         
         if (monto == null || accion == null) {
             return ResponseEntity.badRequest().body("{\"error\": \"Monto y acción son requeridos\"}");
         }
-        if (monto <= 0 || monto > 999_999_999) {
+        if (monto.signum() <= 0 || monto.compareTo(TransaccionService.MONTO_MAXIMO) > 0) {
             return ResponseEntity.badRequest().body("{\"error\": \"El monto debe ser positivo y razonable\"}");
         }
         if (!"sumar".equals(accion) && !"restar".equals(accion)) {
             return ResponseEntity.badRequest().body("{\"error\": \"Acción inválida. Usar 'sumar' o 'restar'\"}");
         }
 
-        double montoValidado = monto;
+        BigDecimal montoValidado = monto;
         
         Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
         if (!tieneAgenciaValida(usuario)) {
@@ -539,14 +559,11 @@ public class ClienteController {
         if (clienteOpt.isPresent() && clienteOpt.get().getAgencia() != null 
             && clienteOpt.get().getAgencia().getId().equals(usuario.getAgencia().getId())) {
             
-            Cliente c = clienteOpt.get();
-            
-            double saldoActual = Optional.ofNullable(c.getSaldo()).orElse(0.0);
-            double nuevoSaldo = "sumar".equals(accion) ? saldoActual + montoValidado : saldoActual - montoValidado;
-            
-            c.setSaldo(nuevoSaldo);
-            clienteRepository.save(c);
-            
+            // Por el servicio único: deja el movimiento registrado además de cambiar el saldo
+            String tipo = "sumar".equals(accion) ? TransaccionService.TIPO_CARGA : TransaccionService.TIPO_RETIRO;
+            Cliente c = transaccionService.registrar(id, usuario, montoValidado, tipo);
+            BigDecimal nuevoSaldo = c.getSaldo();
+
             Map<String, Object> evento = new HashMap<>();
             evento.put("tipo", "SALDO_ACTUALIZADO");
             evento.put("clienteId", id);
@@ -626,8 +643,17 @@ public class ClienteController {
                 .filter(c -> c.getAgencia() != null && c.getAgencia().getId().equals(usuario.getAgencia().getId()))
                 .map(c -> {
                     String nombreAnterior = c.getNombre();
-                    c.setNombre(data.getNombre());
+                    // El nombre es obligatorio: uno vacío conserva el anterior (antes violaba NOT NULL)
+                    if (data.getNombre() != null && !data.getNombre().isBlank()) {
+                        c.setNombre(data.getNombre().trim());
+                    }
                     c.setNotas(data.getNotas());
+                    // Campos opcionales: null = sin cambios, "" = borrar
+                    if (data.getEmail() != null) c.setEmail(blankToNull(data.getEmail()));
+                    if (data.getEmpresa() != null) c.setEmpresa(blankToNull(data.getEmpresa()));
+                    if (data.getValorEstimado() != null) {
+                        c.setValorEstimado(data.getValorEstimado().setScale(2, java.math.RoundingMode.HALF_UP).max(BigDecimal.ZERO));
+                    }
                     clienteRepository.save(c);
 
                     // Sincronizar nombre en Google Contacts del vendedor (async, no bloquea)
@@ -641,6 +667,9 @@ public class ClienteController {
                     evento.put("clienteId", id);
                     evento.put("nombre", c.getNombre());
                     evento.put("notas", c.getNotas());
+                    evento.put("email", c.getEmail());
+                    evento.put("empresa", c.getEmpresa());
+                    evento.put("valorEstimado", c.getValorEstimado());
 
                     messagingTemplate.convertAndSend(
                             "/topic/agencia/" + usuario.getAgencia().getId(),
@@ -651,6 +680,169 @@ public class ClienteController {
 
                     return ResponseEntity.ok().build();
                 }).orElse(ResponseEntity.status(HttpStatus.FORBIDDEN).build());
+    }
+
+    // ── Alta manual de contactos ─────────────────────────────────────────────
+
+    public record NuevoClienteRequest(String nombre, String telefono, String email, String empresa,
+                                      String notas, BigDecimal valorEstimado) {}
+
+    private static final java.util.regex.Pattern EMAIL_VALIDO =
+            java.util.regex.Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s.trim();
+    }
+
+    @PostMapping("/clientes")
+    @Transactional
+    public ResponseEntity<?> crearCliente(@RequestBody NuevoClienteRequest req, Authentication auth) {
+        Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
+        if (!tieneAgenciaValida(usuario)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", MENSAJE_USUARIO_SIN_AGENCIA));
+        }
+
+        String nombre = req.nombre() == null ? "" : req.nombre().trim();
+        if (nombre.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El nombre es obligatorio"));
+        }
+        if (nombre.length() > 255) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El nombre es demasiado largo"));
+        }
+
+        // Mismas reglas de teléfono que el importador de Excel
+        String telefono = PhoneUtil.normalizar(req.telefono());
+        if (telefono.length() < 10 || telefono.length() > 20) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El teléfono no es válido"));
+        }
+
+        String email = blankToNull(req.email());
+        if (email != null && (email.length() > 255 || !EMAIL_VALIDO.matcher(email).matches())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El email no es válido"));
+        }
+        String empresa = blankToNull(req.empresa());
+        if (empresa != null && empresa.length() > 255) {
+            return ResponseEntity.badRequest().body(Map.of("error", "El nombre de la empresa es demasiado largo"));
+        }
+        BigDecimal valor = null;
+        if (req.valorEstimado() != null) {
+            valor = req.valorEstimado().setScale(2, java.math.RoundingMode.HALF_UP);
+            if (valor.signum() < 0 || valor.compareTo(TransaccionService.MONTO_MAXIMO) > 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "El valor estimado no es válido"));
+            }
+        }
+
+        // Mismo límite de contactos del plan que aplica al webhook y a la importación
+        if (!subscriptionValidationService.puedeRecibirNuevoContacto(usuario.getAgencia())) {
+            return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                    .body(Map.of("error", "Alcanzaste el límite de contactos de tu plan"));
+        }
+        Long agenciaId = usuario.getAgencia().getId();
+        if (clienteRepository.existsByAgenciaIdAndTelefono(agenciaId, telefono)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Ya existe un contacto con ese teléfono"));
+        }
+
+        Cliente c = new Cliente();
+        c.setNombre(nombre);
+        c.setTelefono(telefono);
+        c.setEmail(email);
+        c.setEmpresa(empresa);
+        c.setNotas(blankToNull(req.notas()));
+        c.setValorEstimado(valor);
+        c.setAgencia(usuario.getAgencia());
+        c.setOrigen("MANUAL");
+        c.setFechaRegistro(LocalDateTime.now());
+        // Entra en la etapa inicial del embudo (o en la primera si no hay una marcada)
+        c.setEtapa(etapaRepository.findFirstByAgenciaIdAndEsInicialTrue(agenciaId)
+                .orElseGet(() -> etapaRepository.findFirstByAgenciaIdOrderByOrdenAsc(agenciaId)));
+        c.setSaldo(BigDecimal.ZERO);
+        c = clienteRepository.save(c);
+        actividadService.registrar(agenciaId, c.getId(), usuario, Actividad.NOTA, "Contacto creado manualmente");
+
+        Map<String, Object> evento = new HashMap<>();
+        evento.put("tipo", "NUEVO_LEAD");
+        evento.put("cliente", c);
+        messagingTemplate.convertAndSend("/topic/agencia/" + agenciaId, evento);
+
+        logger.info("Contacto {} creado manualmente por {}", c.getId(), usuario.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(c);
+    }
+
+    // ── Vendedor responsable ─────────────────────────────────────────────────
+
+    @PatchMapping("/clientes/{id}/responsable")
+    public ResponseEntity<?> asignarResponsable(
+            @PathVariable @NonNull Long id,
+            @RequestParam(required = false) Long usuarioId,
+            Authentication auth) {
+
+        Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
+        if (!tieneAgenciaValida(usuario)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        Long agenciaId = usuario.getAgencia().getId();
+
+        Optional<Cliente> clienteOpt = clienteRepository.findByIdAndAgenciaId(id, agenciaId);
+        if (clienteOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Contacto no encontrado"));
+        }
+
+        // usuarioId vacío = quitar responsable. Si viene, debe ser de la misma agencia.
+        if (usuarioId != null) {
+            boolean esDelEquipo = usuarioRepository.findAllByAgenciaId(agenciaId).stream()
+                    .anyMatch(u -> usuarioId.equals(u.getId()));
+            if (!esDelEquipo) {
+                return ResponseEntity.badRequest().body(Map.of("error", "El usuario no pertenece a tu equipo"));
+            }
+        }
+
+        Cliente c = clienteOpt.get();
+        boolean cambia = !java.util.Objects.equals(c.getResponsableId(), usuarioId);
+        c.setResponsableId(usuarioId);
+        clienteRepository.save(c);
+        if (cambia) {
+            String nombre = usuarioId == null ? null : usuarioRepository.findAllByAgenciaId(agenciaId).stream()
+                    .filter(m -> usuarioId.equals(m.getId()))
+                    .map(m -> m.getNombreCompleto() != null && !m.getNombreCompleto().isBlank()
+                            ? m.getNombreCompleto() : m.getUsername())
+                    .findFirst().orElse(null);
+            actividadService.registrar(agenciaId, id, usuario, Actividad.RESPONSABLE,
+                    nombre != null ? "Responsable asignado: " + nombre : "Se quitó el responsable");
+        }
+
+        Map<String, Object> evento = new HashMap<>();
+        evento.put("tipo", "CLIENTE_RESPONSABLE");
+        evento.put("clienteId", id);
+        evento.put("responsableId", usuarioId);
+        messagingTemplate.convertAndSend("/topic/agencia/" + agenciaId, evento);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("clienteId", id);
+        resp.put("responsableId", usuarioId);
+        return ResponseEntity.ok(resp);
+    }
+
+    // ── Valor estimado del embudo por etapa ──────────────────────────────────
+
+    @GetMapping("/embudo/valor")
+    public ResponseEntity<?> valorDelEmbudo(Authentication auth) {
+        Usuario usuario = usuarioService.buscarPorUsername(auth.getName());
+        if (!tieneAgenciaValida(usuario)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        List<Map<String, Object>> porEtapa = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (Object[] row : clienteRepository.valorEstimadoPorEtapa(usuario.getAgencia().getId())) {
+            BigDecimal valor = row[1] instanceof BigDecimal bd ? bd : BigDecimal.valueOf(((Number) row[1]).doubleValue());
+            total = total.add(valor);
+            Map<String, Object> m = new HashMap<>();
+            m.put("etapaId", row[0]);
+            m.put("valor", valor);
+            m.put("contactos", row[2]);
+            porEtapa.add(m);
+        }
+        return ResponseEntity.ok(Map.of("total", total, "porEtapa", porEtapa));
     }
 
     @DeleteMapping("/clientes/{clienteId}/etiquetas/{tagId}")
@@ -705,24 +897,37 @@ public class ClienteController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         
-        Optional<Cliente> clienteOpt = clienteRepository.findById(id);
-        Optional<Etapa> etapaOpt = etapaRepository.findById(nuevaEtapaId);
+        // Contacto y etapa destino deben ser de la agencia del usuario: antes la etapa se
+        // buscaba por id a secas y se podía mover un contacto al tablero de otra empresa.
+        Long agenciaId = usuario.getAgencia().getId();
+        Optional<Cliente> clienteOpt = clienteRepository.findByIdAndAgenciaId(id, agenciaId);
+        Optional<Etapa> etapaOpt = etapaRepository.findByIdAndAgenciaId(nuevaEtapaId, agenciaId);
 
         if (clienteOpt.isPresent() && etapaOpt.isPresent()) {
             Cliente cliente = clienteOpt.get();
-            if (cliente.getAgencia() != null && cliente.getAgencia().getId().equals(usuario.getAgencia().getId())) {
-                cliente.setEtapa(etapaOpt.get());
-                clienteRepository.save(cliente);
+            String etapaAnterior = cliente.getEtapa() != null ? cliente.getEtapa().getNombre() : null;
+            boolean cambioDeEtapa = cliente.getEtapa() == null
+                    || !cliente.getEtapa().getId().equals(etapaOpt.get().getId());
+            cliente.setEtapa(etapaOpt.get());
+            clienteRepository.save(cliente);
 
-                Map<String, Object> payload = new HashMap<>();
-                payload.put("tipo", "CLIENTE_MOVIDO");
-                payload.put("clienteId", id);
-                payload.put("nuevaEtapaId", nuevaEtapaId);
-
-                messagingTemplate.convertAndSend("/topic/agencia/" + usuario.getAgencia().getId(), payload);
-
-                return ResponseEntity.ok().build();
+            if (cambioDeEtapa) {
+                actividadService.registrar(agenciaId, cliente.getId(), usuario, Actividad.CAMBIO_ETAPA,
+                        etapaAnterior != null
+                                ? "Movido de «" + etapaAnterior + "» a «" + etapaOpt.get().getNombre() + "»"
+                                : "Movido a «" + etapaOpt.get().getNombre() + "»");
+                // Automatizaciones de la etapa destino (una que falla no impide el movimiento)
+                reglaService.aplicarAlEntrarEnEtapa(cliente, etapaOpt.get().getId(), usuario);
             }
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("tipo", "CLIENTE_MOVIDO");
+            payload.put("clienteId", id);
+            payload.put("nuevaEtapaId", nuevaEtapaId);
+
+            messagingTemplate.convertAndSend("/topic/agencia/" + usuario.getAgencia().getId(), payload);
+
+            return ResponseEntity.ok().build();
         }
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }

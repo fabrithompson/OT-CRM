@@ -26,6 +26,7 @@ import repository.UsuarioRepository;
 import service.PlanService;
 import service.RequestUsuarioCache;
 import service.TelegramBridgeService;
+import util.MensajeError;
 import util.DispositivoMapper;
 
 @RestController
@@ -99,7 +100,7 @@ public class TelegramDispositivoController {
             return ResponseEntity.ok(respuestaPython);
         } catch (Exception e) {
             log.error("Error en dispositivo Telegram: ", e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
@@ -118,7 +119,8 @@ public class TelegramDispositivoController {
             dispositivoRepository.save(dispositivo);
             return ResponseEntity.ok(Map.of("status", "DISCONNECTED"));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Error en TelegramDispositivoController: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
@@ -137,7 +139,8 @@ public class TelegramDispositivoController {
             }
             return ResponseEntity.ok(telegramService.validarCodigo(dispositivo, request.code(), request.hash()));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Error en TelegramDispositivoController: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", MensajeError.de(e)));
         }
     }
 
