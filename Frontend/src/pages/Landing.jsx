@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../assets/css/landing-x.css';
 import LogoOrb from '../components/LogoOrb';
 import PlanetHorizon from '../components/landing/PlanetHorizon';
-// Fotos de Pexels (licencia Pexels: uso comercial libre). Procesadas a WebP y viradas a violeta.
+// Fotos de Pexels (licencia Pexels: uso comercial libre). En la landing se ven en escala de grises (CSS).
 import cielo1280 from '../assets/landing/cielo-1280.webp';
 import cielo2400 from '../assets/landing/cielo-2400.webp';
 import nebulosaNucleo from '../assets/landing/nebulosa-nucleo.webp';
@@ -12,7 +12,9 @@ import nebulosaNube from '../assets/landing/nebulosa-nube.webp';
 import nebulosaBurbujas from '../assets/landing/nebulosa-burbujas.webp';
 import LineIcon from '../components/landing/LineIcon';
 import ChatDemo from '../components/landing/ChatDemo';
+import TopoField from '../components/landing/TopoField';
 import { useLanguage } from '../context/LangContext';
+import useDialog from '../hooks/useDialog';
 
 const COMPANY_EMAIL = 'otempresa@otempresa.com';
 const NAV_SECTIONS = ['inicio', 'nosotros', 'precios', 'soporte'];
@@ -42,10 +44,19 @@ function SkyBackdrop({ className, priority = false }) {
   );
 }
 
+/* Cuadrado con la flecha a la derecha de los botones principales */
+function Chip({ tone }) {
+  return (
+    <span className={`lx-chip${tone ? ` lx-chip--${tone}` : ''}`} aria-hidden="true">
+      <LineIcon name="chevronRight" size={18} strokeWidth={2} />
+    </span>
+  );
+}
+
 const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /*
- * Landing pública — estilo "dark cinematic" espacial.
+ * Landing pública — negro con bandas claras y acento naranja.
  * Todo vive dentro de .lx, que es además el contenedor con scroll (el body de
  * la app tiene overflow: hidden). Única acción principal: "Empezar gratis".
  */
@@ -53,8 +64,13 @@ export default function Landing() {
   const navigate = useNavigate();
   const { lang, toggleLang, t } = useLanguage();
   const rootRef = useRef(null);
+  const heroMediaRef = useRef(null);
   const [active, setActive] = useState('inicio');
+  const [solidNav, setSolidNav] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [form, setForm] = useState({ nombre: '', email: '', asunto: '', mensaje: '' });
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const menuDialog = useDialog(menuOpen, closeMenu);
 
   const goRegister = () => navigate('/login?modo=registro');
 
@@ -62,12 +78,12 @@ export default function Landing() {
     const root = rootRef.current;
     const el = document.getElementById(id);
     if (!root || !el) return;
-    root.scrollTo({ top: id === 'inicio' ? 0 : el.offsetTop - 24, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    root.scrollTo({ top: id === 'inicio' ? 0 : el.offsetTop - 80, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }, []);
 
   const anchor = (id) => ({
     href: `#${id}`,
-    onClick: (e) => { e.preventDefault(); scrollTo(id); },
+    onClick: (e) => { e.preventDefault(); setMenuOpen(false); scrollTo(id); },
   });
 
   // Aparición escalonada de los elementos al entrar en pantalla
@@ -94,6 +110,40 @@ export default function Landing() {
     return () => io.disconnect();
   }, []);
 
+  // La navbar pasa a sólida (clara) al dejar atrás el 70% del héroe, y el cielo
+  // del héroe baja más lento que el contenido (parallax, una vez por frame)
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return undefined;
+    const parallax = !prefersReducedMotion();
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const y = root.scrollTop;
+      setSolidNav(y > root.clientHeight * 0.7);
+      const media = heroMediaRef.current;
+      if (parallax && media && y <= root.clientHeight * 1.2) {
+        media.style.transform = `translate3d(0, ${(y * 0.35).toFixed(1)}px, 0)`;
+      }
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(update); };
+    update();
+    root.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      root.removeEventListener('scroll', onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  // Si se agranda la ventana con el menú móvil abierto, se cierra (en escritorio no existe)
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = (e) => { if (e.matches) setMenuOpen(false); };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [menuOpen]);
+
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -104,10 +154,19 @@ export default function Landing() {
 
   const steps = [1, 2, 3].map((n) => ({ num: `0${n}`, title: t(`landing.how.step${n}Title`), desc: t(`landing.how.step${n}Desc`) }));
 
+  // Bento: las tarjetas alternan claro / negro con foto / blanco, como el lienzo de diseño
+  const BENTO = ['soft', 'dark', 'white'];
+  const BENTO_IMG = { 2: nebulosaNube, 5: nebulosaBurbujas };
   const features = [
     { icon: 'kanban', n: 1 }, { icon: 'chat', n: 2 }, { icon: 'contacts', n: 3 },
     { icon: 'chart', n: 4 }, { icon: 'bolt', n: 5 }, { icon: 'team', n: 6 },
-  ].map((f) => ({ ...f, title: t(`landing.features.f${f.n}Title`), desc: t(`landing.features.f${f.n}Desc`) }));
+  ].map((f, i) => ({
+    ...f,
+    tone: BENTO[i % 3],
+    img: BENTO_IMG[f.n],
+    title: t(`landing.features.f${f.n}Title`),
+    desc: t(`landing.features.f${f.n}Desc`),
+  }));
 
   const plans = [
     { key: 'FREE', name: 'Free', precio: null, badge: null, k: 'free' },
@@ -133,40 +192,92 @@ export default function Landing() {
   return (
     <div className="lx" ref={rootRef}>
 
-      {/* ════════ 1 · HÉROE ════════ */}
-      <header id="inicio" className="lx-hero">
-        <div className="lx-hero__media">
-          <SkyBackdrop className="lx-sky lx-hero__scene" priority />
+      {/* ════════ NAVEGACIÓN (fija) ════════ */}
+      <nav className={`lx-nav${solidNav ? ' is-solid' : ''}`} aria-label={t('landing.x.navLabel')}>
+        <a className="lx-logo" {...anchor('inicio')} aria-label="OT CRM">
+          <LogoOrb width={48} height={40} showText={false} variant={solidNav ? 'mono' : 'reverse'} />
+          <span className="lx-wordmark" aria-hidden="true">OT<span>/</span>CRM</span>
+        </a>
+
+        <ul className="lx-nav__links">
+          {NAV_SECTIONS.map((id) => (
+            <li key={id}>
+              <a {...anchor(id)} className={active === id ? 'is-active' : undefined} aria-current={active === id ? 'true' : undefined}>
+                {t(`landing.nav.${id}`)}
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        <div className="lx-nav__actions">
+          <button type="button" className="lx-btn lx-btn--ghost lx-btn--sm" onClick={toggleLang} aria-label={t('landing.x.langLabel')}>
+            <LineIcon name="globe" size={18} />
+            {lang === 'es' ? 'EN' : 'ES'}
+          </button>
+          <button type="button" className="lx-link" onClick={() => navigate('/login')}>{t('landing.nav.ingresar')}</button>
+          <button type="button" className="lx-btn lx-btn--primary lx-btn--sm lx-btn--chip" onClick={goRegister}>
+            {t('landing.x.navStart')}
+            <Chip tone="accent" />
+          </button>
         </div>
-        <div className="lx-hero__veil" aria-hidden="true" />
-        <div className="lx-hero__fade" aria-hidden="true" />
 
-        <div className="lx-container lx-hero__inner">
-          <nav className="lx-nav" aria-label={t('landing.x.navLabel')}>
+        <button
+          type="button"
+          className="lx-burger"
+          onClick={() => setMenuOpen(true)}
+          aria-label={t('landing.x.menuOpen')}
+          aria-expanded={menuOpen}
+          aria-controls="lx-mobile-nav"
+        >
+          <LineIcon name="menu" size={20} strokeWidth={2} />
+        </button>
+      </nav>
+
+      {/* ════════ MENÚ MÓVIL (pantalla completa) ════════ */}
+      {menuOpen && (
+        <div id="lx-mobile-nav" className="lx-mnav" aria-label={t('landing.x.menuLabel')} {...menuDialog}>
+          <div className="lx-mnav__top">
             <a className="lx-logo" {...anchor('inicio')} aria-label="OT CRM">
-              <LogoOrb width={60} height={50} showText={false} />
+              <LogoOrb width={48} height={40} showText={false} animate={false} />
             </a>
-
-            <ul className="lx-nav__links">
-              {NAV_SECTIONS.map((id) => (
-                <li key={id}>
-                  <a {...anchor(id)} className={active === id ? 'is-active' : undefined} aria-current={active === id ? 'true' : undefined}>
-                    {t(`landing.nav.${id}`)}
-                  </a>
-                </li>
-              ))}
-            </ul>
-
-            <div className="lx-nav__actions">
-              <button type="button" className="lx-btn lx-btn--ghost lx-btn--sm" onClick={toggleLang} aria-label={t('landing.x.langLabel')}>
+            <button type="button" className="lx-burger" onClick={closeMenu} aria-label={t('landing.x.menuClose')}>
+              <LineIcon name="close" size={20} strokeWidth={2} />
+            </button>
+          </div>
+          <ul className="lx-mnav__links">
+            {NAV_SECTIONS.map((id) => (
+              <li key={id}>
+                <a {...anchor(id)} className={active === id ? 'is-active' : undefined} aria-current={active === id ? 'true' : undefined}>
+                  {t(`landing.nav.${id}`)}
+                  <LineIcon name="chevronRight" size={20} strokeWidth={2} />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <div className="lx-mnav__actions">
+            <button type="button" className="lx-btn lx-btn--light lx-btn--lg" onClick={goRegister}>{t('landing.x.navStart')}</button>
+            <div className="lx-mnav__row">
+              <button type="button" className="lx-btn lx-btn--ghost" onClick={() => navigate('/login')}>{t('landing.nav.ingresar')}</button>
+              <button type="button" className="lx-btn lx-btn--ghost" onClick={toggleLang} aria-label={t('landing.x.langLabel')}>
                 <LineIcon name="globe" size={18} />
                 {lang === 'es' ? 'EN' : 'ES'}
               </button>
-              <button type="button" className="lx-link" onClick={() => navigate('/login')}>{t('landing.nav.ingresar')}</button>
-              <button type="button" className="lx-btn lx-btn--primary lx-btn--sm" onClick={goRegister}>{t('landing.x.navStart')}</button>
             </div>
-          </nav>
+            <p className="lx-mnav__note">{t('landing.x.heroChannels')}</p>
+          </div>
+        </div>
+      )}
 
+      {/* ════════ 1 · HÉROE ════════ */}
+      <header id="inicio" className="lx-hero">
+        <div className="lx-hero__media" ref={heroMediaRef}>
+          <SkyBackdrop className="lx-sky lx-hero__scene" priority />
+        </div>
+        <div className="lx-hero__veil" aria-hidden="true" />
+        <div className="lx-sweep" aria-hidden="true" />
+        <div className="lx-noise lx-noise--grain" aria-hidden="true" />
+
+        <div className="lx-container lx-hero__inner">
           <div className="lx-notif" aria-hidden="true">
             <div className="lx-notif__head">
               <span><i className="fab fa-whatsapp" /> {t('landing.x.notif.from')}</span>
@@ -177,24 +288,27 @@ export default function Landing() {
           </div>
 
           <div className="lx-hero__content">
-            <span className="lx-pill lx-reveal" style={{ '--i': 0 }}>
+            <p className="lx-eyebrow lx-reveal" style={{ '--i': 0 }}>
               <span className="lx-pill__dot" aria-hidden="true" />
               {t('landing.hero.badge')}
-            </span>
+            </p>
             <h1 className="lx-h1 lx-reveal" style={{ '--i': 1 }}>
               {t('landing.hero.titleA')} <span className="lx-accent">{t('landing.hero.titleB')}</span> {t('landing.hero.titleC')}
             </h1>
-            <p className="lx-lead lx-reveal" style={{ '--i': 2 }}>{t('landing.hero.subtitle')}</p>
-            <div className="lx-actions lx-reveal" style={{ '--i': 3 }}>
-              <button type="button" className="lx-btn lx-btn--primary lx-btn--lg" onClick={goRegister}>
-                {t('landing.hero.cta1')}
-                <LineIcon name="arrowRight" size={20} />
-              </button>
-              <a className="lx-btn lx-btn--ghost lx-btn--lg" {...anchor('como-funciona')}>{t('landing.hero.cta2')}</a>
-            </div>
           </div>
 
           <div className="lx-hero__bottom">
+            <p className="lx-lead lx-reveal" style={{ '--i': 2 }}>{t('landing.hero.subtitle')}</p>
+            <div className="lx-actions lx-reveal" style={{ '--i': 3 }}>
+              <a className="lx-btn lx-btn--ghost lx-btn--lg" {...anchor('como-funciona')}>{t('landing.hero.cta2')}</a>
+              <button type="button" className="lx-btn lx-btn--primary lx-btn--lg lx-btn--chip" onClick={goRegister}>
+                {t('landing.hero.cta1')}
+                <Chip tone="accent" />
+              </button>
+            </div>
+          </div>
+
+          <div className="lx-hero__meta">
             <div className="lx-hero__social">
               <span>{t('landing.x.heroChannels')}</span>
               <a href={`mailto:${COMPANY_EMAIL}`}>{COMPANY_EMAIL}</a>
@@ -208,26 +322,36 @@ export default function Landing() {
       </header>
 
       <main>
-        {/* ════════ 2 · NOSOTROS ════════ */}
-        <section id="nosotros" className="lx-section lx-container lx-about" aria-labelledby="lx-about-title">
-          <h2 id="lx-about-title" className="lx-about__title lx-reveal" style={{ '--i': 0 }}>
-            <span>{t('landing.x.aboutTitleA')}</span>
-            <span>{t('landing.x.aboutTitleB')}</span>
-          </h2>
-          <p className="lx-about__lead lx-reveal" style={{ '--i': 1 }}>{t('landing.x.aboutLead')}</p>
-          <div className="lx-about__cta lx-reveal" style={{ '--i': 2 }}>
-            <p>{t('landing.x.aboutInvite')}</p>
-            <a className="lx-btn lx-btn--ghost lx-btn--sm" {...anchor('soporte')}>{t('landing.x.aboutInviteBtn')}</a>
-          </div>
-        </section>
+        {/* ════════ 2 · NOSOTROS (banda clara) ════════ */}
+        <div className="lx-band lx-band--light lx-band--first">
+          <TopoField />
+          <div className="lx-dots" aria-hidden="true" />
+          <div className="lx-noise" aria-hidden="true" />
+          <section id="nosotros" className="lx-container lx-about" aria-labelledby="lx-about-title">
+            <div className="lx-about__cta lx-reveal" style={{ '--i': 0 }}>
+              <span className="lx-tag">{t('landing.about.tag')}</span>
+              <p>{t('landing.x.aboutInvite')}</p>
+              <a className="lx-btn lx-btn--white lx-btn--chip" {...anchor('soporte')}>
+                {t('landing.x.aboutInviteBtn')}
+                <Chip tone="ink" />
+              </a>
+            </div>
+            <div className="lx-about__row">
+              <h2 id="lx-about-title" className="lx-about__title lx-reveal" style={{ '--i': 1 }}>
+                {t('landing.x.aboutTitleA')} <span className="lx-muted">{t('landing.x.aboutTitleB')}</span>
+              </h2>
+              <p className="lx-about__lead lx-reveal" style={{ '--i': 2 }}>{t('landing.x.aboutLead')}</p>
+            </div>
+          </section>
+        </div>
 
         {/* ════════ 3 · MANIFIESTO (cómo funciona) ════════ */}
         <section id="como-funciona" className="lx-section lx-container" aria-labelledby="lx-manifesto-title">
           <div className="lx-panel lx-manifesto lx-reveal">
             <div className="lx-manifesto__text">
               <h2 id="lx-manifesto-title" className="lx-manifesto__title">
-                <span className="lx-w300">{t('landing.x.manifestoA')}</span>
-                <span className="lx-w600">{t('landing.x.manifestoB')}</span>
+                <span>{t('landing.x.manifestoA')}</span>
+                <span className="lx-accent">{t('landing.x.manifestoB')}</span>
               </h2>
               <span className="lx-rule" aria-hidden="true" />
               <p className="lx-manifesto__p">{t('landing.how.subtitle')}</p>
@@ -255,29 +379,35 @@ export default function Landing() {
           <ChatDemo />
         </section>
 
-        {/* ════════ 4 · FUNCIONALIDADES (servicios) ════════ */}
-        <section id="funcionalidades" className="lx-section lx-container" aria-labelledby="lx-services-title">
-          <header className="lx-section__head lx-reveal">
-            <span className="lx-tag">{t('landing.features.tag')}</span>
-            <h2 id="lx-services-title" className="lx-h2">
-              {t('landing.features.titleA')} <span className="lx-accent">{t('landing.features.titleB')}</span>{t('landing.features.titleC')}
-            </h2>
-          </header>
-          <div className="lx-grid lx-grid--cards">
-            {features.map((f, i) => (
-              <article key={f.n} className="lx-card lx-service lx-reveal" style={{ '--i': i % 3 }}>
-                <div className="lx-service__top">
-                  <LineIcon name={f.icon} size={40} className="lx-service__icon" />
-                  <span className="lx-num">0{f.n}</span>
-                </div>
-                <div>
-                  <h3 className="lx-service__title">{f.title}</h3>
-                  <p className="lx-service__desc">{f.desc}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+        {/* ════════ 4 · FUNCIONALIDADES (bento sobre banda gris) ════════ */}
+        <div className="lx-band lx-band--gray">
+          <TopoField className="lx-topo--flip" />
+          <div className="lx-dots" aria-hidden="true" />
+          <section id="funcionalidades" className="lx-container" aria-labelledby="lx-services-title">
+            <header className="lx-section__head lx-reveal">
+              <span className="lx-tag">{t('landing.features.tag')}</span>
+              <h2 id="lx-services-title" className="lx-h2">
+                {t('landing.features.titleA')} <span className="lx-accent">{t('landing.features.titleB')}</span>{t('landing.features.titleC')}
+              </h2>
+            </header>
+            <div className="lx-bento">
+              {features.map((f, i) => (
+                <article key={f.n} className={`lx-tile lx-tile--${f.tone} lx-reveal`} style={{ '--i': i % 3 }}>
+                  {f.img && <img className="lx-tile__img" src={f.img} alt="" loading="lazy" decoding="async" />}
+                  {f.tone === 'dark' && <span className="lx-tile__signal" aria-hidden="true" />}
+                  <div className="lx-tile__top">
+                    <span className="lx-dotnum">0{f.n}</span>
+                    <LineIcon name={f.icon} size={32} className="lx-tile__icon" />
+                  </div>
+                  <div className="lx-tile__body">
+                    <h3 className="lx-tile__title">{f.title}</h3>
+                    <p className="lx-tile__desc">{f.desc}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
 
         {/* ════════ 5 · CANALES (trabajo) ════════ */}
         <section id="canales" className="lx-section lx-container" aria-labelledby="lx-work-title">
@@ -299,60 +429,64 @@ export default function Landing() {
                   <span className="lx-work__label">{w.label}</span>
                   <span className="lx-work__name">{w.name}</span>
                 </span>
-                {w.wide && (
-                  <span className="lx-work__go" aria-hidden="true"><LineIcon name="arrowUpRight" size={22} /></span>
-                )}
+                {w.wide && <span className="lx-work__go"><Chip tone="accent" /></span>}
               </a>
             ))}
           </div>
         </section>
 
-        {/* ════════ 6 · PRECIOS ════════ */}
-        <section id="precios" className="lx-section lx-container" aria-labelledby="lx-pricing-title">
-          <header className="lx-section__head lx-section__head--row lx-reveal">
-            <div>
-              <span className="lx-tag">{t('landing.pricing.tag')}</span>
-              <h2 id="lx-pricing-title" className="lx-h2">
-                {t('landing.pricing.titleA')} <span className="lx-accent">{t('landing.pricing.titleB')}</span>
-              </h2>
-              <p className="lx-section__sub">{t('landing.pricing.subtitle')}</p>
+        {/* ════════ 6 · PRECIOS (banda clara) ════════ */}
+        <div className="lx-band lx-band--light">
+          <TopoField />
+          <div className="lx-dots" aria-hidden="true" />
+          <div className="lx-noise" aria-hidden="true" />
+          <section id="precios" className="lx-container" aria-labelledby="lx-pricing-title">
+            <header className="lx-section__head lx-section__head--row lx-reveal">
+              <div>
+                <span className="lx-tag">{t('landing.pricing.tag')}</span>
+                <h2 id="lx-pricing-title" className="lx-h2">
+                  {t('landing.pricing.titleA')} <span className="lx-accent">{t('landing.pricing.titleB')}</span>
+                </h2>
+                <p className="lx-section__sub">{t('landing.pricing.subtitle')}</p>
+              </div>
+              <a className="lx-btn lx-btn--ghost" {...anchor('soporte')}>{t('landing.x.pricingBtn')}</a>
+            </header>
+            <div className="lx-grid lx-grid--plans">
+              {plans.map((p, i) => (
+                <article key={p.key} className={`lx-card lx-plan lx-reveal${p.featured ? ' lx-plan--featured' : ''}`} style={{ '--i': i }}>
+                  <div className="lx-plan__top">
+                    <span className="lx-num">0{i + 1}</span>
+                    {p.badge && <span className="lx-plan__badge">{p.badge}</span>}
+                  </div>
+                  <h3 className="lx-plan__name">{p.name}</h3>
+                  <p className="lx-plan__tagline">{p.tagline}</p>
+                  <p className="lx-plan__price">
+                    {p.precio
+                      ? <><span className="lx-plan__amount">${p.precio}</span><span className="lx-plan__period">{t('landing.pricing.perMonth')}</span></>
+                      : <span className="lx-plan__amount">{t('landing.pricing.freeLabel')}</span>}
+                  </p>
+                  <p className="lx-plan__devices">{p.dispositivos}</p>
+                  <ul className="lx-plan__list">
+                    {p.beneficios.map((b, j) => (
+                      <li key={j} className={p.mutedLast && j === 3 ? 'is-muted' : undefined}>
+                        <LineIcon name={p.mutedLast && j === 3 ? 'minus' : 'check'} size={18} />
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    className={`lx-btn ${p.featured ? 'lx-btn--primary lx-btn--chip' : 'lx-btn--ghost'} lx-plan__cta`}
+                    onClick={() => (p.key === 'ENTERPRISE' ? scrollTo('soporte') : goRegister())}
+                  >
+                    {p.cta}
+                    {p.featured && <Chip tone="accent" />}
+                  </button>
+                </article>
+              ))}
             </div>
-            <a className="lx-btn lx-btn--ghost" {...anchor('soporte')}>{t('landing.x.pricingBtn')}</a>
-          </header>
-          <div className="lx-grid lx-grid--plans">
-            {plans.map((p, i) => (
-              <article key={p.key} className={`lx-card lx-plan lx-reveal${p.featured ? ' lx-plan--featured' : ''}`} style={{ '--i': i }}>
-                <div className="lx-plan__top">
-                  <span className="lx-num">0{i + 1}</span>
-                  {p.badge && <span className="lx-plan__badge">{p.badge}</span>}
-                </div>
-                <h3 className="lx-plan__name">{p.name}</h3>
-                <p className="lx-plan__tagline">{p.tagline}</p>
-                <p className="lx-plan__price">
-                  {p.precio
-                    ? <><span className="lx-plan__amount">${p.precio}</span><span className="lx-plan__period">{t('landing.pricing.perMonth')}</span></>
-                    : <span className="lx-plan__amount">{t('landing.pricing.freeLabel')}</span>}
-                </p>
-                <p className="lx-plan__devices">{p.dispositivos}</p>
-                <ul className="lx-plan__list">
-                  {p.beneficios.map((b, j) => (
-                    <li key={j} className={p.mutedLast && j === 3 ? 'is-muted' : undefined}>
-                      <LineIcon name={p.mutedLast && j === 3 ? 'minus' : 'check'} size={18} />
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  className={`lx-btn ${p.featured ? 'lx-btn--primary' : 'lx-btn--ghost'} lx-plan__cta`}
-                  onClick={() => (p.key === 'ENTERPRISE' ? scrollTo('soporte') : goRegister())}
-                >
-                  {p.cta}
-                </button>
-              </article>
-            ))}
-          </div>
-        </section>
+          </section>
+        </div>
 
         {/* ════════ 7 · SOPORTE ════════ */}
         <section id="soporte" className="lx-section lx-container" aria-labelledby="lx-support-title">
@@ -390,9 +524,9 @@ export default function Landing() {
                 <span>{t('landing.support.formMessage')}</span>
                 <textarea name="mensaje" rows={5} placeholder={t('landing.support.formMessagePh')} value={form.mensaje} onChange={handleChange} required />
               </label>
-              <button type="submit" className="lx-btn lx-btn--ghost lx-btn--lg lx-form__submit">
+              <button type="submit" className="lx-btn lx-btn--light lx-btn--lg lx-btn--chip lx-form__submit">
                 {t('landing.support.formSubmit')}
-                <LineIcon name="arrowRight" size={20} />
+                <Chip tone="accent" />
               </button>
             </form>
           </div>
@@ -402,6 +536,7 @@ export default function Landing() {
       {/* ════════ 8 · CIERRE Y PIE ════════ */}
       <footer className="lx-closing">
         <SkyBackdrop className="lx-sky lx-closing__media" />
+        <div className="lx-sweep lx-sweep--closing" aria-hidden="true" />
         <div className="lx-container lx-closing__inner">
           <div className="lx-closing__content">
             <h2 className="lx-closing__title lx-reveal">
@@ -409,9 +544,9 @@ export default function Landing() {
             </h2>
             <p className="lx-lead lx-reveal" style={{ '--i': 1 }}>{t('landing.x.closingText')}</p>
             <div className="lx-reveal" style={{ '--i': 2 }}>
-              <button type="button" className="lx-btn lx-btn--primary lx-btn--lg" onClick={goRegister}>
+              <button type="button" className="lx-btn lx-btn--light lx-btn--lg lx-btn--chip" onClick={goRegister}>
                 {t('landing.x.navStart')}
-                <LineIcon name="arrowRight" size={20} />
+                <Chip tone="accent" />
               </button>
             </div>
           </div>

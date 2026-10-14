@@ -2,16 +2,16 @@ import { memo, useId } from 'react';
 import PropTypes from 'prop-types';
 
 /*
- * Horizonte curvo de un planeta con borde de luz violeta, en SVG y con fondo
+ * Horizonte curvo de un planeta con borde de luz naranja, en SVG y con fondo
  * transparente: se superpone a la foto del cielo (héroe y cierre de la landing).
  *
  * Solo gradientes: nada de feGaussianBlur ni filter: blur(), que en superficies
  * grandes congelaban el render al mover el mouse (ver commit 217936b).
  * preserveAspectRatio "xMidYMax slice" lo ancla abajo como un object-fit: cover.
  */
-const ACCENT = '#A78BFA';
-const ACCENT_DEEP = '#7C3AED';
-const ICE = '#EEECFF';
+const ACCENT = '#F64302';
+const ACCENT_DEEP = '#8A2500';
+const ICE = '#FFF4EE';
 
 function PlanetHorizon({ className = '' }) {
     const uid = `ph${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
@@ -40,9 +40,9 @@ function PlanetHorizon({ className = '' }) {
                     <stop offset="1" stopColor={ACCENT_DEEP} stopOpacity="0" />
                 </radialGradient>
                 <linearGradient id={`${uid}-body`} x1="0" y1={cy - R} x2="0" y2={cy - R + 260} gradientUnits="userSpaceOnUse">
-                    <stop offset="0" stopColor="#2A1F5C" />
-                    <stop offset="0.35" stopColor="#120D2B" />
-                    <stop offset="1" stopColor="#06060F" />
+                    <stop offset="0" stopColor="#2B1A12" />
+                    <stop offset="0.35" stopColor="#0E0907" />
+                    <stop offset="1" stopColor="#000000" />
                 </linearGradient>
             </defs>
             <rect width="2400" height="1500" fill={`url(#${uid}-glow)`} />
