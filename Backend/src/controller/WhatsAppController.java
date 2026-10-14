@@ -222,6 +222,8 @@ public class WhatsAppController {
 
             return ResponseEntity.ok(body);
         } catch (RestClientException e) {
+            // El mensaje al usuario es genérico a propósito; el motivo real queda en el log
+            log.warn("No se pudo consultar el QR/estado al bot (dispositivo {}): {}", deviceId, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("status", "OFFLINE", "error", "Bot inalcanzable"));
         }
     }
