@@ -14,10 +14,10 @@ import { useLanguage } from '../context/LangContext';
 const C_AMBER      = '#f59e0b';
 const C_AMBER_SOFT = 'rgba(245,158,11,0.10)';
 const C_AMBER_BDR  = 'rgba(245,158,11,0.30)';
-const C_GREEN      = '#10b981';
-const C_GREEN_SOFT = 'rgba(16,185,129,0.12)';
+const C_GREEN      = '#F64302';
+const C_GREEN_SOFT = 'rgba(246, 67, 2,0.12)';
 const C_RED        = '#ef4444';
-const C_CARD       = 'rgba(24,18,38,0.72)';   // morado oscuro translúcido
+const C_CARD       = 'rgba(20, 20, 20,0.72)';   // morado oscuro translúcido
 const C_BDR        = 'rgba(255,255,255,0.07)';
 const C_BDR_SOFT   = 'rgba(255,255,255,0.04)';
 const C_TEXT       = '#fff';
@@ -350,7 +350,7 @@ function ChatPanel({ bandeja, contactoActivo, mensajes, onSelectContacto, onResp
                             <div className="spm-37">
                                 {mensajes.map(m => (
                                     <div className="spm-38" key={m.id} style={{ justifyContent: m.direccion === 'OUT' ? 'flex-end' : 'flex-start' }}>
-                                        <div className="spm-123" style={{ borderRadius: '12px', background: m.direccion === 'OUT' ? C_GREEN_SOFT : 'rgba(255,255,255,0.05)', border: `1px solid ${m.direccion === 'OUT' ? 'rgba(16,185,129,0.25)' : C_BDR}`, color: C_TEXT }}>
+                                        <div className="spm-123" style={{ borderRadius: '12px', background: m.direccion === 'OUT' ? C_GREEN_SOFT : 'rgba(255,255,255,0.05)', border: `1px solid ${m.direccion === 'OUT' ? 'rgba(246, 67, 2,0.25)' : C_BDR}`, color: C_TEXT }}>
                                             {m.texto}
                                             <div className="spm-40">{formatHora(m.fecha)}</div>
                                         </div>
@@ -584,7 +584,7 @@ function CalentamientoPanel({ devices, showModal, onCloseModal }) {
                                     </div>
                                     <div className="spm-71">
                                         {(plan.dispositivos || []).map(d => (
-                                            <span className="spm-128" key={d.id} style={{ borderRadius: '10px', background: d.estado === 'CONNECTED' ? C_GREEN_SOFT : 'rgba(255,255,255,0.04)', color: d.estado === 'CONNECTED' ? C_GREEN : C_MUTED, border: `1px solid ${d.estado === 'CONNECTED' ? 'rgba(16,185,129,0.25)' : C_BDR}` }}>
+                                            <span className="spm-128" key={d.id} style={{ borderRadius: '10px', background: d.estado === 'CONNECTED' ? C_GREEN_SOFT : 'rgba(255,255,255,0.04)', color: d.estado === 'CONNECTED' ? C_GREEN : C_MUTED, border: `1px solid ${d.estado === 'CONNECTED' ? 'rgba(246, 67, 2,0.25)' : C_BDR}` }}>
                                                 {d.alias}
                                             </span>
                                         ))}

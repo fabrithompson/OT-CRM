@@ -4,7 +4,7 @@ import { formatTime } from '../../utils/api';
 import { useLanguage } from '../../context/LangContext';
 import '../../assets/css/pages/KanbanCard.css';
 
-export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
+export default function KanbanCard({ cliente, onOpen, etapas = [], onMove, responsable }) {
     const { t: tr } = useLanguage();
     const nombre = (cliente.nombre && !cliente.nombre.includes('@'))
         ? cliente.nombre
@@ -25,7 +25,7 @@ export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
         resumenIcon = { icon: 'fa-mobile-screen-button', color: '#fbbf24', title: 'Enviado desde celular del vendedor' };
         resumenTexto = resumenRaw.slice('EXTERNO_WSP:'.length).trim();
     } else if (resumenRaw.startsWith('AGENTE_IA:') || resumenRaw.startsWith('IA_')) {
-        resumenIcon = { icon: 'fa-robot', color: '#a78bfa', title: 'Enviado por el Agente IA' };
+        resumenIcon = { icon: 'fa-robot', color: '#FF7A45', title: 'Enviado por el Agente IA' };
         resumenTexto = resumenRaw.replace(/^(AGENTE_IA|IA_[^:]*):\s*/, '');
     }
 
@@ -84,6 +84,21 @@ export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
                         <span className={`card-instance-label ${platformClass}`}>{cliente.nombreInstancia}</span>
                     )}
                 </div>
+                {(cliente.empresa || Number(cliente.valorEstimado) > 0 || responsable) && (
+                    <div className="card-meta">
+                        {cliente.empresa && <span className="card-meta__item" title={cliente.empresa}><i className="fas fa-building" aria-hidden="true"></i>{cliente.empresa}</span>}
+                        {Number(cliente.valorEstimado) > 0 && (
+                            <span className="card-meta__item card-meta__valor">${Number(cliente.valorEstimado).toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                        )}
+                        {responsable && (
+                            <span className="card-meta__owner" title={`${tr('kanban.ownerLabel')}: ${responsable.nombre}`}>
+                                {responsable.fotoUrl
+                                    ? <img src={responsable.fotoUrl} alt="" />
+                                    : (responsable.inicial || (responsable.nombre || '?').charAt(0).toUpperCase())}
+                            </span>
+                        )}
+                    </div>
+                )}
                 {/* Alternativa táctil al drag & drop (solo visible en móvil / sin hover, ver .card-move) */}
                 {onMove && etapas.length > 1 && (
                     <select
@@ -104,7 +119,7 @@ export default function KanbanCard({ cliente, onOpen, etapas = [], onMove }) {
                 {cliente.etiquetas?.length > 0 && (
                     <div className="kcard-7">
                         {cliente.etiquetas.slice(0, 4).map(t => (
-                            <span className="kcard-8" key={t.id} title={t.nombre} style={{ background: t.color || '#10b981' }}></span>
+                            <span className="kcard-8" key={t.id} title={t.nombre} style={{ background: t.color || '#F64302' }}></span>
                         ))}
                     </div>
                 )}
@@ -125,6 +140,9 @@ KanbanCard.propTypes = {
         ultimoMensajeFecha: PropTypes.string,
         ultimoMensajeResumen: PropTypes.string,
         nombreInstancia: PropTypes.string,
+        empresa: PropTypes.string,
+        valorEstimado: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+        responsableId: PropTypes.number,
         etiquetas: PropTypes.arrayOf(PropTypes.shape({
             id: PropTypes.number,
             nombre: PropTypes.string,
@@ -134,4 +152,9 @@ KanbanCard.propTypes = {
     onOpen: PropTypes.func.isRequired,
     etapas: PropTypes.array,
     onMove: PropTypes.func,
+    responsable: PropTypes.shape({
+        nombre: PropTypes.string,
+        inicial: PropTypes.string,
+        fotoUrl: PropTypes.string,
+    }),
 };

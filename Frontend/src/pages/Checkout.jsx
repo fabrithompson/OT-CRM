@@ -19,8 +19,8 @@ const METODOS = [
                 <i className="fab fa-cc-visa" /><i className="fab fa-cc-mastercard" />
             </div>
         ),
-        btnGradient: 'linear-gradient(135deg, #10b981, #059669)',
-        btnShadow: '0 4px 20px rgba(16,185,129,0.35)',
+        btnGradient: 'linear-gradient(135deg, #F64302, #C03400)',
+        btnShadow: '0 4px 20px rgba(246, 67, 2,0.35)',
     },
     {
         id: 'paypal',
@@ -169,12 +169,12 @@ export default function Checkout() {
                                             {...clickable(() => setMetodo(m.id), { role: 'radio', checked: selected, disabled: !m.activo })}
                                             style={{
                                                 ...S.row,
-                                                background: selected ? 'rgba(16,185,129,0.07)' : 'transparent',
+                                                background: selected ? 'rgba(246, 67, 2,0.07)' : 'transparent',
                                                 cursor: m.activo ? 'pointer' : 'default',
                                                 opacity: m.activo ? 1 : 0.48,
                                             }}
                                         >
-                                            <div style={{ ...S.radio, borderColor: selected ? '#10b981' : 'rgba(255,255,255,0.2)', background: selected ? 'rgba(16,185,129,0.15)' : 'transparent' }}>
+                                            <div style={{ ...S.radio, borderColor: selected ? '#F64302' : 'rgba(255,255,255,0.2)', background: selected ? 'rgba(246, 67, 2,0.15)' : 'transparent' }}>
                                                 {selected && <div style={S.radioDot} />}
                                             </div>
 
@@ -230,12 +230,12 @@ export default function Checkout() {
                                 <div className="chk-24">
                                     {[
                                         { label: 'Subtotal', valor: `$ ${formatPrecio(plan.precioMensual)}` },
-                                        { label: 'Descuento', valor: '— $ 0', color: '#10b981' },
+                                        { label: 'Descuento', valor: '— $ 0', color: '#F64302' },
                                         { label: 'Renovación', valor: 'Mensual' },
                                     ].map(r => (
                                         <div key={r.label} style={S.summaryRow}>
                                             <span className="chk-25">{r.label}</span>
-                                            <span className="chk-26" style={{ color: r.color || '#e2e8f0' }}>{r.valor}</span>
+                                            <span className="chk-26" style={{ color: r.color || '#E8E5E5' }}>{r.valor}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -285,7 +285,7 @@ const S = {
         fontWeight: 800,
         textTransform: 'uppercase',
         letterSpacing: 2,
-        color: '#94a3b8',
+        color: '#9C9696',
         marginBottom: 12,
         display: 'block',
     },
@@ -321,7 +321,7 @@ const S = {
         width: 8,
         height: 8,
         borderRadius: '50%',
-        background: '#10b981',
+        background: '#F64302',
     },
     logo: {
         width: 50,
@@ -340,7 +340,7 @@ const S = {
         display: 'block',
         fontSize: '0.9rem',
         fontWeight: 600,
-        color: '#e2e8f0',
+        color: '#E8E5E5',
         marginBottom: 2,
         whiteSpace: 'nowrap',
         overflow: 'hidden',
@@ -349,7 +349,7 @@ const S = {
     desc: {
         display: 'block',
         fontSize: '0.76rem',
-        color: '#94a3b8',
+        color: '#9C9696',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -401,7 +401,7 @@ const S = {
         height: 17,
         border: '2.5px solid rgba(255,255,255,0.3)',
         borderRadius: '50%',
-        borderTopColor: '#fff',
+        borderTopColor: '#000',
         animation: 'spin 1s linear infinite',
         flexShrink: 0,
     },

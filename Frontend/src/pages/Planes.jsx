@@ -159,7 +159,7 @@ export default function Planes() {
             <div className="dashboard-content custom-scrollbar pln-3">
 
                 {showExito && (
-                    <div style={styles.alertaBase('#10b981', 'rgba(16,185,129,0.12)')}>
+                    <div style={styles.alertaBase('#F64302', 'rgba(246, 67, 2,0.12)')}>
                         <i className="fas fa-check-circle pln-4"></i>
                         <div>
                             <strong className="pln-5">{t('planes.paySuccess')}</strong>
@@ -245,7 +245,7 @@ export default function Planes() {
                         <i className="fas fa-shield-alt pln-22"></i>
                         {t('planes.secureFooter')}
                     </span>
-                    <Link to="/mi-suscripcion" style={{ color: '#10b981', fontWeight: 700, textDecoration: 'underline' }}>
+                    <Link to="/mi-suscripcion" style={{ color: '#F64302', fontWeight: 700, textDecoration: 'underline' }}>
                         {t('planes.mySub')}
                     </Link>
                 </div>
@@ -282,7 +282,7 @@ function PlanCard({ plan, cfg, esActual, esGratis, onSuscribirse, onCambiarFree 
     const colores = {
         free:       { accent: '#6b7280', glow: 'rgba(107,114,128,0.18)', glowStrong: 'rgba(107,114,128,0.35)' },
         pro:        { btn: '#2563eb', accent: '#3b82f6', glow: 'rgba(59,130,246,0.18)',  glowStrong: 'rgba(59,130,246,0.4)'  },
-        business:   { btn: '#7c3aed', accent: '#8b5cf6', glow: 'rgba(139,92,246,0.18)', glowStrong: 'rgba(139,92,246,0.4)'  },
+        business:   { btn: '#C03400', accent: '#D63A00', glow: 'rgba(246, 67, 2,0.18)', glowStrong: 'rgba(246, 67, 2,0.4)'  },
         enterprise: { btnText: '#1a1205', accent: '#f59e0b', glow: 'rgba(245,158,11,0.18)', glowStrong: 'rgba(245,158,11,0.4)'  },
     };
     const col = colores[cfg.clase] || colores.free;
@@ -606,7 +606,7 @@ const styles = {
     btnActual: { padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#9ca3af', borderRadius: '10px', fontWeight: 600, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: 'auto' },
     btnPlan: { padding: '13px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', transition: 'opacity 0.2s, filter 0.2s', marginTop: 'auto', textAlign: 'center', letterSpacing: '0.01em' },
     badgeActual: (color, text = '#fff') => ({ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color, color: text, fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' }),
-    badgePopular: { position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #2563eb, #7c3aed)', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' },
+    badgePopular: { position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #2563eb, #C03400)', color: '#fff', fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' },
     badgeVip: { position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #f59e0b, #ef4444)', color: '#1a1205', fontSize: '0.72rem', fontWeight: 700, padding: '3px 12px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '5px' },
     overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
     modal: { background: 'var(--bg-card)', borderRadius: '16px', width: '100%', padding: '28px', border: '1px solid var(--border-glass)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' },

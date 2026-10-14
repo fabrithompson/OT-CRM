@@ -5,7 +5,7 @@ import api from '../../utils/api';
 import '../../assets/css/pages/KanbanColumn.css';
 import { useLanguage } from '../../context/LangContext';
 
-const COLORS = ['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#a855f7'];
+const COLORS = ['#F64302', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#D63A00'];
 
 // Icon button wrapper — replaces <i role="button"> with a real <button>
 function IconBtn({ icon, title, onClick, style, className, id }) {
@@ -41,7 +41,7 @@ IconBtn.propTypes = {
 IconBtn.defaultProps = { style: {}, className: '', id: undefined };
 
 export default function KanbanColumn({
-    etapa, etapas, clientes, onOpenChat, onEditStage, onDeleteStage,
+    etapa, etapas, clientes, valor = 0, equipoPorId, onOpenChat, onEditStage, onDeleteStage,
     onDropCard, onDropColumn, mutedStages, onToggleMute, onMakeMain, onColorChange,
 }) {
     const { t } = useLanguage();
@@ -112,7 +112,7 @@ export default function KanbanColumn({
         else if (srcColId) onDropColumn(srcColId, etapa.id);
     };
 
-    const color = etapa.color || '#6366f1';
+    const color = etapa.color || '#767070';
 
     return (
         <div
@@ -135,6 +135,11 @@ export default function KanbanColumn({
                     <span className="kcol-3">
                         {clientes.length}
                     </span>
+                    {valor > 0 && (
+                        <span className="col-valor" title={t('kanban.funnelValue')}>
+                            ${valor.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                        </span>
+                    )}
                 </div>
 
                 <div className="column-header-actions kcol-4">
@@ -180,7 +185,7 @@ export default function KanbanColumn({
                         icon={`fas fa-inbox${etapa.esInicial ? ' active' : ''}`}
                         title={t('kanban.main')}
                         onClick={(e) => { e.stopPropagation(); makeMain(); }}
-                        style={{ color: etapa.esInicial ? '#10b981' : 'var(--color-text-3)' }}
+                        style={{ color: etapa.esInicial ? '#F64302' : 'var(--color-text-3)' }}
                     />
 
                     {/* Edit */}
@@ -205,10 +210,11 @@ export default function KanbanColumn({
             <div
                 className="col-body kcol-7"
                 id={`col-body-${etapa.id}`}
-                style={{ background: isDragOver ? 'rgba(16,185,129,0.05)' : undefined }}
+                style={{ background: isDragOver ? 'rgba(246, 67, 2,0.05)' : undefined }}
             >
                 {clientes.map(c => (
-                    <KanbanCard key={c.id} cliente={c} onOpen={onOpenChat} etapas={etapas} onMove={onDropCard} />
+                    <KanbanCard key={c.id} cliente={c} onOpen={onOpenChat} etapas={etapas} onMove={onDropCard}
+                        responsable={equipoPorId?.get(Number(c.responsableId))} />
                 ))}
             </div>
         </div>
@@ -216,6 +222,8 @@ export default function KanbanColumn({
 }
 
 KanbanColumn.propTypes = {
+    valor: PropTypes.number,
+    equipoPorId: PropTypes.instanceOf(Map),
     etapa: PropTypes.shape({
         id: PropTypes.number.isRequired,
         nombre: PropTypes.string,

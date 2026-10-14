@@ -4,11 +4,11 @@
  * normal (sin importar su especificidad) y pierde contra otras reglas !important, como pasaba antes. */
 
 :where(.cht-1) { position: relative !important; }
-:where(.cht-2) { position: absolute !important; inset: 0 !important; z-index: 9999 !important; background: rgba(16,185,129,0.15) !important; border: 3px dashed var(--color-accent) !important; border-radius: 16px !important; display: flex !important; align-items: center !important; justify-content: center !important; backdrop-filter: blur(2px) !important; pointer-events: none !important; }
+:where(.cht-2) { position: absolute !important; inset: 0 !important; z-index: 9999 !important; background: rgba(246, 67, 2,0.15) !important; border: 3px dashed var(--color-accent) !important; border-radius: 16px !important; display: flex !important; align-items: center !important; justify-content: center !important; backdrop-filter: blur(2px) !important; pointer-events: none !important; }
 :where(.cht-3) { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 12px !important; color: var(--color-accent) !important; }
 :where(.cht-4) { font-size: 3rem !important; }
 :where(.cht-5) { font-size: 1.2rem !important; font-weight: 700 !important; }
-:where(.cht-6) { width: 38px !important; height: 38px !important; border-radius: 50% !important; background: linear-gradient(135deg,var(--brand-purple),#a855f7) !important; display: flex !important; align-items: center !important; justify-content: center !important; color: #fff !important; font-weight: 700 !important; flex-shrink: 0 !important; }
+:where(.cht-6) { width: 38px !important; height: 38px !important; border-radius: 50% !important; background: linear-gradient(135deg,var(--brand-purple),#D63A00) !important; display: flex !important; align-items: center !important; justify-content: center !important; color: #fff !important; font-weight: 700 !important; flex-shrink: 0 !important; }
 :where(.cht-7) { width: 100% !important; height: 100% !important; border-radius: 50% !important; object-fit: cover !important; }
 :where(.cht-8) { display: flex !important; align-items: center !important; gap: 6px !important; padding-left: 8px !important; font-size: 0.82rem !important; }
 :where(.cht-9) { font-weight: 600 !important; }
@@ -16,8 +16,8 @@
 :where(.cht-11) { background: rgba(255,255,255,0.05) !important; border-radius: 8px !important; width: 36px !important; height: 36px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
 :where(.cht-12) { font-size: 1rem !important; }
 :where(.cht-13) { position: fixed !important; inset: 0 !important; z-index: 100 !important; }
-:where(.cht-14) { position: absolute !important; right: 0 !important; top: calc(100% + 6px) !important; background: #1e293b !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 8px !important; min-width: 240px !important; z-index: 101 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important; }
-:where(.cht-15) { display: flex !important; align-items: center !important; gap: 10px !important; width: 100% !important; padding: 12px 14px !important; background: transparent !important; color: #e2e8f0 !important; border: none !important; text-align: left !important; font-size: 0.9rem !important; }
+:where(.cht-14) { position: absolute !important; right: 0 !important; top: calc(100% + 6px) !important; background: #1E1E1E !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 8px !important; min-width: 240px !important; z-index: 101 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important; }
+:where(.cht-15) { display: flex !important; align-items: center !important; gap: 10px !important; width: 100% !important; padding: 12px 14px !important; background: transparent !important; color: #E8E5E5 !important; border: none !important; text-align: left !important; font-size: 0.9rem !important; }
 :where(.cht-16) { color: #fbbf24 !important; width: 16px !important; }
 :where(.cht-17) { font-size: 0.75rem !important; opacity: 0.6 !important; margin-top: 2px !important; }
 :where(.cht-18) { text-align: center !important; padding: 8px !important; background: none !important; border: none !important; cursor: pointer !important; opacity: 0.7 !important; font-size: 0.8rem !important; color: var(--color-text-3) !important; }
@@ -31,7 +31,7 @@
 :where(.cht-26) { display: inline-flex !important; align-items: center !important; gap: 6px !important; color: var(--color-danger) !important; font-variant-numeric: tabular-nums !important; font-size: 0.85rem !important; font-weight: 600 !important; }
 :where(.cht-27) { font-size: 1.1rem !important; }
 :where(.cht-28) { background: transparent !important; border: none !important; color: #d1d7db !important; width: 100% !important; }
-:where(.cht-29) { background: #202c33 !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; color: #d1d7db !important; padding: 10px !important; resize: none !important; min-height: 80px !important; width: 100% !important; }
+:where(.cht-29) { background: #1E1E1E !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; color: #d1d7db !important; padding: 10px !important; resize: none !important; min-height: 80px !important; width: 100% !important; }
 :where(.cht-30) { color: var(--color-accent) !important; font-weight: 700 !important; font-size: 1.1rem !important; }
 :where(.cht-31) { margin-top: 8px !important; }
 :where(.cht-32) { color: #555 !important; font-size: 0.75rem !important; font-style: italic !important; }
@@ -49,3 +49,34 @@
 :where(.cht-44) { font-size: 0.72rem !important; }
 :where(.cht-45) { margin-bottom: 5px !important; word-break: break-word !important; }
 :where(.cht-46) { width: 18px !important; height: 18px !important; cursor: pointer !important; padding: 0 !important; flex-shrink: 0 !important; outline: none !important; }
+
+/* Selector de vendedor responsable en la ficha del contacto */
+.attr-select { width: 100%; color: inherit; background: transparent; border: 0; cursor: pointer; }
+.attr-select option { color: #000; background: #fff; }
+.input-group-dark .currency-symbol { padding-left: 12px; opacity: .6; }
+
+/* ── Tareas y actividad del contacto (ContactoTareas / ContactoActividad) ── */
+.contacto-tareas, .contacto-actividad { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.contacto-tareas__form, .contacto-actividad__form { display: flex; flex-direction: column; gap: 8px; }
+.contacto-tareas__form input, .contacto-actividad__form textarea {
+    width: 100%; min-height: 40px; padding: 8px 10px; font: inherit; color: inherit;
+    background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px;
+}
+.contacto-actividad__form textarea { resize: vertical; }
+.contacto-tareas__empty { margin: 0; font-size: .8rem; color: var(--text-muted); }
+.contacto-tareas__lista, .contacto-actividad__lista { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.contacto-tareas__item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-size: .82rem; background: rgba(255,255,255,.04); border-radius: 8px; }
+.contacto-tareas__item label { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; cursor: pointer; }
+.contacto-tareas__item input[type="checkbox"] { accent-color: #F64302; }
+.contacto-tareas__titulo { overflow-wrap: anywhere; }
+.contacto-tareas__item.is-done .contacto-tareas__titulo { text-decoration: line-through; opacity: .55; }
+.contacto-tareas__item.is-overdue { box-shadow: inset 0 0 0 1px rgba(246, 67, 2, .6); }
+.contacto-tareas__fecha { font-size: .7rem; color: var(--text-sec); white-space: nowrap; }
+.contacto-tareas__borrar { min-width: 28px; min-height: 28px; color: var(--text-muted); background: none; border: 0; border-radius: 6px; cursor: pointer; }
+.contacto-tareas__borrar:hover { color: #fff; background: rgba(239, 68, 68, .25); }
+.contacto-actividad__item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 8px; font-size: .8rem; background: rgba(255,255,255,.03); border-radius: 8px; }
+.contacto-actividad__item > i { margin-top: 3px; color: #FF7A45; }
+.contacto-actividad__item > div { flex: 1; min-width: 0; }
+.contacto-actividad__item p { margin: 0; overflow-wrap: anywhere; }
+.contacto-actividad__item small { color: var(--text-muted); }
+.contacto-actividad__item.tipo-NOTA > i { color: #fff; }

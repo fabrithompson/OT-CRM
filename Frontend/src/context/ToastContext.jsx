@@ -8,7 +8,7 @@ const MAX_VISIBLE = 3;
 
 // La API histórica es toast(título, mensaje, color): el tipo se deduce del color
 // para no tocar las ~50 llamadas existentes.
-const TYPE_BY_COLOR = { '#ef4444': 'error', '#10b981': 'success', '#f59e0b': 'warning' };
+const TYPE_BY_COLOR = { '#ef4444': 'error', '#F64302': 'success', '#f59e0b': 'warning' };
 const ICONS = { error: 'fa-circle-exclamation', success: 'fa-circle-check', warning: 'fa-triangle-exclamation', info: 'fa-circle-info' };
 
 // Tiempo de lectura: ~4s + 60ms por carácter (entre 4 y 10s). Los errores, al menos 7s.

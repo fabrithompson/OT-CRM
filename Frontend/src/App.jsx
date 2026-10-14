@@ -9,6 +9,7 @@ const PAGE_TITLES = {
   '/kanban':            'Embudo',
   '/contactos':         'Contactos',
   '/respuestas-rapidas':'Respuestas Rápidas',
+  '/tareas':            'Tareas',
   '/spam':              'Spam / Campañas',
   '/planes':            'Suscripción',
   '/mi-suscripcion':    'Mi Suscripción',
@@ -44,6 +45,7 @@ const WhatsAppVincular = lazy(() => import('./pages/WhatsAppVincular'));
 const TelegramVincular = lazy(() => import('./pages/TelegramVincular'));
 const Contactos = lazy(() => import('./pages/Contactos'));
 const RespuestasRapidas = lazy(() => import('./pages/RespuestasRapidas'));
+const Tareas = lazy(() => import('./pages/Tareas'));
 const Perfil = lazy(() => import('./pages/Perfil'));
 const Planes = lazy(() => import('./pages/Planes'));
 const Checkout = lazy(() => import('./pages/Checkout'));
@@ -71,6 +73,7 @@ function App() {
               <Route path="/whatsapp-vincular"  element={<WhatsAppVincular />} />
               <Route path="/telegram-vincular"  element={<TelegramVincular />} />
               <Route path="/respuestas-rapidas" element={<RespuestasRapidas/>} />
+              <Route path="/tareas" element={<Tareas/>} />
               <Route path="/contactos"          element={<Contactos />} />
               <Route path="/planes"             element={<Planes />} />
               <Route path="/perfil"             element={<Perfil />} />

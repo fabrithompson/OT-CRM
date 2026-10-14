@@ -163,18 +163,18 @@ export default function AgenteIA() {
     return (
         <div
             className="db-root agente-scope agt-3"
-            style={{ '--db-accent': '#22d3ee' }}
+            style={{ '--db-accent': '#FF7A45' }}
         >
             <style>{`
                 /* Cards con fondo morado oscuro translúcido (scoped a esta página) */
                 .agente-scope .db-card,
                 .agente-scope .db-metric-card {
-                    background: rgba(24,18,38,0.72);
-                    border-color: rgba(167,139,250,0.12);
+                    background: rgba(20, 20, 20,0.72);
+                    border-color: rgba(246, 67, 2,0.12);
                 }
                 .agente-scope .db-card:hover,
                 .agente-scope .db-metric-card:hover {
-                    border-color: rgba(167,139,250,0.26);
+                    border-color: rgba(246, 67, 2,0.26);
                 }
             `}</style>
             {/* Topbar */}
@@ -219,7 +219,7 @@ export default function AgenteIA() {
                     <div className="agt-14">
                         {messages.map((msg, i) => (
                             <div className="agt-15" key={i} style={{ justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                                <div className="agt-16" style={{ borderRadius: msg.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px', background: msg.role === 'user' ? 'rgba(34,211,238,0.12)' : 'rgba(255,255,255,0.05)', border: msg.role === 'user' ? '1px solid rgba(34,211,238,0.22)' : '1px solid rgba(255,255,255,0.07)' }}>
+                                <div className="agt-16" style={{ borderRadius: msg.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px', background: msg.role === 'user' ? 'rgba(246, 67, 2,0.12)' : 'rgba(255,255,255,0.05)', border: msg.role === 'user' ? '1px solid rgba(246, 67, 2,0.22)' : '1px solid rgba(255,255,255,0.07)' }}>
                                     {/* Image thumbnails */}
                                     {msg.mediaUrls && msg.mediaUrls.length > 0 && (
                                         <div className="agt-17" style={{ marginBottom: msg.content ? 8 : 0 }}>
@@ -286,9 +286,9 @@ export default function AgenteIA() {
                             title={t('agente.attachImage')}
                             disabled={pendingImages.length >= MAX_IMAGES}
                             style={{ background: pendingImages.length > 0
-                                    ? 'rgba(34,211,238,0.12)'
+                                    ? 'rgba(246, 67, 2,0.12)'
                                     : 'rgba(255,255,255,0.05)', color: pendingImages.length > 0
-                                    ? '#22d3ee'
+                                    ? '#FF7A45'
                                     : 'rgba(255,255,255,0.40)', cursor: pendingImages.length >= MAX_IMAGES ? 'not-allowed' : 'pointer' }}
                         >
                             <i className="fas fa-image" />
@@ -306,7 +306,7 @@ export default function AgenteIA() {
                             onClick={sendMessage}
                             disabled={(!input.trim() && !pendingImages.length) || chatLoading}
                             style={{ background: (input.trim() || pendingImages.length) && !chatLoading
-                                    ? '#22d3ee' : 'rgba(255,255,255,0.08)', color: (input.trim() || pendingImages.length) && !chatLoading
+                                    ? '#FF7A45' : 'rgba(255,255,255,0.08)', color: (input.trim() || pendingImages.length) && !chatLoading
                                     ? '#000' : 'rgba(255,255,255,0.25)', cursor: (input.trim() || pendingImages.length) && !chatLoading
                                     ? 'pointer' : 'not-allowed' }}
                         >
@@ -344,7 +344,7 @@ export default function AgenteIA() {
                                 checked={enabled}
                                 onChange={e => setEnabled(e.target.checked)}
                             />
-                            <span className="agt-38" style={{ background: enabled ? '#22d3ee' : 'rgba(255,255,255,0.15)' }}>
+                            <span className="agt-38" style={{ background: enabled ? '#FF7A45' : 'rgba(255,255,255,0.15)' }}>
                                 <span className="agt-39" style={{ left: enabled ? 23 : 3 }} />
                             </span>
                         </label>

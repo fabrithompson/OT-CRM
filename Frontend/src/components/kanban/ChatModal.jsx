@@ -7,6 +7,8 @@ import { clickable } from '../../utils/a11y';
 import useDialog from '../../hooks/useDialog';
 import Skeleton from '../ui/Skeleton';
 import useSlashCommands, { SlashMenu } from './SlashCommandMenu';
+import ContactoTareas from './ContactoTareas';
+import ContactoActividad from './ContactoActividad';
 import '../../assets/css/pages/ChatModal.css';
 
 const FORMAT_BYTES = (bytes) => {
@@ -16,7 +18,7 @@ const FORMAT_BYTES = (bytes) => {
     return `${Math.round((bytes / 1024 ** i) * 100) / 100} ${sizes[i]}`;
 };
 
-const COLORS_TAG = ['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#a855f7'];
+const COLORS_TAG = ['#F64302', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff', '#D63A00'];
 
 export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, usuario, onClose, onMoveCard, onUpdateCard }) {
     // Solo móvil (<=900px): alterna entre la conversación y el panel de datos del contacto
@@ -24,12 +26,13 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
     const { t, lang } = useLanguage();
     const toast = useToast();
     const [cliente, setCliente]           = useState(null);
+    const [equipo, setEquipo]             = useState([]);
     const [messages, setMessages]         = useState([]);
     const [loading, setLoading]           = useState(false);
     const [msgInput, setMsgInput]         = useState('');
     const { suggestions, activeIdx, apply, handleKeyDown: slashKeyDown } = useSlashCommands(msgInput, setMsgInput);
     const [newTagName, setNewTagName]     = useState('');
-    const [tagColor, setTagColor]         = useState('#10b981');
+    const [tagColor, setTagColor]         = useState('#F64302');
     const [isRecording, setIsRecording]   = useState(false);
     const [showEmoji, setShowEmoji]       = useState(false);
     const [showAttach, setShowAttach]     = useState(false);
@@ -245,7 +248,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
                 toast('Error', `No se pudo enviar: ${motivo}`, '#ef4444');
                 return;
             }
-            toast(t('common.successTitle'), t('chat.fileSent'), '#10b981');
+            toast(t('common.successTitle'), t('chat.fileSent'), '#F64302');
         } catch (e) {
             console.error('Error enviando archivo:', e);
             toast(t('common.errorTitle'), t('chat.errFile'), '#ef4444');
@@ -326,11 +329,46 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
         };
     }, []);
 
+    // Equipo de la agencia: opciones del selector de vendedor responsable
+    useEffect(() => {
+        let cancelado = false;
+        api.get('/dashboard/equipo')
+            .then(res => { if (!cancelado) setEquipo(Array.isArray(res.data) ? res.data : []); })
+            .catch(() => {});
+        return () => { cancelado = true; };
+    }, []);
+
+    const asignarResponsable = async (valor) => {
+        const usuarioId = valor === '' ? null : Number(valor);
+        const anterior = cliente?.responsableId ?? null;
+        setCliente(prev => ({ ...prev, responsableId: usuarioId }));
+        try {
+            await api.patch(`/clientes/${clienteId}/responsable`, null, { params: usuarioId ? { usuarioId } : {} });
+            onUpdateCard?.(clienteId, { responsableId: usuarioId });
+        } catch {
+            setCliente(prev => ({ ...prev, responsableId: anterior }));
+            toast(t('common.errorTitle'), t('chat.ownerError'), '#ef4444');
+        }
+    };
+
     const saveInfo = async () => {
         if (!cliente || !clienteId) return;
         try {
-            await api.put(`/clientes/${clienteId}`, { nombre: cliente.nombre, notas: cliente.notas });
-            onUpdateCard?.(clienteId, { nombre: cliente.nombre });
+            const valor = cliente.valorEstimado === '' || cliente.valorEstimado == null
+                ? null : Number(cliente.valorEstimado);
+            await api.put(`/clientes/${clienteId}`, {
+                nombre: cliente.nombre,
+                notas: cliente.notas,
+                email: cliente.email ?? '',
+                empresa: cliente.empresa ?? '',
+                valorEstimado: Number.isFinite(valor) ? valor : null,
+            });
+            onUpdateCard?.(clienteId, {
+                nombre: cliente.nombre,
+                email: cliente.email,
+                empresa: cliente.empresa,
+                valorEstimado: Number.isFinite(valor) ? valor : null,
+            });
         } catch (err) {
             console.warn('No se pudo guardar el cliente:', err);
         }
@@ -358,7 +396,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
         try {
             const res = await api.post(`/whatsapp/clientes/${clienteId}/repair-session`);
             if (res.data?.status === 'REPAIRED') {
-                toast(t('chat.repaired'), t('chat.repairedMsg'), '#10b981');
+                toast(t('chat.repaired'), t('chat.repairedMsg'), '#F64302');
             } else {
                 toast(t('chat.noChanges'), t('chat.repairCooldown'), '#f59e0b');
             }
@@ -399,7 +437,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
                 tipo: tipo === 'sumar' ? 'CARGA' : 'RETIRO',
             });
             setMontoInput('');
-            toast('Éxito', tipo === 'sumar' ? 'Carga registrada' : 'Retiro registrado', '#10b981');
+            toast('Éxito', tipo === 'sumar' ? 'Carga registrada' : 'Retiro registrado', '#F64302');
             loadChat(clienteId);
         } catch { toast(t('common.errorTitle'), t('chat.errTransaction'), '#ef4444'); }
     };
@@ -744,8 +782,37 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
                         <div className="input-group-dark"><i className={`${isWhatsApp ? 'fab fa-whatsapp' : 'fab fa-telegram-plane'} cht-27`} style={{ color: isWhatsApp ? '#25D366' : '#0088cc' }}></i><input className="cht-28" aria-label={t('chat.phone')} value={cliente?.telefono || ''} readOnly /></div>
                     </div>
                     <div className="attr-row">
+                        <span className="attr-label">{t('chat.email')}</span>
+                        <div className="input-group-dark"><input className="cht-28" type="email" aria-label={t('chat.email')} value={cliente?.email || ''} onChange={e => setCliente(prev => ({ ...prev, email: e.target.value }))} onBlur={saveInfo} placeholder={t('chat.emailPlaceholder')} /></div>
+                    </div>
+                    <div className="attr-row">
+                        <span className="attr-label">{t('chat.company')}</span>
+                        <div className="input-group-dark"><input className="cht-28" type="text" aria-label={t('chat.company')} value={cliente?.empresa || ''} onChange={e => setCliente(prev => ({ ...prev, empresa: e.target.value }))} onBlur={saveInfo} /></div>
+                    </div>
+                    <div className="attr-row">
+                        <span className="attr-label">{t('chat.estimatedValue')}</span>
+                        <div className="input-group-dark"><span className="currency-symbol">$</span><input className="cht-28" type="number" min="0" step="0.01" aria-label={t('chat.estimatedValue')} value={cliente?.valorEstimado ?? ''} onChange={e => setCliente(prev => ({ ...prev, valorEstimado: e.target.value }))} onBlur={saveInfo} placeholder="0.00" /></div>
+                    </div>
+                    <div className="attr-row">
+                        <span className="attr-label">{t('chat.owner')}</span>
+                        <div className="input-group-dark">
+                            <select className="cht-28 attr-select" aria-label={t('chat.owner')} value={cliente?.responsableId ?? ''} onChange={e => asignarResponsable(e.target.value)}>
+                                <option value="">{t('chat.ownerNone')}</option>
+                                {equipo.map(m => (<option key={m.id} value={m.id}>{m.nombre}</option>))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="attr-row">
                         <span className="attr-label">{t('chat.notes')}</span>
                         <textarea aria-label={t('chat.notes')} className="no-resize cht-29" value={cliente?.notas || ''} onChange={e => setCliente(prev => ({ ...prev, notas: e.target.value }))} onBlur={saveInfo} placeholder={t('chat.notesPlaceholder')} />
+                    </div>
+                    <div className="attr-row">
+                        <span className="attr-label">{t('tareas.forContact')}</span>
+                        <ContactoTareas clienteId={clienteId} />
+                    </div>
+                    <div className="attr-row">
+                        <span className="attr-label">{t('tareas.activity')}</span>
+                        <ContactoActividad clienteId={clienteId} />
                     </div>
                     <div className="attr-row">
                         <span className="attr-label">{t('chat.balance')}</span>
@@ -760,7 +827,7 @@ export default function ChatModal({ clienteId, etapas, stompClient, wsStatus, us
                         <span className="attr-label">{t('chat.tags')}</span>
                         <div className="tags-list">
                             {(cliente?.etiquetas?.length ?? 0) === 0 ? <span className="cht-32">{t('chat.noTags')}</span> : cliente.etiquetas.map(tag => (
-                                <div key={tag.id} className="tag-pill" style={{ backgroundColor: (tag.color || '#10b981') + '26', color: tag.color || '#10b981', borderColor: (tag.color || '#10b981') + '4D' }}>
+                                <div key={tag.id} className="tag-pill" style={{ backgroundColor: (tag.color || '#F64302') + '26', color: tag.color || '#F64302', borderColor: (tag.color || '#F64302') + '4D' }}>
                                     <span>{tag.nombre}</span><button className="tag-remove-btn" onClick={() => removeTag(tag.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '50%', color: 'inherit', opacity: 0.7, lineHeight: 1, fontSize: '0.75rem' }} onMouseEnter={e => e.currentTarget.style.opacity=1} onMouseLeave={e => e.currentTarget.style.opacity=0.7}><i className="fas fa-times"></i></button>
                                 </div>
                             ))}
@@ -805,7 +872,7 @@ function deducirOrigenVisual(msg) {
         return { icon: 'fa-mobile-screen-button', label: 'Celular del vendedor', color: '#fbbf24' };
     }
     if (o === 'AGENTE_IA' || a === 'AGENTE_IA' || a.startsWith('IA_')) {
-        return { icon: 'fa-robot', label: 'Agente IA', color: '#a78bfa' };
+        return { icon: 'fa-robot', label: 'Agente IA', color: '#FF7A45' };
     }
     return { icon: 'fa-desktop', label: 'Enviado desde el CRM', color: '#60a5fa' };
 }

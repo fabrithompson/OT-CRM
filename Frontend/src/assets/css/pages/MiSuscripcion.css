@@ -11,15 +11,15 @@
 :where(.sub-6) { padding: 24px 28px !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; display: flex !important; align-items: flex-start !important; justify-content: space-between !important; gap: 12px !important; }
 :where(.sub-7) { color: #fff !important; margin: 0 !important; font-size: 1.4rem !important; font-weight: 700 !important; }
 :where(.sub-8) { color: #9ca3af !important; margin: 5px 0 0 !important; font-size: 0.88rem !important; }
-:where(.sub-9) { background: rgba(16,185,129,0.1) !important; border: 1px solid rgba(16,185,129,0.25) !important; color: var(--color-accent) !important; padding: 8px 12px !important; border-radius: 8px !important; font-size: 0.82rem !important; font-weight: 600 !important; display: flex !important; align-items: center !important; gap: 6px !important; flex-shrink: 0 !important; }
-:where(.sub-10) { background: rgba(16,185,129,0.08) !important; color: var(--color-accent) !important; padding: 10px 28px !important; font-size: 0.85rem !important; display: flex !important; align-items: center !important; gap: 8px !important; }
+:where(.sub-9) { background: rgba(246, 67, 2,0.1) !important; border: 1px solid rgba(246, 67, 2,0.25) !important; color: var(--color-accent) !important; padding: 8px 12px !important; border-radius: 8px !important; font-size: 0.82rem !important; font-weight: 600 !important; display: flex !important; align-items: center !important; gap: 6px !important; flex-shrink: 0 !important; }
+:where(.sub-10) { background: rgba(246, 67, 2,0.08) !important; color: var(--color-accent) !important; padding: 10px 28px !important; font-size: 0.85rem !important; display: flex !important; align-items: center !important; gap: 8px !important; }
 :where(.sub-11) { padding: 28px !important; }
 :where(.sub-12) { display: flex !important; align-items: center !important; gap: 20px !important; background: rgba(255,255,255,0.02) !important; padding: 20px !important; border-radius: 12px !important; border: 1px solid rgba(255,255,255,0.05) !important; }
-:where(.sub-13) { height: 60px !important; width: 60px !important; background: #1e293b !important; border-radius: 10px !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.5rem !important; flex-shrink: 0 !important; }
+:where(.sub-13) { height: 60px !important; width: 60px !important; background: #1E1E1E !important; border-radius: 10px !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.5rem !important; flex-shrink: 0 !important; }
 :where(.sub-14) { flex: 1 !important; }
 :where(.sub-15) { color: #9ca3af !important; font-size: 0.72rem !important; text-transform: uppercase !important; font-weight: 700 !important; letter-spacing: 0.1em !important; }
 :where(.sub-16) { color: #fff !important; margin: 4px 0 0 !important; font-size: 1.5rem !important; font-weight: 800 !important; }
-:where(.sub-17) { display: flex !important; align-items: center !important; gap: 6px !important; background: rgba(16,185,129,0.1) !important; padding: 6px 12px !important; border-radius: 20px !important; flex-shrink: 0 !important; }
+:where(.sub-17) { display: flex !important; align-items: center !important; gap: 6px !important; background: rgba(246, 67, 2,0.1) !important; padding: 6px 12px !important; border-radius: 20px !important; flex-shrink: 0 !important; }
 :where(.sub-18) { color: var(--color-accent) !important; font-size: 0.75rem !important; }
 :where(.sub-19) { color: var(--color-accent) !important; font-size: 0.8rem !important; font-weight: 600 !important; }
 :where(.sub-20) { margin-top: 20px !important; display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 16px !important; }
@@ -45,7 +45,7 @@
 :where(.sub-40) { padding: 8px 12px !important; }
 :where(.sub-41) { display: flex !important; align-items: center !important; gap: 14px !important; padding: 14px 16px !important; border-radius: 10px !important; transition: background 0.15s !important; }
 :where(.sub-42) { width: 40px !important; height: 40px !important; border-radius: 50% !important; object-fit: cover !important; flex-shrink: 0 !important; }
-:where(.sub-43) { width: 40px !important; height: 40px !important; border-radius: 50% !important; background: #1e293b !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 0.95rem !important; font-weight: 700 !important; color: #fff !important; flex-shrink: 0 !important; }
+:where(.sub-43) { width: 40px !important; height: 40px !important; border-radius: 50% !important; background: #1E1E1E !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 0.95rem !important; font-weight: 700 !important; color: #fff !important; flex-shrink: 0 !important; }
 :where(.sub-44) { flex: 1 !important; min-width: 0 !important; }
 :where(.sub-45) { display: flex !important; align-items: center !important; gap: 8px !important; }
 :where(.sub-46) { color: #fff !important; font-size: 0.92rem !important; font-weight: 600 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; }

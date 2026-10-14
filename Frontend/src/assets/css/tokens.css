@@ -14,20 +14,23 @@
     --color-text-1: var(--text-main);
     --color-text-2: var(--text-sec);
     --color-text-3: var(--text-muted);
-    --color-text-on-accent: #04130d;
+    /* Negro sobre el naranja de marca: 5.7:1 (el blanco no llega a 4.5:1) */
+    --color-text-on-accent: #000000;
 
-    /* Color · superficies (de la más profunda a la más elevada) */
+    /* Color · superficies (de la más profunda a la más elevada). Negros
+       neutros, sin tinte azul, como la landing. */
     --color-surface-0: var(--bg-app);
-    --color-surface-1: #0e0e1c;
-    --color-surface-2: #13131f;
-    --color-surface-3: #1c1c2b;
+    --color-surface-1: #0D0D0D;
+    --color-surface-2: #141414;
+    --color-surface-3: #1E1E1E;
     --color-overlay: rgba(0, 0, 0, 0.65);
 
     /* Color · bordes */
     --color-border: rgba(255, 255, 255, 0.10);
     --color-border-strong: rgba(255, 255, 255, 0.20);
 
-    /* Color · semánticos */
+    /* Color · semánticos. --brand-green conserva el nombre histórico pero ahora
+       es el naranja de marca (#F64302); el verde queda solo para "éxito". */
     --color-accent: var(--brand-green);
     --color-accent-hover: var(--brand-green-hover);
     --color-success: #10b981;
@@ -35,10 +38,10 @@
     --color-danger: var(--danger);
     --color-danger-hover: #dc2626;
     --color-info: #3b82f6;
-    --color-focus: #6ee7b7;
+    --color-focus: #FF7A45;
 
     /* Variantes translúcidas para fondos de badge/alerta */
-    --color-accent-soft: rgba(16, 185, 129, 0.15);
+    --color-accent-soft: rgba(246, 67, 2, 0.15);
     --color-success-soft: rgba(16, 185, 129, 0.15);
     --color-warning-soft: rgba(245, 158, 11, 0.15);
     --color-danger-soft: rgba(239, 68, 68, 0.15);
@@ -82,7 +85,7 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.40);
     --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
-    --shadow-focus: 0 0 0 3px rgba(110, 231, 183, 0.35);
+    --shadow-focus: 0 0 0 3px rgba(255, 122, 69, 0.35);
 
     /* Movimiento */
     --duration-fast: 120ms;

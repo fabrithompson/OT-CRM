@@ -29,7 +29,7 @@
 :where(.wa-24) { font-size: 0.9rem !important; color: #aaa !important; margin-bottom: 15px !important; }
 :where(.wa-25) { font-size: 0.8rem !important; color: #fff !important; }
 :where(.wa-26) { width: 100% !important; padding: 10px !important; margin-top: 5px !important; background: #222 !important; border: 1px solid #444 !important; color: white !important; border-radius: 6px !important; box-sizing: border-box !important; }
-:where(.wa-27) { width: 100% !important; margin-top: 15px !important; padding: 10px !important; background-color: var(--color-accent) !important; color: white !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; }
+:where(.wa-27) { width: 100% !important; margin-top: 15px !important; padding: 10px !important; background-color: var(--color-accent) !important; color: #000 !important; border: none !important; border-radius: 6px !important; cursor: pointer !important; }
 :where(.wa-28) { margin-top: 20px !important; text-align: center !important; }
 :where(.wa-29) { color: #aaa !important; font-size: 0.85rem !important; }
 :where(.wa-30) { font-size: 2rem !important; font-family: monospace !important; letter-spacing: 5px !important; color: var(--color-accent) !important; font-weight: bold !important; margin: 10px 0 !important; }

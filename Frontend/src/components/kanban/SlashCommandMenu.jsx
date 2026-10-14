@@ -83,7 +83,7 @@ export function SlashMenu({ suggestions, activeIdx, onSelect }) {
                         gap: 10,
                         width: '100%',
                         padding: '9px 12px',
-                        background: i === activeIdx ? 'rgba(99,102,241,0.15)' : 'transparent',
+                        background: i === activeIdx ? 'rgba(240, 237, 237,0.15)' : 'transparent',
                         border: 'none',
                         borderBottom: '1px solid rgba(255,255,255,0.04)',
                         cursor: 'pointer',
@@ -91,7 +91,7 @@ export function SlashMenu({ suggestions, activeIdx, onSelect }) {
                         transition: 'background 0.15s',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = i === activeIdx ? 'rgba(99,102,241,0.15)' : 'transparent'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = i === activeIdx ? 'rgba(240, 237, 237,0.15)' : 'transparent'; }}
                 >
                     <span className="slash-3">
                         /{cmd.atajo}

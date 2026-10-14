@@ -196,7 +196,7 @@ export default function Perfil() {
                 <h2 className="prf-4">{t('perfil.title')}</h2>
 
                 {mensaje.texto && (
-                    <div className="prf-65" style={{ borderRadius: '10px', background: mensaje.tipo === 'exito' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color:      mensaje.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${mensaje.tipo === 'exito' ? '#10b981' : '#ef4444'}` }}>
+                    <div className="prf-65" style={{ borderRadius: '10px', background: mensaje.tipo === 'exito' ? 'rgba(246, 67, 2,0.2)' : 'rgba(239,68,68,0.2)', color:      mensaje.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${mensaje.tipo === 'exito' ? '#F64302' : '#ef4444'}` }}>
                         <i className={`fas ${mensaje.tipo === 'exito' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                         <span>{mensaje.texto}</span>
                     </div>
@@ -312,7 +312,7 @@ export default function Perfil() {
                     )}
 
                     {mensajeEquipo.texto && (
-                        <div className="prf-66" style={{ borderRadius: '10px', background: mensajeEquipo.tipo === 'exito' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color:      mensajeEquipo.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${mensajeEquipo.tipo === 'exito' ? '#10b981' : '#ef4444'}` }}>
+                        <div className="prf-66" style={{ borderRadius: '10px', background: mensajeEquipo.tipo === 'exito' ? 'rgba(246, 67, 2,0.15)' : 'rgba(239,68,68,0.15)', color:      mensajeEquipo.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${mensajeEquipo.tipo === 'exito' ? '#F64302' : '#ef4444'}` }}>
                             <i className={`fas ${mensajeEquipo.tipo === 'exito' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                             <span>{mensajeEquipo.texto}</span>
                         </div>
@@ -431,14 +431,14 @@ export default function Perfil() {
                             </p>
                         </div>
                         <div className="prf-60">
-                            <span className="prf-67" style={{ borderRadius: '20px', background: googleConectado ? 'rgba(16,185,129,0.15)' : 'rgba(107,114,128,0.15)', color: googleConectado ? '#10b981' : 'var(--color-text-3)', border: `1px solid ${googleConectado ? 'rgba(16,185,129,0.3)' : 'rgba(107,114,128,0.3)'}` }}>
+                            <span className="prf-67" style={{ borderRadius: '20px', background: googleConectado ? 'rgba(246, 67, 2,0.15)' : 'rgba(107,114,128,0.15)', color: googleConectado ? '#F64302' : 'var(--color-text-3)', border: `1px solid ${googleConectado ? 'rgba(246, 67, 2,0.3)' : 'rgba(107,114,128,0.3)'}` }}>
                                 {googleConectado ? 'Conectado' : 'No conectado'}
                             </span>
                         </div>
                     </div>
 
                     {googleMsg.texto && (
-                        <div className="prf-66" style={{ borderRadius: '10px', background: googleMsg.tipo === 'exito' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color:      googleMsg.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${googleMsg.tipo === 'exito' ? '#10b981' : '#ef4444'}` }}>
+                        <div className="prf-66" style={{ borderRadius: '10px', background: googleMsg.tipo === 'exito' ? 'rgba(246, 67, 2,0.15)' : 'rgba(239,68,68,0.15)', color:      googleMsg.tipo === 'exito' ? '#86efac' : '#fca5a5', border:     `1px solid ${googleMsg.tipo === 'exito' ? '#F64302' : '#ef4444'}` }}>
                             <i className={`fas ${googleMsg.tipo === 'exito' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
                             <span>{googleMsg.texto}</span>
                         </div>

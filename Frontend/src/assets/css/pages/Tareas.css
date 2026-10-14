@@ -1,0 +1,58 @@
+/* ── Página de tareas y automatizaciones ─────────────────────────────────── */
+.tareas-page { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+.tareas-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.tareas-head__title { display: flex; align-items: center; gap: 12px; }
+.tareas-head__title h2 { margin: 0; font-size: 1.4rem; }
+
+.tareas-tabs { display: inline-flex; gap: 4px; padding: 4px; background: #fff; border-radius: 10px; align-self: flex-start; }
+.tareas-tab {
+    min-height: 40px; padding: 0 16px; font: 500 0.78rem inherit; font-family: inherit;
+    letter-spacing: .04em; text-transform: uppercase; color: rgba(0, 0, 0, .7);
+    background: none; border: 0; border-radius: 7px; cursor: pointer;
+}
+.tareas-tab:hover { background: rgba(0, 0, 0, .05); color: #000; }
+.tareas-tab.is-active { color: #fff; background: #000; }
+
+.tareas-body { display: flex; flex-direction: column; gap: 16px; padding-bottom: 32px; }
+.tareas-form, .regla-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tareas-form input[type="text"], .regla-form input[type="text"] { flex: 1 1 240px; }
+.tareas-form input, .tareas-form select, .regla-form input, .regla-form select {
+    min-height: 44px; padding: 0 12px; color: var(--text-main);
+    background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px;
+}
+.tareas-form select option, .regla-form select option { color: #000; background: #fff; }
+.tareas-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--text-sec); cursor: pointer; }
+.tareas-aviso { margin: 0; padding: 10px 14px; font-size: .85rem; border: 1px solid var(--border-glass); border-radius: 10px; }
+
+.tareas-grupo h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-sec); }
+.tareas-grupo h3 span { padding: 1px 8px; font-size: .7rem; color: #000; background: #fff; border-radius: 6px; }
+.tareas-grupo--vencidas h3 { color: #FF7A45; }
+.tareas-grupo ul, .reglas-lista { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+
+.tarea-fila, .reglas-lista li {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    background: var(--bg-glass); border: 1px solid var(--border-glass); border-radius: 12px;
+}
+.tarea-fila.is-overdue { border-color: rgba(246, 67, 2, .6); }
+.tarea-fila.is-done .tarea-fila__titulo { text-decoration: line-through; opacity: .55; }
+.tarea-fila input[type="checkbox"], .reglas-lista input[type="checkbox"] { width: 18px; height: 18px; accent-color: #F64302; cursor: pointer; }
+.tarea-fila__cuerpo { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
+.tarea-fila__titulo { font-weight: 500; overflow-wrap: anywhere; }
+.tarea-fila__meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .75rem; color: var(--text-sec); }
+.tarea-fila__contacto, .tarea-fila__borrar { color: inherit; background: none; border: 0; cursor: pointer; font: inherit; }
+.tarea-fila__contacto:hover { color: #FF7A45; text-decoration: underline; }
+.tarea-fila__borrar { min-width: 36px; min-height: 36px; border-radius: 8px; color: var(--text-muted); }
+.tarea-fila__borrar:hover { color: #fff; background: rgba(239, 68, 68, .25); }
+
+.reglas-lista li { justify-content: space-between; }
+.reglas-lista li.is-off { opacity: .55; }
+.reglas-lista li > div:first-child { display: flex; flex-direction: column; gap: 4px; }
+.reglas-lista li span { font-size: .8rem; color: var(--text-sec); }
+.reglas-lista__acciones { display: flex; align-items: center; gap: 12px; font-size: .8rem; }
+.reglas-lista__acciones label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+@media (max-width: 640px) {
+    .tareas-tabs { align-self: stretch; }
+    .tareas-tab { flex: 1; padding: 0 8px; }
+    .tarea-fila { align-items: flex-start; }
+}

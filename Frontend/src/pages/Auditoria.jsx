@@ -23,20 +23,20 @@ import useDialog from '../hooks/useDialog';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import '../assets/css/pages/Auditoria.css';
 
-const SEV_COLOR = { alta: '#ef4444', media: '#f59e0b', baja: '#94a3b8' };
-const SEV_BG    = { alta: 'rgba(239,68,68,0.10)', media: 'rgba(245,158,11,0.10)', baja: 'rgba(148,163,184,0.08)' };
+const SEV_COLOR = { alta: '#ef4444', media: '#f59e0b', baja: '#9C9696' };
+const SEV_BG    = { alta: 'rgba(239,68,68,0.10)', media: 'rgba(245,158,11,0.10)', baja: 'rgba(156, 150, 150,0.08)' };
 
 // Gradientes de las stat cards — mismos tonos que los KPI del Dashboard.
 const STAT_GRAD = {
-    violet: 'linear-gradient(135deg,#4a1d96 0%,#6d28d9 45%,#7c3aed 100%)',
+    violet: 'linear-gradient(135deg,#3A1000 0%,#8A2500 45%,#C03400 100%)',
     blue:   'linear-gradient(135deg,#0c4a6e 0%,#0369a1 50%,#0284c7 100%)',
-    green:  'linear-gradient(135deg,#064e3b 0%,#065f46 45%,#059669 100%)',
+    green:  'linear-gradient(135deg,#4A1400 0%,#6B1D00 45%,#C03400 100%)',
     amber:  'linear-gradient(135deg,#78350f 0%,#b45309 45%,#d97706 100%)',
     red:    'linear-gradient(135deg,#7f1d1d 0%,#b91c1c 45%,#dc2626 100%)',
 };
 
 const ESTADO_META = {
-    cumplido:    { icon: 'fa-circle-check',        color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.30)' },
+    cumplido:    { icon: 'fa-circle-check',        color: '#F64302', bg: 'rgba(246, 67, 2,0.12)', border: 'rgba(246, 67, 2,0.30)' },
     parcial:     { icon: 'fa-circle-exclamation',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.30)' },
     incumplido:  { icon: 'fa-circle-xmark',        color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.30)' },
 };
@@ -205,7 +205,7 @@ export default function Auditoria() {
             const sentEmail = res.data?.sentEmail === true;
             const sentWa    = res.data?.sentWhatsapp === true;
             if (sentEmail && sentWa) {
-                toast(t('auditor.toasts.sentTitle'), t('auditor.toasts.sentBoth'), '#10b981');
+                toast(t('auditor.toasts.sentTitle'), t('auditor.toasts.sentBoth'), '#F64302');
             } else if (sentEmail) {
                 toast(t('auditor.toasts.sentTitle'), t('auditor.toasts.sentEmailOnly'), '#3b82f6');
             } else if (sentWa) {
@@ -260,7 +260,7 @@ export default function Auditoria() {
             setReports(prev => prev.map(r => r.id === editingMeta.id ? res.data : r));
             if (selected?.id === editingMeta.id) setSelected(res.data);
             setEditingMeta(null);
-            toast(t('auditor.toasts.updateSuccessTitle'), t('auditor.toasts.updateSuccess'), '#10b981');
+            toast(t('auditor.toasts.updateSuccessTitle'), t('auditor.toasts.updateSuccess'), '#F64302');
         } catch {
             toast('Error', t('auditor.toasts.updateError'), '#ef4444');
         }
@@ -274,7 +274,7 @@ export default function Auditoria() {
             setReports(prev => prev.filter(r => r.id !== id));
             if (selected?.id === id) setSelected(null);
             setDeleting(null);
-            toast(t('auditor.toasts.deleteSuccessTitle'), t('auditor.toasts.deleteSuccess'), '#10b981');
+            toast(t('auditor.toasts.deleteSuccessTitle'), t('auditor.toasts.deleteSuccess'), '#F64302');
         } catch {
             toast('Error', t('auditor.toasts.deleteError'), '#ef4444');
         }
@@ -291,7 +291,7 @@ export default function Auditoria() {
             });
             setCfgSaved(true);
             setTimeout(() => setCfgSaved(false), 2200);
-            toast(t('auditor.toasts.configSavedTitle'), t('auditor.toasts.configSaved'), '#10b981');
+            toast(t('auditor.toasts.configSavedTitle'), t('auditor.toasts.configSaved'), '#F64302');
         } catch (err) {
             const msg = err?.response?.data?.error || t('auditor.toasts.configError');
             toast('Error', msg, '#ef4444');
@@ -340,7 +340,7 @@ export default function Auditoria() {
         : totalIncumplimientos <= 5 ? STAT_GRAD.amber : STAT_GRAD.red;
 
     return (
-        <div className="db-root audit-scope aud-8" style={{ '--db-accent': '#a78bfa' }}>
+        <div className="db-root audit-scope aud-8" style={{ '--db-accent': '#FF7A45' }}>
 
             {/* Topbar con tabs */}
             <div className="db-topbar aud-9">
@@ -461,7 +461,7 @@ export default function Auditoria() {
                                                 {fpCount > 0 && (
                                                     <button className="aud-28"
                                                         onClick={() => setHideFP(v => !v)}
-                                                        style={{ background: hideFP ? 'rgba(255,255,255,0.05)' : 'rgba(167,139,250,0.12)', color: hideFP ? 'rgba(255,255,255,0.45)' : '#c4b5fd' }}
+                                                        style={{ background: hideFP ? 'rgba(255,255,255,0.05)' : 'rgba(246, 67, 2,0.12)', color: hideFP ? 'rgba(255,255,255,0.45)' : '#FFB38F' }}
                                                     >
                                                         <i className="fa-solid fa-eye-slash aud-29" />
                                                         {hideFP
@@ -623,7 +623,7 @@ export default function Auditoria() {
                                                     <div
                                                         key={realIdx}
                                                         className="db-card aud-59"
-                                                        style={{ opacity: isFP ? 0.5 : 1, borderLeft: `3px solid ${SEV_COLOR[sev] || '#475569'}` }}
+                                                        style={{ opacity: isFP ? 0.5 : 1, borderLeft: `3px solid ${SEV_COLOR[sev] || '#5A5555'}` }}
                                                     >
                                                         <div className="aud-60">
                                                             <div className="aud-61">
@@ -673,10 +673,10 @@ export default function Auditoria() {
                                                             <button className="aud-209"
                                                                 onClick={() => toggleFP(selected.id, realIdx)}
                                                                 style={{ borderRadius: '7px', border: isFP
-                                                                        ? '1px solid rgba(167,139,250,0.40)'
+                                                                        ? '1px solid rgba(246, 67, 2,0.40)'
                                                                         : '1px solid rgba(255,255,255,0.12)', background: isFP
-                                                                        ? 'rgba(167,139,250,0.12)'
-                                                                        : 'rgba(255,255,255,0.04)', color: isFP ? '#c4b5fd' : 'var(--color-text-3)' }}
+                                                                        ? 'rgba(246, 67, 2,0.12)'
+                                                                        : 'rgba(255,255,255,0.04)', color: isFP ? '#FFB38F' : 'var(--color-text-3)' }}
                                                             >
                                                                 <i className={`fa-solid ${isFP ? 'fa-rotate-left' : 'fa-ban'} aud-29`} />
                                                                 {isFP ? t('auditor.restore') : t('auditor.markFP')}
@@ -787,20 +787,20 @@ export default function Auditoria() {
                 /* Cards normales de Auditoría con tinte morado oscuro (scoped) */
                 .audit-scope .db-card,
                 .audit-scope .db-metric-card {
-                    background: linear-gradient(135deg, #181226 0%, #15111f 55%, #100c1a 100%);
-                    border-color: rgba(167,139,250,0.12);
+                    background: linear-gradient(135deg, #141414 0%, #111111 55%, #0D0D0D 100%);
+                    border-color: rgba(246, 67, 2,0.12);
                 }
                 .audit-scope .db-card:hover,
                 .audit-scope .db-metric-card:hover {
-                    border-color: rgba(167,139,250,0.28);
+                    border-color: rgba(246, 67, 2,0.28);
                 }
 
                 /* Scrollbar de la lista de etapas — siempre visible */
-                .stages-scroll { scrollbar-width: thin; scrollbar-color: #a78bfa rgba(255,255,255,0.06); }
+                .stages-scroll { scrollbar-width: thin; scrollbar-color: #FF7A45 rgba(255,255,255,0.06); }
                 .stages-scroll::-webkit-scrollbar { width: 6px; display: block; }
                 .stages-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 4px; }
-                .stages-scroll::-webkit-scrollbar-thumb { background: #a78bfa; border-radius: 4px; min-height: 40px; }
-                .stages-scroll::-webkit-scrollbar-thumb:hover { background: #c4b5fd; }
+                .stages-scroll::-webkit-scrollbar-thumb { background: #FF7A45; border-radius: 4px; min-height: 40px; }
+                .stages-scroll::-webkit-scrollbar-thumb:hover { background: #FFB38F; }
             `}</style>
         </div>
     );
@@ -811,8 +811,8 @@ export default function Auditoria() {
 // Chip coloreado con el estado de cumplimiento — reutilizado en lista y detalle
 function ReportChip({ r }) {
     const n = r.incumplimientos || 0;
-    const chipColor = n === 0 ? '#10b981' : n <= 3 ? '#f59e0b' : '#ef4444';
-    const chipBg    = n === 0 ? 'rgba(16,185,129,0.14)' : n <= 3 ? 'rgba(245,158,11,0.14)' : 'rgba(239,68,68,0.14)';
+    const chipColor = n === 0 ? '#F64302' : n <= 3 ? '#f59e0b' : '#ef4444';
+    const chipBg    = n === 0 ? 'rgba(246, 67, 2,0.14)' : n <= 3 ? 'rgba(245,158,11,0.14)' : 'rgba(239,68,68,0.14)';
     const chipIcon  = n === 0 ? 'fa-circle-check' : n <= 3 ? 'fa-circle-exclamation' : 'fa-circle-xmark';
     const label     = r.nombre || fmtDateShort(r.createdAt);
     return (
@@ -824,9 +824,9 @@ function ReportChip({ r }) {
 }
 
 function IncumplimientosBadge({ n, t }) {
-    const color = n === 0 ? '#10b981' : n <= 3 ? '#f59e0b' : '#ef4444';
-    const bg    = n === 0 ? 'rgba(16,185,129,0.12)' : n <= 3 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
-    const bord  = n === 0 ? 'rgba(16,185,129,0.25)' : n <= 3 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
+    const color = n === 0 ? '#F64302' : n <= 3 ? '#f59e0b' : '#ef4444';
+    const bg    = n === 0 ? 'rgba(246, 67, 2,0.12)' : n <= 3 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
+    const bord  = n === 0 ? 'rgba(246, 67, 2,0.25)' : n <= 3 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
     return (
         <div className="aud-211" style={{ borderRadius: '8px', background: bg, color, border: `1px solid ${bord}` }}>
             {n === 0
@@ -923,7 +923,7 @@ function TabButton({ active, onClick, icon, label, count, dot }) {
     return (
         <button className="aud-212"
             onClick={onClick}
-            style={{ border: 'none', background: active ? 'rgba(167,139,250,0.14)' : 'transparent', color: active ? '#c4b5fd' : 'rgba(255,255,255,0.5)', borderBottom: active ? '2px solid #a78bfa' : '2px solid transparent' }}
+            style={{ border: 'none', background: active ? 'rgba(246, 67, 2,0.14)' : 'transparent', color: active ? '#FFB38F' : 'rgba(255,255,255,0.5)', borderBottom: active ? '2px solid #FF7A45' : '2px solid transparent' }}
         >
             <i className={`fa-solid ${icon}`} />
             {label}
@@ -945,7 +945,7 @@ function ReportRow({ r, idx, total, selected, expanded, onSelect, onToggleExpand
     const sub = r.nombre ? fmtDate(r.createdAt) : fmtPeriod(r.periodoInicio, r.periodoFin);
 
     return (
-        <div className="aud-213" style={{ borderRadius: '14px', background: selected ? 'rgba(167,139,250,0.16)' : 'linear-gradient(135deg, #181226 0%, #15111f 55%, #100c1a 100%)', border: `1px solid ${selected ? 'rgba(167,139,250,0.38)' : 'rgba(167,139,250,0.12)'}` }}>
+        <div className="aud-213" style={{ borderRadius: '14px', background: selected ? 'rgba(246, 67, 2,0.16)' : 'linear-gradient(135deg, #141414 0%, #111111 55%, #0D0D0D 100%)', border: `1px solid ${selected ? 'rgba(246, 67, 2,0.38)' : 'rgba(246, 67, 2,0.12)'}` }}>
             {/* Área principal clickeable */}
             <button className="aud-111"
                 type="button"
@@ -1074,9 +1074,9 @@ function skel(w, h) {
 
 function ScoreBar({ score, size = 'md' }) {
     const pct = Math.max(0, Math.min(100, score || 0));
-    const color = pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
-    const bg    = pct >= 80 ? 'rgba(16,185,129,0.12)' : pct >= 60 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
-    const bord  = pct >= 80 ? 'rgba(16,185,129,0.25)' : pct >= 60 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
+    const color = pct >= 80 ? '#F64302' : pct >= 60 ? '#f59e0b' : '#ef4444';
+    const bg    = pct >= 80 ? 'rgba(246, 67, 2,0.12)' : pct >= 60 ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)';
+    const bord  = pct >= 80 ? 'rgba(246, 67, 2,0.25)' : pct >= 60 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)';
 
     if (size === 'sm') {
         return (
@@ -1105,7 +1105,7 @@ function ScoreBar({ score, size = 'md' }) {
 // ─── helpers de color para tiempo de respuesta ───────────────────────────────
 
 function tiempoScoreStyle(score) {
-    if (score >= 80) return { color: '#10b981', bg: 'rgba(16,185,129,0.10)', border: 'rgba(16,185,129,0.25)' };
+    if (score >= 80) return { color: '#F64302', bg: 'rgba(246, 67, 2,0.10)', border: 'rgba(246, 67, 2,0.25)' };
     if (score >= 50) return { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', border: 'rgba(245,158,11,0.25)' };
     return             { color: '#ef4444', bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.25)' };
 }
@@ -1143,11 +1143,11 @@ function TiempoRespuestaBar({ score, avgMin }) {
 // ─── ConversacionesSection ────────────────────────────────────────────────────
 
 const ESTADO_CONV = {
-    cerrado:       { icon: 'fa-circle-check',       color: '#10b981', label: 'Cerrado' },
+    cerrado:       { icon: 'fa-circle-check',       color: '#F64302', label: 'Cerrado' },
     presupuestado: { icon: 'fa-file-invoice-dollar', color: '#3b82f6', label: 'Presupuestado' },
     sin_responder: { icon: 'fa-circle-xmark',        color: '#ef4444', label: 'Sin responder' },
     incompleto:    { icon: 'fa-circle-half-stroke',  color: '#f59e0b', label: 'Incompleto' },
-    seguimiento:   { icon: 'fa-rotate-right',        color: '#a78bfa', label: 'Seguimiento' },
+    seguimiento:   { icon: 'fa-rotate-right',        color: '#FF7A45', label: 'Seguimiento' },
 };
 
 function ConversacionesSection({ conversaciones }) {
@@ -1169,7 +1169,7 @@ function ConversacionesSection({ conversaciones }) {
             {open && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, animation: 'fadeIn 0.18s ease-out' }}>
                     {conversaciones.map((conv, i) => {
-                        const estadoMeta = ESTADO_CONV[conv.estado] || { icon: 'fa-circle', color: '#94a3b8', label: conv.estado };
+                        const estadoMeta = ESTADO_CONV[conv.estado] || { icon: 'fa-circle', color: '#9C9696', label: conv.estado };
                         const tsStyle    = conv.tiempo_score != null ? tiempoScoreStyle(conv.tiempo_score) : null;
                         return (
                             <div key={i} className="db-card aud-134" style={{ borderLeft: `3px solid ${estadoMeta.color}` }}>
@@ -1200,7 +1200,7 @@ function ConversacionesSection({ conversaciones }) {
                                             {t('auditor.x.respTimeLabel')}
                                         </span>
                                         {conv.tiempo_respuesta_minutos != null ? (
-                                            <span className="aud-145" style={{ color: conv.tiempo_ok ? '#10b981' : '#ef4444' }}>
+                                            <span className="aud-145" style={{ color: conv.tiempo_ok ? '#F64302' : '#ef4444' }}>
                                                 <i className="fa-regular fa-clock aud-29" />
                                                 {conv.tiempo_respuesta_minutos} min
                                                 {conv.tiempo_ok
@@ -1404,8 +1404,8 @@ function StageCard({ stage, isFirst, isLast, onUpdate, onDelete, onMoveUp, onMov
 
     return (
         <div className="aud-216" style={{ borderRadius: '10px', background: stage.activa
-                ? 'linear-gradient(135deg, #181226 0%, #15111f 100%)'
-                : 'rgba(255,255,255,0.02)', border: `1px solid ${stage.activa ? 'rgba(167,139,250,0.18)' : 'rgba(255,255,255,0.05)'}`, opacity: stage.activa ? 1 : 0.55 }}>
+                ? 'linear-gradient(135deg, #141414 0%, #111111 100%)'
+                : 'rgba(255,255,255,0.02)', border: `1px solid ${stage.activa ? 'rgba(246, 67, 2,0.18)' : 'rgba(255,255,255,0.05)'}`, opacity: stage.activa ? 1 : 0.55 }}>
             <div className="aud-164">
                 <div className="aud-165">
                     <button onClick={onMoveUp} disabled={isFirst} style={miniBtn(isFirst)}>
@@ -1498,7 +1498,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                         checked={cfg.auditEnabled}
                         onChange={e => update('auditEnabled', e.target.checked)}
                     />
-                    <span className="aud-179" style={{ background: cfg.auditEnabled ? '#a78bfa' : 'rgba(255,255,255,0.15)' }}>
+                    <span className="aud-179" style={{ background: cfg.auditEnabled ? '#FF7A45' : 'rgba(255,255,255,0.15)' }}>
                         <span className="aud-180" style={{ left: cfg.auditEnabled ? 23 : 3 }} />
                     </span>
                 </label>
@@ -1586,7 +1586,7 @@ function ConfigForm({ cfg, setCfg, dispositivos, saving, saved, onSave, isMobile
                 onClick={onSave}
                 disabled={saving || !horarioOk}
                 className="btn-primary aud-185"
-                style={{ background: saved ? '#10b981' : 'rgba(167,139,250,0.85)', padding: isMobile ? '13px 0' : undefined, fontSize: isMobile ? '0.95rem' : undefined, opacity: !horarioOk ? 0.5 : 1, cursor: !horarioOk ? 'not-allowed' : 'pointer' }}
+                style={{ background: saved ? '#F64302' : 'rgba(246, 67, 2,0.85)', padding: isMobile ? '13px 0' : undefined, fontSize: isMobile ? '0.95rem' : undefined, opacity: !horarioOk ? 0.5 : 1, cursor: !horarioOk ? 'not-allowed' : 'pointer' }}
             >
                 <i className={`fa-solid ${saving ? 'fa-spinner fa-spin' : saved ? 'fa-check' : 'fa-floppy-disk'} aud-17`} />
                 {saving ? t('auditor.config.savingBtn') : saved ? t('auditor.config.savedBtn') : t('auditor.config.saveBtn')}
@@ -1658,7 +1658,7 @@ function ResponseTimeCard({ cfg, setCfg }) {
                             : []
                         )}
                     />
-                    <span className="aud-179" style={{ background: hayPico ? '#a78bfa' : 'rgba(255,255,255,0.15)' }}>
+                    <span className="aud-179" style={{ background: hayPico ? '#FF7A45' : 'rgba(255,255,255,0.15)' }}>
                         <span className="aud-180" style={{ left: hayPico ? 23 : 3 }} />
                     </span>
                 </label>
@@ -1769,7 +1769,7 @@ function TimeRangePicker({ inicio, fin, onChange, baseInput, t }) {
                             key={p.label}
                             type="button"
                             onClick={() => onChange(p.inicio, p.fin)}
-                            style={{ borderRadius: '16px', border: `1px solid ${active ? 'rgba(167,139,250,0.45)' : 'rgba(255,255,255,0.10)'}`, background: active ? 'rgba(167,139,250,0.14)' : 'rgba(255,255,255,0.03)', color: active ? '#c4b5fd' : 'rgba(255,255,255,0.55)' }}
+                            style={{ borderRadius: '16px', border: `1px solid ${active ? 'rgba(246, 67, 2,0.45)' : 'rgba(255,255,255,0.10)'}`, background: active ? 'rgba(246, 67, 2,0.14)' : 'rgba(255,255,255,0.03)', color: active ? '#FFB38F' : 'rgba(255,255,255,0.55)' }}
                         >
                             {p.label}
                             <span className="aud-202">{p.inicio}–{p.fin}</span>

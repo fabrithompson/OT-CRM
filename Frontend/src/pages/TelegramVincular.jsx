@@ -162,7 +162,7 @@ export default function TelegramVincular() {
             setModalConectar(false);
             // ALREADY_LOGGED_IN: la sesión ya existe en el bridge, no hace falta código
             if (res.data.status === 'ALREADY_LOGGED_IN') {
-                toast(t('common.info'), t('tg.alreadyAuth'), '#10b981');
+                toast(t('common.info'), t('tg.alreadyAuth'), '#F64302');
                 loadDevices();
                 return;
             }

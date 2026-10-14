@@ -90,7 +90,10 @@ function HelpModal({ open, setOpen }) {
 
 export default function MainLayout() {
     const token = localStorage.getItem('token');
-    const { agenciaId, loading } = useUser();
+    const { agenciaId, loading, usuario: usuarioCtx } = useUser();
+    // El handler del WebSocket se registra una sola vez: lee al usuario actual por ref
+    const miUsuarioIdRef = useRef(null);
+    useEffect(() => { miUsuarioIdRef.current = usuarioCtx?.id ?? null; }, [usuarioCtx]);
     const { pathname } = useLocation();
     const { playConnect, playDisconnect, playNotification } = useAudio();
     const { t } = useLanguage();
@@ -223,6 +226,24 @@ export default function MainLayout() {
                     });
                     pushBrowserNotif(t('notif.teamRequest'), `${nombre} ${t('notif.teamRequestMsg')}`);
                     window.dispatchEvent(new CustomEvent('crm:nueva-solicitud', { detail: data }));
+                } else if (data.tipo === 'TAREA_VENCIDA') {
+                    // Solo avisa a quien tiene la tarea asignada
+                    if (Number(data.usuarioId) === Number(miUsuarioIdRef.current)) {
+                        playNotification();
+                        window.__crmNotifAdd?.({
+                            title: t('tareas.dueTitle'),
+                            message: data.titulo,
+                            type: 'TAREA',
+                            link: data.clienteId || null,
+                            timestamp: Date.now(),
+                        });
+                        pushBrowserNotif(t('tareas.dueTitle'), data.titulo);
+                    }
+                    window.dispatchEvent(new CustomEvent('crm:tareas', { detail: data }));
+                } else if (data.tipo === 'TAREAS_ACTUALIZADAS') {
+                    window.dispatchEvent(new CustomEvent('crm:tareas', { detail: data }));
+                } else if (data.tipo === 'ACTIVIDAD_NUEVA') {
+                    window.dispatchEvent(new CustomEvent('crm:actividad', { detail: data }));
                 }
             } catch (err) {
                 console.warn('Agencia payload inválido:', err);

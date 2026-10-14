@@ -41,7 +41,7 @@
 :where(.dsh-36) { font-size: 0.73rem !important; color: rgba(255,255,255,0.5) !important; }
 :where(.dsh-37) { display: block !important; width: 100% !important; margin-top: 4px !important; padding: 6px 10px !important; box-sizing: border-box !important; background: rgba(255,255,255,0.07) !important; border: 1px solid rgba(255,255,255,0.12) !important; border-radius: 8px !important; color: white !important; font-size: 0.82rem !important; outline: none !important; }
 :where(.dsh-38) { margin-top: 14px !important; width: 100% !important; padding: 8px !important; border-radius: 8px !important; border: none !important; font-size: 0.82rem !important; font-weight: 600 !important; transition: all 0.15s !important; }
-:where(.dsh-39) { background: linear-gradient(135deg,#4a1d96 0%,#6d28d9 45%,#7c3aed 100%) !important; border-radius: 16px !important; padding: 20px 22px 0 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; min-height: 155px !important; }
+:where(.dsh-39) { background: linear-gradient(135deg,#3A1000 0%,#8A2500 45%,#C03400 100%) !important; border-radius: 16px !important; padding: 20px 22px 0 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; min-height: 155px !important; }
 :where(.dsh-40) { margin-top: 12px !important; flex: 1 !important; }
 :where(.dsh-41) { font-size: 1.65rem !important; font-weight: 800 !important; line-height: 1 !important; }
 :where(.dsh-42) { font-size: 0.75rem !important; color: rgba(255,255,255,0.65) !important; margin-top: 4px !important; }

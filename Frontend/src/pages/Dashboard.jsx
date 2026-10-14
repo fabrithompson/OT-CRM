@@ -37,8 +37,8 @@ function sparkFrom(buckets, campo) {
 function buildLeadOrigin(wa, tg) {
     if (!wa && !tg) return [];
     return [
-        { name: 'WhatsApp', value: wa, color: '#10b981' },
-        { name: 'Telegram', value: tg, color: '#818cf8' },
+        { name: 'WhatsApp', value: wa, color: '#F64302' },
+        { name: 'Telegram', value: tg, color: '#D9D4D4' },
     ];
 }
 
@@ -76,7 +76,7 @@ function KpiCardV2({ icon, label, value, trend, trendDir, gradient, sparkData, g
                         <Tooltip
                             cursor={{ stroke: 'rgba(255,255,255,0.25)', strokeWidth: 1, strokeDasharray: '2 3' }}
                             contentStyle={{
-                                background: 'rgba(15,16,28,0.97)',
+                                background: 'rgba(16, 16, 16,0.97)',
                                 border: '1px solid rgba(255,255,255,0.15)',
                                 borderRadius: 8, padding: '4px 9px',
                                 fontSize: '0.72rem',
@@ -226,6 +226,7 @@ export default function Dashboard() {
     const [agenciaId, setAgenciaId]           = useState(null);
     const [onlineUsers, setOnlineUsers]       = useState(new Set());
     const [etapasStats, setEtapasStats]       = useState([]);
+    const [valorEmbudo, setValorEmbudo]       = useState({ total: 0, porEtapa: {} });
     const [topStats, setTopStats]             = useState({ topClientes: [], topAgentes: [] });
     const [topView, setTopView]               = useState('agentes');
     const [customFrom, setCustomFrom]         = useState('');
@@ -296,13 +297,14 @@ export default function Dashboard() {
         if (!silent) setLoading(true);
         const params = buildTopParams(range, from, to);
         try {
-            const [statsRes, tgRes, waRes, etapasRes, topRes, seriesRes] = await Promise.allSettled([
+            const [statsRes, tgRes, waRes, etapasRes, topRes, seriesRes, valorRes] = await Promise.allSettled([
                 api.get('/dashboard/stats', { params }),
                 api.get('/telegram-devices'),
                 api.get('/whatsapp'),
                 api.get('/etapas/stats'),
                 api.get('/dashboard/top-stats', { params }),
                 api.get('/dashboard/series', { params }),
+                api.get('/embudo/valor'),
             ]);
             const stats     = statsRes.status === 'fulfilled'  ? statsRes.value.data  : {};
             const tgDevices = tgRes.status === 'fulfilled'     ? tgRes.value.data     : [];
@@ -310,6 +312,11 @@ export default function Dashboard() {
             if (etapasRes.status === 'fulfilled') setEtapasStats(etapasRes.value.data || []);
             if (topRes.status === 'fulfilled')    setTopStats(topRes.value.data || { topClientes: [], topAgentes: [] });
             if (seriesRes.status === 'fulfilled') setSeries(seriesRes.value.data?.buckets || []);
+            if (valorRes.status === 'fulfilled') {
+                const porEtapa = {};
+                (valorRes.value.data?.porEtapa || []).forEach(x => { porEtapa[x.etapaId] = Number(x.valor) || 0; });
+                setValorEmbudo({ total: Number(valorRes.value.data?.total) || 0, porEtapa });
+            }
 
             const telegramConnected = tgDevices.some(d => d.estado === 'CONECTADO');
             const whatsappConectado = waDevices.some(d => d.estado === 'CONNECTED');
@@ -448,7 +455,7 @@ export default function Dashboard() {
 
     const convPct  = data.totalLeads > 0 ? (((data.clientesConCarga ?? 0) / data.totalLeads) * 100).toFixed(1) : '0.0';
 
-    const AGENT_COLORS = ['#10b981','#818cf8','#f59e0b','#ec4899'];
+    const AGENT_COLORS = ['#F64302','#D9D4D4','#FFB38F','#8C8585'];
 
     const originLabel = dateRange !== 'custom'
         ? (t(`dashboard.metrics.range${dateRange.charAt(0).toUpperCase() + dateRange.slice(1)}`) || t('dashboard.metrics.rangeCustom'))
@@ -477,14 +484,14 @@ export default function Dashboard() {
     const fmtMoney   = (v) => v === 0 ? '$0' : Math.abs(v) >= 1000 ? `$${(Math.abs(v)/1000).toFixed(1)}K` : `$${Math.abs(v).toFixed(0)}`;
 
     const card   = {
-        background: 'linear-gradient(135deg, #0e0e1c 0%, #13131f 55%, #0a0a14 100%)',
+        background: 'linear-gradient(135deg, #0D0D0D 0%, #141414 55%, #0A0A0A 100%)',
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: 16,
         padding: '20px 22px',
         boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
     };
     const ttStyle = {
-        background: 'rgba(15,16,28,0.97)',
+        background: 'rgba(16, 16, 16,0.97)',
         border: '1px solid rgba(255,255,255,0.12)',
         borderRadius: 12,
         fontSize: '0.78rem',
@@ -567,7 +574,7 @@ export default function Dashboard() {
                                 <button className="dsh-38"
                                     disabled={!customFrom}
                                     onClick={() => { setDateRange('custom'); setPickerOpen(false); }}
-                                    style={{ cursor: customFrom ? 'pointer' : 'not-allowed', background: customFrom ? '#10b981' : 'rgba(255,255,255,0.1)', color: customFrom ? 'white' : 'var(--color-text-3)' }}>
+                                    style={{ cursor: customFrom ? 'pointer' : 'not-allowed', background: customFrom ? '#F64302' : 'rgba(255,255,255,0.1)', color: customFrom ? '#000' : 'var(--color-text-3)' }}>
                                     {t('dashboard.picker.apply')}
                                 </button>
                             </div>
@@ -620,14 +627,14 @@ export default function Dashboard() {
                     icon="fa-user-plus" label={t('dashboard.kpi.newLeads')}
                     value={data.nuevosLeads.toLocaleString()}
                     trend={trendLeads?.text ?? null} trendDir={trendLeads?.dir ?? 'up'}
-                    gradient="linear-gradient(135deg,#064e3b 0%,#065f46 45%,#059669 100%)"
+                    gradient="linear-gradient(135deg,#4A1400 0%,#6B1D00 45%,#C03400 100%)"
                     sparkData={sparkLeads} gradId="sg1"
                 />
                 <KpiCardV2
                     icon="fa-chart-line" label={t('dashboard.kpi.conversion')}
                     value={`${convPct}%`}
                     trend={trendConv?.text ?? null} trendDir={trendConv?.dir ?? 'up'}
-                    gradient="linear-gradient(135deg,#1e1b4b 0%,#3730a3 50%,#4f46e5 100%)"
+                    gradient="linear-gradient(135deg,#141414 0%,#2A2626 50%,#767070 100%)"
                     sparkData={sparkMsgs} gradId="sg2"
                 />
                 {/* Finance card: neto = ingresos − egresos */}
@@ -671,7 +678,7 @@ export default function Dashboard() {
                                 <Tooltip
                                     cursor={{ stroke: 'rgba(255,255,255,0.25)', strokeWidth: 1, strokeDasharray: '2 3' }}
                                     contentStyle={{
-                                        background: 'rgba(15,16,28,0.97)',
+                                        background: 'rgba(16, 16, 16,0.97)',
                                         border: '1px solid rgba(255,255,255,0.15)',
                                         borderRadius: 8, padding: '4px 9px',
                                         fontSize: '0.72rem',
@@ -699,7 +706,7 @@ export default function Dashboard() {
                     icon="fa-inbox" label={t('dashboard.kpi.unread')}
                     value={data.leadsSinLeer.toLocaleString()}
                     trend={trendLeer.text} trendDir={trendLeer.dir}
-                    gradient="linear-gradient(135deg,#0c4a6e 0%,#0369a1 50%,#0284c7 100%)"
+                    gradient="linear-gradient(135deg,#1A0800 0%,#3A1000 50%,#6B1D00 100%)"
                     sparkData={sparkLeer} gradId="sg4"
                 />
             </div>
@@ -728,16 +735,16 @@ export default function Dashboard() {
                         <AreaChart data={weeklyData} margin={{ top: 4, right: 45, left: -22, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="wg1" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%"  stopColor="#10b981" stopOpacity={0.4} />
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    <stop offset="5%"  stopColor="#F64302" stopOpacity={0.4} />
+                                    <stop offset="95%" stopColor="#F64302" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="wg2" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%"  stopColor="#818cf8" stopOpacity={0.35} />
-                                    <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
+                                    <stop offset="5%"  stopColor="#D9D4D4" stopOpacity={0.35} />
+                                    <stop offset="95%" stopColor="#D9D4D4" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="wg3" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%"  stopColor="#ec4899" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                                    <stop offset="5%"  stopColor="#FFB38F" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#FFB38F" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <XAxis dataKey="label" tick={{ fill:'rgba(255,255,255,0.38)', fontSize:11 }} axisLine={false} tickLine={false} />
@@ -761,13 +768,13 @@ export default function Dashboard() {
                                 wrapperStyle={{ outline: 'none' }}
                                 formatter={(value, name) => name === 'Ingresos' ? [`$${value.toLocaleString()}`, name] : [value, name]}
                             />
-                            <Area yAxisId="left"  type="monotone" dataKey="leads"    stroke="#10b981" strokeWidth={2}   fill="url(#wg1)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#10b981', stroke: '#0a0a14' }} name="Leads" />
-                            <Area yAxisId="left"  type="monotone" dataKey="mensajes" stroke="#818cf8" strokeWidth={2}   fill="url(#wg2)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#818cf8', stroke: '#0a0a14' }} name="Mensajes" />
-                            <Area yAxisId="right" type="monotone" dataKey="ingresos" stroke="#ec4899" strokeWidth={1.5} fill="url(#wg3)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#ec4899', stroke: '#0a0a14' }} name="Ingresos" />
+                            <Area yAxisId="left"  type="monotone" dataKey="leads"    stroke="#F64302" strokeWidth={2}   fill="url(#wg1)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#F64302', stroke: '#0A0A0A' }} name="Leads" />
+                            <Area yAxisId="left"  type="monotone" dataKey="mensajes" stroke="#D9D4D4" strokeWidth={2}   fill="url(#wg2)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#D9D4D4', stroke: '#0A0A0A' }} name="Mensajes" />
+                            <Area yAxisId="right" type="monotone" dataKey="ingresos" stroke="#FFB38F" strokeWidth={1.5} fill="url(#wg3)" dot={false} activeDot={{ r: 4, strokeWidth: 1, fill: '#FFB38F', stroke: '#0A0A0A' }} name="Ingresos" />
                         </AreaChart>
                     </ResponsiveContainer>
                     <div className="dsh-48">
-                        {[['#10b981', t('dashboard.chart.leads')],['#818cf8', t('dashboard.chart.messages')],['#ec4899', t('dashboard.chart.income')]].map(([c,n]) => (
+                        {[['#F64302', t('dashboard.chart.leads')],['#D9D4D4', t('dashboard.chart.messages')],['#FFB38F', t('dashboard.chart.income')]].map(([c,n]) => (
                             <span className="dsh-49" key={n}>
                                 <span className="dsh-50" style={{ background:c }} />{n}
                             </span>
@@ -828,6 +835,7 @@ export default function Dashboard() {
                                     <p style={secTitle}>{t('dashboard.funnel.title')}</p>
                                     <span className="dsh-52">
                                         {etapasStats.length} {t('dashboard.funnel.stages')} · {totalClientes} {t('dashboard.funnel.contacts')}
+                                        {valorEmbudo.total > 0 && <> · {t('dashboard.funnel.value')}: ${valorEmbudo.total.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</>}
                                     </span>
                                 </div>
                                 {etapasStats.length === 0 ? (
@@ -841,12 +849,15 @@ export default function Dashboard() {
                                                     <div className="dsh-65">
                                                         <span className="dsh-66">{etapa.nombre}</span>
                                                         <div className="dsh-67">
+                                                            {valorEmbudo.porEtapa[etapa.id] > 0 && (
+                                                                <span className="dsh-68">${valorEmbudo.porEtapa[etapa.id].toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                                                            )}
                                                             <span className="dsh-68">{etapa.pctMensajes}% msgs</span>
                                                             <span className="dsh-69">{etapa.cantidadClientes.toLocaleString()}</span>
                                                         </div>
                                                     </div>
                                                     <div className="dsh-70">
-                                                        <div className="dsh-71" style={{ width:`${barW}%`, background: etapa.color || '#6366f1' }} />
+                                                        <div className="dsh-71" style={{ width:`${barW}%`, background: etapa.color || '#767070' }} />
                                                     </div>
                                                 </div>
                                             );

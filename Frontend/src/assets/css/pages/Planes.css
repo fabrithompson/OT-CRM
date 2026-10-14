@@ -22,7 +22,7 @@
 :where(.pln-17) { text-align: center !important; padding: 60px 20px !important; color: var(--color-text-3) !important; }
 :where(.pln-18) { font-size: 3rem !important; margin-bottom: 16px !important; opacity: 0.4 !important; }
 :where(.pln-19) { font-size: 1rem !important; }
-:where(.pln-20) { margin-top: 12px !important; background: var(--color-accent) !important; color: #fff !important; border: none !important; padding: 8px 20px !important; border-radius: 8px !important; cursor: pointer !important; font-weight: 600 !important; }
+:where(.pln-20) { margin-top: 12px !important; background: var(--color-accent) !important; color: #000 !important; border: none !important; padding: 8px 20px !important; border-radius: 8px !important; cursor: pointer !important; font-weight: 600 !important; }
 :where(.pln-21) { text-align: center !important; margin-top: 2rem !important; color: var(--color-text-3) !important; font-size: 0.85rem !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 12px !important; flex-wrap: wrap !important; }
 :where(.pln-22) { color: var(--color-accent) !important; margin-right: 6px !important; }
 :where(.pln-23) { display: flex !important; align-items: baseline !important; gap: 4px !important; }

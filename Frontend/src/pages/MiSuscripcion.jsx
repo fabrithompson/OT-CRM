@@ -9,7 +9,7 @@ import '../assets/css/pages/MiSuscripcion.css';
 const PLAN_ICON = {
     FREE: { icon: 'fa-seedling', color: 'var(--color-text-3)' },
     PRO: { icon: 'fa-bolt', color: '#3b82f6' },
-    BUSINESS: { icon: 'fa-building', color: '#8b5cf6' },
+    BUSINESS: { icon: 'fa-building', color: '#D63A00' },
     ENTERPRISE: { icon: 'fa-gem', color: '#f59e0b' },
 };
 
@@ -175,7 +175,7 @@ export default function MiSuscripcion() {
                                 </div>
                                 <div className="sub-21">
                                     <span className="sub-22">{t('suscripcion.accountStatus')}</span>
-                                    <strong className="sub-24" style={{ color: planNombre !== 'FREE' ? '#10b981' : '#9ca3af' }}>
+                                    <strong className="sub-24" style={{ color: planNombre !== 'FREE' ? '#F64302' : '#9ca3af' }}>
                                         {planNombre !== 'FREE' ? t('suscripcion.statusActive') : t('suscripcion.statusNone')}
                                     </strong>
                                 </div>
@@ -335,7 +335,7 @@ function LimitItem({ icon, label, value, color }) {
 }
 
 function FeatureItem({ icon, label, enabled, tIncluded, tNot }) {
-    const c = enabled ? '#10b981' : '#6b7280';
+    const c = enabled ? '#F64302' : '#6b7280';
     return (
         <div className="sub-52">
             <div className="sub-53">

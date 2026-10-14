@@ -14,11 +14,11 @@
 :where(.aud-9) { flex-shrink: 0 !important; align-items: flex-end !important; }
 :where(.aud-10) { display: flex !important; flex-direction: column !important; gap: 10px !important; flex: 1 !important; min-width: 0 !important; }
 :where(.aud-11) { font-size: clamp(1.1rem, 2vw, 1.45rem) !important; }
-:where(.aud-12) { margin-right: 10px !important; color: #a78bfa !important; }
+:where(.aud-12) { margin-right: 10px !important; color: #FF7A45 !important; }
 :where(.aud-13) { display: flex !important; gap: 4px !important; }
 :where(.aud-14) { display: flex !important; align-items: center !important; gap: 10px !important; }
 :where(.aud-15) { font-size: 0.78rem !important; color: var(--color-danger) !important; max-width: 240px !important; }
-:where(.aud-16) { background: rgba(167,139,250,0.85) !important; color: #fff !important; white-space: nowrap !important; }
+:where(.aud-16) { background: rgba(246, 67, 2,0.85) !important; color: #fff !important; white-space: nowrap !important; }
 :where(.aud-17) { margin-right: 6px !important; }
 :where(.aud-18) { display: flex !important; flex-direction: column !important; gap: 12px !important; flex: 1 !important; overflow: hidden !important; min-height: 0 !important; }
 :where(.aud-19) { flex-shrink: 0 !important; grid-template-columns: repeat(3,1fr) !important; }
@@ -34,8 +34,8 @@
 :where(.aud-29) { margin-right: 4px !important; }
 :where(.aud-30) { font-size: 0.74rem !important; color: var(--color-text-3) !important; }
 :where(.aud-31) { margin-left: 10px !important; }
-:where(.aud-32) { padding: 14px 18px !important; border-radius: 10px !important; background: rgba(167,139,250,0.05) !important; border: 1px solid rgba(167,139,250,0.14) !important; font-size: 0.87rem !important; color: rgba(255,255,255,0.78) !important; line-height: 1.7 !important; white-space: pre-wrap !important; }
-:where(.aud-33) { font-size: 0.70rem !important; color: #c4b5fd !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; margin-bottom: 8px !important; font-weight: 700 !important; }
+:where(.aud-32) { padding: 14px 18px !important; border-radius: 10px !important; background: rgba(246, 67, 2,0.05) !important; border: 1px solid rgba(246, 67, 2,0.14) !important; font-size: 0.87rem !important; color: rgba(255,255,255,0.78) !important; line-height: 1.7 !important; white-space: pre-wrap !important; }
+:where(.aud-33) { font-size: 0.70rem !important; color: #FFB38F !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; margin-bottom: 8px !important; font-weight: 700 !important; }
 :where(.aud-34) { padding: 10px 14px !important; border-radius: 8px !important; background: rgba(245,158,11,0.06) !important; border: 1px solid rgba(245,158,11,0.18) !important; font-size: 0.82rem !important; color: rgba(255,255,255,0.72) !important; line-height: 1.6 !important; white-space: pre-wrap !important; }
 :where(.aud-35) { font-size: 0.68rem !important; color: #fbbf24 !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; margin-bottom: 4px !important; font-weight: 700 !important; }
 :where(.aud-36) { margin-right: 5px !important; }
@@ -43,9 +43,9 @@
 :where(.aud-38) { display: flex !important; flex-direction: column !important; gap: 8px !important; }
 :where(.aud-39) { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 0 2px !important; }
 :where(.aud-40) { font-size: 0.78rem !important; color: rgba(255,255,255,0.55) !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; font-weight: 700 !important; display: flex !important; align-items: center !important; gap: 7px !important; }
-:where(.aud-41) { color: #a78bfa !important; }
+:where(.aud-41) { color: #FF7A45 !important; }
 :where(.aud-42) { display: flex !important; gap: 6px !important; }
-:where(.aud-43) { font-size: 0.72rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 12px !important; background: rgba(16,185,129,0.12) !important; color: var(--color-accent) !important; border: 1px solid rgba(16,185,129,0.25) !important; }
+:where(.aud-43) { font-size: 0.72rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 12px !important; background: rgba(246, 67, 2,0.12) !important; color: var(--color-accent) !important; border: 1px solid rgba(246, 67, 2,0.25) !important; }
 :where(.aud-44) { margin-right: 3px !important; }
 :where(.aud-45) { font-size: 0.72rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 12px !important; background: rgba(245,158,11,0.12) !important; color: var(--color-warning) !important; border: 1px solid rgba(245,158,11,0.25) !important; }
 :where(.aud-46) { font-size: 0.72rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 12px !important; background: rgba(239,68,68,0.12) !important; color: var(--color-danger) !important; border: 1px solid rgba(239,68,68,0.25) !important; }
@@ -66,13 +66,13 @@
 :where(.aud-61) { font-size: 0.90rem !important; font-weight: 700 !important; color: rgba(255,255,255,0.88) !important; flex: 1 !important; }
 :where(.aud-62) { display: flex !important; gap: 6px !important; flex-shrink: 0 !important; align-items: center !important; }
 :where(.aud-63) { font-size: 0.68rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 6px !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; }
-:where(.aud-64) { font-size: 0.68rem !important; padding: 2px 8px !important; border-radius: 6px !important; background: rgba(99,102,241,0.12) !important; color: #818cf8 !important; border: 1px solid rgba(99,102,241,0.25) !important; }
+:where(.aud-64) { font-size: 0.68rem !important; padding: 2px 8px !important; border-radius: 6px !important; background: rgba(240, 237, 237,0.12) !important; color: #D9D4D4 !important; border: 1px solid rgba(240, 237, 237,0.25) !important; }
 :where(.aud-65) { font-size: 0.83rem !important; color: rgba(255,255,255,0.58) !important; line-height: 1.6 !important; }
-:where(.aud-66) { margin: 0 !important; padding: 10px 14px !important; background: rgba(0,0,0,0.30) !important; border-left: 3px solid rgba(167,139,250,0.45) !important; border-radius: 0 8px 8px 0 !important; font-size: 0.82rem !important; font-style: italic !important; color: rgba(255,255,255,0.65) !important; line-height: 1.6 !important; }
+:where(.aud-66) { margin: 0 !important; padding: 10px 14px !important; background: rgba(0,0,0,0.30) !important; border-left: 3px solid rgba(246, 67, 2,0.45) !important; border-radius: 0 8px 8px 0 !important; font-size: 0.82rem !important; font-style: italic !important; color: rgba(255,255,255,0.65) !important; line-height: 1.6 !important; }
 :where(.aud-67) { display: flex !important; justify-content: space-between !important; align-items: center !important; flex-wrap: wrap !important; gap: 8px !important; }
 :where(.aud-68) { font-size: 0.73rem !important; color: var(--color-text-3) !important; }
-:where(.aud-69) { margin-right: 4px !important; color: #a78bfa !important; }
-:where(.aud-70) { color: #c4b5fd !important; }
+:where(.aud-69) { margin-right: 4px !important; color: #FF7A45 !important; }
+:where(.aud-70) { color: #FFB38F !important; }
 :where(.aud-71) { font-size: 0.72rem !important; padding: 3px 10px !important; border-radius: 7px !important; cursor: pointer !important; transition: 0.15s !important; }
 :where(.aud-72) { text-align: center !important; padding: 32px !important; color: var(--color-accent) !important; font-size: 0.92rem !important; display: flex !important; flex-direction: column !important; align-items: center !important; gap: 10px !important; }
 :where(.aud-73) { font-size: 2rem !important; opacity: 0.7 !important; }
@@ -81,7 +81,7 @@
 :where(.aud-76) { margin-bottom: 5px !important; }
 :where(.aud-77) { margin: 14px 0 5px !important; }
 :where(.aud-78) { margin-top: 18px !important; }
-:where(.aud-79) { background: rgba(167,139,250,0.85) !important; }
+:where(.aud-79) { background: rgba(246, 67, 2,0.85) !important; }
 :where(.aud-80) { margin: 0 0 10px !important; font-size: 1rem !important; }
 :where(.aud-81) { color: var(--color-danger) !important; margin-right: 8px !important; }
 :where(.aud-82) { font-size: 0.85rem !important; line-height: 1.6 !important; margin: 0 0 20px !important; }
@@ -98,13 +98,13 @@
 :where(.aud-93) { color: var(--color-text-3) !important; font-size: 0.72rem !important; margin-right: 6px !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
 :where(.aud-94) { margin: 0 !important; padding: 8px 12px !important; background: rgba(0,0,0,0.30) !important; border-radius: 0 6px 6px 0 !important; font-size: 0.80rem !important; font-style: italic !important; color: rgba(255,255,255,0.70) !important; line-height: 1.55 !important; }
 :where(.aud-95) { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 8px !important; margin-top: 2px !important; }
-:where(.aud-96) { padding: 6px 10px !important; border-radius: 6px !important; background: rgba(16,185,129,0.06) !important; border: 1px solid rgba(16,185,129,0.15) !important; font-size: 0.74rem !important; line-height: 1.5 !important; }
-:where(.aud-97) { color: #34d399 !important; font-weight: 700 !important; margin-bottom: 3px !important; font-size: 0.68rem !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
+:where(.aud-96) { padding: 6px 10px !important; border-radius: 6px !important; background: rgba(246, 67, 2,0.06) !important; border: 1px solid rgba(246, 67, 2,0.15) !important; font-size: 0.74rem !important; line-height: 1.5 !important; }
+:where(.aud-97) { color: #FF7A45 !important; font-weight: 700 !important; margin-bottom: 3px !important; font-size: 0.68rem !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
 :where(.aud-98) { color: rgba(255,255,255,0.6) !important; }
 :where(.aud-99) { padding: 6px 10px !important; border-radius: 6px !important; background: rgba(239,68,68,0.06) !important; border: 1px solid rgba(239,68,68,0.15) !important; font-size: 0.74rem !important; line-height: 1.5 !important; }
 :where(.aud-100) { color: #f87171 !important; font-weight: 700 !important; margin-bottom: 3px !important; font-size: 0.68rem !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
 :where(.aud-101) { height: 100% !important; display: flex !important; align-items: center !important; justify-content: center !important; flex-direction: column !important; gap: 14px !important; color: rgba(255,255,255,0.22) !important; }
-:where(.aud-102) { width: 56px !important; height: 56px !important; border-radius: 14px !important; background: rgba(167,139,250,0.08) !important; border: 1px solid rgba(167,139,250,0.18) !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.4rem !important; color: rgba(167,139,250,0.6) !important; }
+:where(.aud-102) { width: 56px !important; height: 56px !important; border-radius: 14px !important; background: rgba(246, 67, 2,0.08) !important; border: 1px solid rgba(246, 67, 2,0.18) !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.4rem !important; color: rgba(246, 67, 2,0.6) !important; }
 :where(.aud-103) { font-size: 0.88rem !important; }
 :where(.aud-104) { display: flex !important; flex-direction: column !important; align-items: center !important; gap: 10px !important; padding: 32px 16px !important; text-align: center !important; }
 :where(.aud-105) { width: 52px !important; height: 52px !important; border-radius: 14px !important; background: rgba(255,255,255,0.04) !important; border: 1px solid rgba(255,255,255,0.08) !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 1.3rem !important; color: rgba(255,255,255,0.2) !important; }
@@ -139,13 +139,13 @@
 :where(.aud-134) { gap: 8px !important; padding: 12px 14px !important; }
 :where(.aud-135) { display: flex !important; justify-content: space-between !important; align-items: flex-start !important; flex-wrap: wrap !important; gap: 6px !important; }
 :where(.aud-136) { display: flex !important; align-items: center !important; gap: 7px !important; font-size: 0.83rem !important; font-weight: 700 !important; color: rgba(255,255,255,0.88) !important; }
-:where(.aud-137) { color: #a78bfa !important; font-size: 0.75rem !important; }
+:where(.aud-137) { color: #FF7A45 !important; font-size: 0.75rem !important; }
 :where(.aud-138) { font-size: 0.70rem !important; color: var(--color-text-3) !important; font-weight: 400 !important; }
 :where(.aud-139) { display: flex !important; gap: 6px !important; align-items: center !important; flex-wrap: wrap !important; }
 :where(.aud-140) { font-size: 0.70rem !important; font-weight: 700 !important; padding: 2px 8px !important; border-radius: 6px !important; display: inline-flex !important; align-items: center !important; gap: 4px !important; }
 :where(.aud-141) { font-size: 0.62rem !important; }
 :where(.aud-142) { display: flex !important; align-items: center !important; gap: 10px !important; padding: 7px 10px !important; border-radius: 8px !important; background: rgba(0,0,0,0.18) !important; border: 1px solid rgba(255,255,255,0.05) !important; flex-wrap: wrap !important; }
-:where(.aud-143) { color: #a78bfa !important; font-size: 0.78rem !important; flex-shrink: 0 !important; }
+:where(.aud-143) { color: #FF7A45 !important; font-size: 0.78rem !important; flex-shrink: 0 !important; }
 :where(.aud-144) { font-size: 0.74rem !important; color: rgba(255,255,255,0.50) !important; flex-shrink: 0 !important; }
 :where(.aud-145) { font-size: 0.80rem !important; font-weight: 700 !important; }
 :where(.aud-146) { margin-left: 5px !important; font-size: 0.70rem !important; color: var(--color-accent) !important; }
@@ -162,16 +162,16 @@
 :where(.aud-157) { font-size: 0.74rem !important; color: rgba(255,255,255,0.45) !important; display: flex !important; align-items: center !important; gap: 6px !important; }
 :where(.aud-158) { font-size: 0.78rem !important; color: var(--color-text-3) !important; line-height: 1.5 !important; margin-top: -4px !important; }
 :where(.aud-159) { padding: 20px !important; color: var(--color-text-3) !important; font-size: 0.85rem !important; text-align: center !important; }
-:where(.aud-160) { padding: 20px 16px !important; border-radius: 10px !important; background: rgba(167,139,250,0.04) !important; border: 1px dashed rgba(167,139,250,0.20) !important; font-size: 0.83rem !important; color: rgba(255,255,255,0.45) !important; text-align: center !important; line-height: 1.6 !important; }
+:where(.aud-160) { padding: 20px 16px !important; border-radius: 10px !important; background: rgba(246, 67, 2,0.04) !important; border: 1px dashed rgba(246, 67, 2,0.20) !important; font-size: 0.83rem !important; color: rgba(255,255,255,0.45) !important; text-align: center !important; line-height: 1.6 !important; }
 :where(.aud-161) { display: flex !important; flex-direction: column !important; gap: 8px !important; overflow-y: scroll !important; padding-right: 4px !important; }
-:where(.aud-162) { width: 100% !important; padding: 9px 14px !important; border-radius: 8px !important; background: rgba(167,139,250,0.12) !important; border: 1px dashed rgba(167,139,250,0.40) !important; color: #c4b5fd !important; font-size: 0.85rem !important; font-weight: 600 !important; }
+:where(.aud-162) { width: 100% !important; padding: 9px 14px !important; border-radius: 8px !important; background: rgba(246, 67, 2,0.12) !important; border: 1px dashed rgba(246, 67, 2,0.40) !important; color: #FFB38F !important; font-size: 0.85rem !important; font-weight: 600 !important; }
 :where(.aud-163) { border-radius: 10px !important; overflow: hidden !important; flex-shrink: 0 !important; transition: 0.15s !important; }
 :where(.aud-164) { display: flex !important; align-items: center !important; gap: 8px !important; padding: 9px 11px !important; }
 :where(.aud-165) { display: flex !important; flex-direction: column !important; gap: 1px !important; }
 :where(.aud-166) { font-size: 0.6rem !important; }
 :where(.aud-167) { flex: 1 !important; font-size: 0.88rem !important; padding: 6px 10px !important; background: rgba(0,0,0,0.30) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 6px !important; color: #fff !important; outline: none !important; }
-:where(.aud-168) { display: flex !important; align-items: center !important; gap: 5px !important; padding: 4px 8px !important; border-radius: 6px !important; background: rgba(167,139,250,0.10) !important; border: 1px solid rgba(167,139,250,0.20) !important; }
-:where(.aud-169) { width: 38px !important; font-size: 0.78rem !important; padding: 2px 4px !important; background: transparent !important; border: none !important; color: #c4b5fd !important; outline: none !important; text-align: center !important; font-weight: 700 !important; }
+:where(.aud-168) { display: flex !important; align-items: center !important; gap: 5px !important; padding: 4px 8px !important; border-radius: 6px !important; background: rgba(246, 67, 2,0.10) !important; border: 1px solid rgba(246, 67, 2,0.20) !important; }
+:where(.aud-169) { width: 38px !important; font-size: 0.78rem !important; padding: 2px 4px !important; background: transparent !important; border: none !important; color: #FFB38F !important; outline: none !important; text-align: center !important; font-weight: 700 !important; }
 :where(.aud-170) { font-size: 0.68rem !important; color: rgba(255,255,255,0.45) !important; }
 :where(.aud-171) { font-size: 0.7rem !important; }
 :where(.aud-172) { width: 100% !important; font-size: 0.82rem !important; padding: 8px 11px !important; background: rgba(0,0,0,0.30) !important; border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 6px !important; color: #fff !important; outline: none !important; resize: vertical !important; font-family: inherit !important; box-sizing: border-box !important; }
@@ -197,9 +197,9 @@
 :where(.aud-192) { display: flex !important; flex-direction: column !important; gap: 6px !important; }
 :where(.aud-193) { color: var(--color-text-3) !important; font-size: 0.8rem !important; }
 :where(.aud-194) { font-size: 0.75rem !important; }
-:where(.aud-195) { margin-top: 8px !important; width: 100% !important; padding: 7px 14px !important; border-radius: 8px !important; background: rgba(167,139,250,0.08) !important; border: 1px dashed rgba(167,139,250,0.28) !important; color: #c4b5fd !important; cursor: pointer !important; font-size: 0.78rem !important; font-weight: 600 !important; }
-:where(.aud-196) { padding: 9px 12px !important; border-radius: 8px !important; background: rgba(167,139,250,0.06) !important; border: 1px solid rgba(167,139,250,0.16) !important; font-size: 0.75rem !important; color: rgba(255,255,255,0.45) !important; line-height: 1.6 !important; }
-:where(.aud-197) { color: #a78bfa !important; margin-right: 5px !important; }
+:where(.aud-195) { margin-top: 8px !important; width: 100% !important; padding: 7px 14px !important; border-radius: 8px !important; background: rgba(246, 67, 2,0.08) !important; border: 1px dashed rgba(246, 67, 2,0.28) !important; color: #FFB38F !important; cursor: pointer !important; font-size: 0.78rem !important; font-weight: 600 !important; }
+:where(.aud-196) { padding: 9px 12px !important; border-radius: 8px !important; background: rgba(246, 67, 2,0.06) !important; border: 1px solid rgba(246, 67, 2,0.16) !important; font-size: 0.75rem !important; color: rgba(255,255,255,0.45) !important; line-height: 1.6 !important; }
+:where(.aud-197) { color: #FF7A45 !important; margin-right: 5px !important; }
 :where(.aud-198) { color: rgba(255,255,255,0.65) !important; }
 :where(.aud-199) { display: flex !important; gap: 10px !important; align-items: center !important; }
 :where(.aud-200) { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; }

@@ -92,7 +92,7 @@
 :where(.spm-87) { margin: 0 0 14px !important; font-size: 1.1rem !important; }
 :where(.spm-88) { font-size: 0.88rem !important; line-height: 1.55 !important; margin: 0 0 18px !important; }
 :where(.spm-89) { height: 100% !important; display: flex !important; align-items: center !important; justify-content: center !important; background: transparent !important; font-family: 'Montserrat', sans-serif !important; padding: 24px !important; }
-:where(.spm-90) { background: rgba(24,18,38,0.80) !important; border: 1px solid rgba(245,158,11,0.22) !important; border-radius: 22px !important; padding: 48px 52px !important; max-width: 500px !important; width: 100% !important; text-align: center !important; position: relative !important; overflow: hidden !important; }
+:where(.spm-90) { background: rgba(20, 20, 20,0.80) !important; border: 1px solid rgba(245,158,11,0.22) !important; border-radius: 22px !important; padding: 48px 52px !important; max-width: 500px !important; width: 100% !important; text-align: center !important; position: relative !important; overflow: hidden !important; }
 :where(.spm-91) { position: absolute !important; top: -60px !important; left: 50% !important; transform: translateX(-50%) !important; width: 280px !important; height: 180px !important; border-radius: 50% !important; background: radial-gradient(ellipse, rgba(245,158,11,0.12) 0%, transparent 70%) !important; pointer-events: none !important; }
 :where(.spm-92) { width: 68px !important; height: 68px !important; border-radius: 18px !important; margin: 0 auto 22px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
 :where(.spm-93) { font-size: 1.6rem !important; }
@@ -109,7 +109,7 @@
 :where(.spm-104) { color: var(--color-text-3) !important; }
 :where(.spm-105) { height: 100% !important; display: flex !important; align-items: center !important; justify-content: center !important; background: transparent !important; }
 :where(.spm-106) { display: flex !important; flex-direction: column !important; height: 100% !important; padding: 16px !important; gap: 12px !important; background: transparent !important; font-family: 'Montserrat', sans-serif !important; }
-:where(.spm-107) { background: rgba(22,16,36,0.85) !important; border-radius: 16px !important; padding: 11px 18px !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 14px !important; flex-wrap: wrap !important; }
+:where(.spm-107) { background: rgba(20, 20, 20,0.85) !important; border-radius: 16px !important; padding: 11px 18px !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 14px !important; flex-wrap: wrap !important; }
 :where(.spm-108) { display: flex !important; align-items: center !important; gap: 12px !important; flex: 1 1 220px !important; min-width: 0 !important; }
 :where(.spm-109) { width: 38px !important; height: 38px !important; border-radius: 10px !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
 :where(.spm-110) { font-size: 0.95rem !important; }
@@ -134,6 +134,6 @@
 :where(.spm-129) { width: 68px !important; height: 68px !important; margin: 0 auto 22px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
 :where(.spm-130) { display: inline-flex !important; align-items: center !important; gap: 6px !important; padding: 4px 14px !important; margin-bottom: 16px !important; font-size: 0.72rem !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.08em !important; }
 :where(.spm-131) { width: 32px !important; height: 32px !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
-:where(.spm-132) { background: rgba(22,16,36,0.85) !important; padding: 11px 18px !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 14px !important; flex-wrap: wrap !important; }
+:where(.spm-132) { background: rgba(20, 20, 20,0.85) !important; padding: 11px 18px !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 14px !important; flex-wrap: wrap !important; }
 :where(.spm-133) { width: 38px !important; height: 38px !important; flex-shrink: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
 :where(.spm-134) { padding: 6px 11px !important; font-size: 0.78rem !important; background: rgba(255,255,255,0.07) !important; cursor: pointer !important; max-width: 240px !important; }

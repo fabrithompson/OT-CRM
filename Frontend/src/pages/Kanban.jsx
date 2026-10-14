@@ -36,6 +36,9 @@ export default function Kanban() {
     const [filterEtiquetaId, setFilterEtiquetaId] = useState('');
     const [showFilterMenu, setShowFilterMenu]     = useState(false);
     const [searchQuery, setSearchQuery]           = useState('');
+    const [soloMios, setSoloMios]                 = useState(false);
+    const [equipo, setEquipo]                     = useState([]);
+    const [valorPorEtapa, setValorPorEtapa]       = useState({});
     const [debouncedSearch, setDebouncedSearch]   = useState('');
 
     const [createOpen, setCreateOpen]   = useState(false);
@@ -85,6 +88,37 @@ export default function Kanban() {
         }
     }, [toast, t]);
 
+    // Valor estimado por etapa (suma de valorEstimado de los contactos de cada columna)
+    const cargarValorEmbudo = useCallback(async () => {
+        try {
+            const res = await api.get('/embudo/valor');
+            const mapa = {};
+            (res.data?.porEtapa || []).forEach(x => { mapa[x.etapaId] = Number(x.valor) || 0; });
+            setValorPorEtapa(mapa);
+        } catch { /* el valor es informativo: si falla, la columna no lo muestra */ }
+    }, []);
+
+    // Recarga el valor con un pequeño retardo para agrupar varios eventos seguidos
+    const valorTimer = useRef(null);
+    const refrescarValor = useCallback(() => {
+        clearTimeout(valorTimer.current);
+        valorTimer.current = setTimeout(cargarValorEmbudo, 400);
+    }, [cargarValorEmbudo]);
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    useEffect(() => { cargarValorEmbudo(); return () => clearTimeout(valorTimer.current); }, [cargarValorEmbudo]);
+
+    useEffect(() => {
+        let cancelado = false;
+        api.get('/dashboard/equipo')
+            .then(res => { if (!cancelado) setEquipo(Array.isArray(res.data) ? res.data : []); })
+            .catch(() => {});
+        return () => { cancelado = true; };
+    }, []);
+
+    // id -> miembro, para mostrar al responsable en cada tarjeta
+    const equipoPorId = useMemo(() => new Map(equipo.map(m => [Number(m.id), m])), [equipo]);
+
     // Recarga el tablero al cambiar el filtro de etiquetas.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { loadBoard(filterEtiquetaId); }, [filterEtiquetaId, loadBoard]);
@@ -121,6 +155,7 @@ export default function Kanban() {
 
         if (tipo === 'NUEVO_LEAD') {
             handleClienteEvent(ev);
+            refrescarValor();
         } else if (tipo === 'CLIENTE_ACTUALIZADO') {
             // REST endpoint sends {tipo, clienteId, nombre, notas} without cliente wrapper
             if (ev.cliente) {
@@ -128,16 +163,30 @@ export default function Kanban() {
             } else if (ev.clienteId) {
                 setClientes(prev => prev.map(c =>
                     c.id === ev.clienteId
-                        ? { ...c, ...(ev.nombre !== undefined && { nombre: ev.nombre }), ...(ev.notas !== undefined && { notas: ev.notas }) }
+                        ? {
+                            ...c,
+                            ...(ev.nombre !== undefined && { nombre: ev.nombre }),
+                            ...(ev.notas !== undefined && { notas: ev.notas }),
+                            ...(ev.email !== undefined && { email: ev.email }),
+                            ...(ev.empresa !== undefined && { empresa: ev.empresa }),
+                            ...(ev.valorEstimado !== undefined && { valorEstimado: ev.valorEstimado }),
+                        }
                         : c
                 ));
+                refrescarValor();
             }
+        } else if (tipo === 'CLIENTE_RESPONSABLE') {
+            setClientes(prev => prev.map(c =>
+                c.id === ev.clienteId ? { ...c, responsableId: ev.responsableId } : c
+            ));
         } else if (tipo === 'CLIENTE_MOVIDO') {
             setClientes(prev => prev.map(c =>
                 c.id === ev.clienteId ? { ...c, etapa: { id: ev.nuevaEtapaId } } : c
             ));
+            refrescarValor();
         } else if (tipo === 'CLIENTE_ELIMINADO') {
             setClientes(prev => prev.filter(c => c.id !== ev.clienteId));
+            refrescarValor();
         } else if (tipo === 'ETIQUETAS_ACTUALIZADAS') {
             setClientes(prev => {
                 const updated = prev.map(c =>
@@ -173,7 +222,7 @@ export default function Kanban() {
         } else if (tipo === 'PLAN_EQUIPO_ACTUALIZADO') {
             window.dispatchEvent(new CustomEvent('crm:plan-updated'));
         }
-    }, [filterEtiquetaId, loadBoard, handleClienteEvent, handleEtapasReordenadas]);
+    }, [filterEtiquetaId, loadBoard, handleClienteEvent, handleEtapasReordenadas, refrescarValor]);
 
     // Patrón "latest-callback ref": las refs apuntan siempre al último callback
     // para que las suscripciones WS los invoquen sin reconectar cuando cambian deps.
@@ -244,7 +293,8 @@ export default function Kanban() {
 
     const handleUpdateCard = useCallback((clienteId, updates) => {
         setClientes(prev => prev.map(c => c.id === Number.parseInt(clienteId, 10) ? { ...c, ...updates } : c));
-    }, []);
+        if (updates && 'valorEstimado' in updates) refrescarValor();
+    }, [refrescarValor]);
 
     const toggleMute = useCallback((id) => {
         setMutedStages(prev => {
@@ -290,6 +340,7 @@ export default function Kanban() {
                 const text = `${c.nombre || ''} ${c.telefono || ''} ${c.ultimoMensajeResumen || ''}`.toLowerCase();
                 if (!text.includes(q)) continue;
             }
+            if (soloMios && Number(c.responsableId) !== Number(userCtx?.id)) continue;
             let lista = porEtapa.get(etapaId);
             if (!lista) { lista = []; porEtapa.set(etapaId, lista); }
             lista.push({
@@ -307,7 +358,7 @@ export default function Kanban() {
             resultado.set(etapaId, lista.map(x => x.cliente));
         }
         return resultado;
-    }, [clientes, debouncedSearch]);
+    }, [clientes, debouncedSearch, soloMios, userCtx?.id]);
 
     const clientesForEtapa = (etapaId) => clientesPorEtapa.get(etapaId) || LISTA_VACIA;
 
@@ -339,6 +390,8 @@ export default function Kanban() {
                         etapa={etapa}
                         etapas={etapas}
                         clientes={clientesForEtapa(etapa.id)}
+                        valor={valorPorEtapa[etapa.id] || 0}
+                        equipoPorId={equipoPorId}
                         onOpenChat={setOpenChatId}
                         onEditStage={setEditStage}
                         onDeleteStage={setDeleteStage}
@@ -399,13 +452,23 @@ export default function Kanban() {
                                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                                         onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                     >
-                                        <span className="kbn-17" style={{ background: t.color || '#10b981' }}></span>
+                                        <span className="kbn-17" style={{ background: t.color || '#F64302' }}></span>
                                         {t.nombre}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
+
+                    <button
+                        type="button"
+                        className={`filter-dd-btn kanban-mine${soloMios ? ' is-active' : ''}`}
+                        aria-pressed={soloMios}
+                        onClick={() => setSoloMios(v => !v)}
+                    >
+                        <i className="fas fa-user-check" aria-hidden="true"></i>
+                        <span>{soloMios ? t('kanban.onlyMine') : t('kanban.allContacts')}</span>
+                    </button>
 
                     <div className="search-wrapper">
                         <i className="fas fa-search"></i>

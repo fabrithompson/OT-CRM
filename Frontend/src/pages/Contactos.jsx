@@ -7,6 +7,7 @@ import NotificationBell from '../components/kanban/NotificationBell';
 import { useLanguage } from '../context/LangContext';
 import useDialog from '../hooks/useDialog';
 import Skeleton from '../components/ui/Skeleton';
+import NuevoContactoModal from '../components/contactos/NuevoContactoModal';
 import '../assets/css/pages/Contactos.css';
 
 const FORMAT_BYTES = (bytes) => {
@@ -112,6 +113,7 @@ export default function Contactos() {
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
 
+    const [showNuevo, setShowNuevo]   = useState(false);
     const [deleteId, setDeleteId]     = useState(null);
     const [deleting, setDeleting]     = useState(false);
 
@@ -262,6 +264,13 @@ export default function Contactos() {
         setResultModal({ active: true, type, title, message, onClose: () => { setResultModal(r => ({ ...r, active: false })); if (onCloseCb) onCloseCb(); } });
     };
 
+    const onContactoCreado = () => {
+        setShowNuevo(false);
+        toast(t('common.successTitle'), t('contactos.created'), '#10b981');
+        setPage(0);
+        loadClientes(0, pageSize, search);
+    };
+
     const abrirChat = (clienteId) => { navigate(`/kanban?openChat=${clienteId}`); };
 
     const renderTableBody = () => {
@@ -299,7 +308,12 @@ export default function Contactos() {
                 <td className="col-left ps-4 cell-primary cnt-13">
                     <div className="cnt-14">
                         <div className="avatar-circle"><span>{(c.nombre || '?').charAt(0).toUpperCase()}</span></div>
-                        <span className="cnt-15">{c.nombre}</span>
+                        <span className="cnt-15">
+                            {c.nombre}
+                            {(c.empresa || c.email) && (
+                                <small className="contacto-sub text-muted">{[c.empresa, c.email].filter(Boolean).join(' · ')}</small>
+                            )}
+                        </span>
                     </div>
                 </td>
                 <td data-label={t('contactos.colPlatform')} className="col-center cnt-1"><div className="session-cell cnt-16"><PlatformIcon origen={c.origen} /></div></td>
@@ -346,6 +360,9 @@ export default function Contactos() {
                         <i className="fas fa-search cnt-31"></i>
                         <input className="cnt-32" aria-label={t('contactos.search')} type="text" placeholder={t('contactos.search')} value={search} onChange={e => handleSearch(e.target.value)} autoComplete="off" />
                     </div>
+                    <button type="button" className="ui-btn ui-btn--primary" onClick={() => setShowNuevo(true)}>
+                        <i className="fas fa-user-plus" aria-hidden="true"></i> {t('contactos.newContact')}
+                    </button>
                     <button type="button" className="btn-excel-animado cnt-33" onClick={exportar}>
                         <i className="fas fa-file-download"></i><span className="texto-btn cnt-34">{t('contactos.exportBtn')}</span>
                     </button>
@@ -405,6 +422,7 @@ export default function Contactos() {
                     </div>
                 </div>
             </div>
+            <NuevoContactoModal open={showNuevo} onClose={() => setShowNuevo(false)} onCreated={onContactoCreado} />
             <ConfirmDeleteModal active={deleteId !== null} onClose={() => setDeleteId(null)} onConfirm={confirmarEliminar} deleting={deleting} />
             <ConfirmImportModal active={showImportModal} file={importFile} onClose={() => { setShowImportModal(false); setImportFile(null); }} onConfirm={procesarImport} importing={importing} />
             <ResultModal active={resultModal.active} type={resultModal.type} title={resultModal.title} message={resultModal.message} onClose={resultModal.onClose || (() => setResultModal(r => ({ ...r, active: false })))} />
